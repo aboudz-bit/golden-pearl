@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { formatSAR } from "@/lib/utils";
 import type { CartItemWithProduct } from "@shared/schema";
 
 export default function Cart() {
@@ -219,11 +220,11 @@ export default function Cart() {
                         data-testid={`text-item-price-${item.id}`}
                         className="font-bold text-foreground"
                       >
-                        ${(item.product.price * item.quantity / 100).toFixed(2)}
+                        {formatSAR(item.product.price * item.quantity)}
                       </span>
                       {item.quantity > 1 && (
                         <span className="text-xs text-muted-foreground">
-                          ${(item.product.price / 100).toFixed(2)} each
+                          {formatSAR(item.product.price)} each
                         </span>
                       )}
                     </div>
@@ -240,7 +241,7 @@ export default function Cart() {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal ({cartItems.length} items)</span>
-                  <span className="font-medium text-foreground" data-testid="text-subtotal">${(subtotal / 100).toFixed(2)}</span>
+                  <span className="font-medium text-foreground" data-testid="text-subtotal">{formatSAR(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
@@ -248,13 +249,13 @@ export default function Cart() {
                     {shipping === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Free</span>
                     ) : (
-                      `$${(shipping / 100).toFixed(2)}`
+                      formatSAR(shipping)
                     )}
                   </span>
                 </div>
                 {subtotal < FREE_SHIPPING_THRESHOLD && (
                   <p className="text-xs text-muted-foreground bg-accent/40 rounded-md px-3 py-2">
-                    Add ${((FREE_SHIPPING_THRESHOLD - subtotal) / 100).toFixed(2)} more for free shipping
+                    Add {formatSAR(FREE_SHIPPING_THRESHOLD - subtotal)} more for free shipping
                   </p>
                 )}
 
@@ -262,7 +263,7 @@ export default function Cart() {
 
                 <div className="flex justify-between font-bold text-base">
                   <span>Total</span>
-                  <span data-testid="text-total">${(total / 100).toFixed(2)}</span>
+                  <span data-testid="text-total">{formatSAR(total)}</span>
                 </div>
               </div>
 

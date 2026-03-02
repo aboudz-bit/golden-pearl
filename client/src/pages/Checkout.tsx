@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { CartItemWithProduct, Store, Order } from "@shared/schema";
+import { formatSAR } from "@/lib/utils";
 
 export default function Checkout() {
   const { toast } = useToast();
@@ -65,7 +66,7 @@ export default function Checkout() {
     onSuccess: async (res) => {
       const data = await res.json();
       if (data.minOrder && subtotal < data.minOrder) {
-        toast({ title: "Minimum not met", description: `Minimum order of $${(data.minOrder / 100).toFixed(2)} required.`, variant: "destructive" });
+        toast({ title: "Minimum not met", description: `Minimum order of ${formatSAR(data.minOrder)} required.`, variant: "destructive" });
         return;
       }
       setDiscountApplied({ type: data.type, value: data.value });
@@ -440,7 +441,7 @@ export default function Checkout() {
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2">
                   {discountApplied.type === "percentage"
                     ? `${discountApplied.value}% discount applied`
-                    : `$${(discountApplied.value / 100).toFixed(2)} discount applied`}
+                    : `${formatSAR(discountApplied.value)} discount applied`}
                 </p>
               )}
             </div>
@@ -463,7 +464,7 @@ export default function Checkout() {
                       <p className="text-xs text-muted-foreground">{item.size} / {item.color} x{item.quantity}</p>
                     </div>
                     <span className="text-xs font-semibold text-foreground shrink-0">
-                      ${(item.product.price * item.quantity / 100).toFixed(2)}
+                      {formatSAR(item.product.price * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -474,13 +475,13 @@ export default function Checkout() {
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium text-foreground">${(subtotal / 100).toFixed(2)}</span>
+                  <span className="font-medium text-foreground">{formatSAR(subtotal)}</span>
                 </div>
 
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-emerald-600 dark:text-emerald-400">Discount</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">-${(discountAmount / 100).toFixed(2)}</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">-{formatSAR(discountAmount)}</span>
                   </div>
                 )}
 
@@ -495,7 +496,7 @@ export default function Checkout() {
                     {fulfillmentType === "pickup" || shipping === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Free</span>
                     ) : (
-                      `$${(shipping / 100).toFixed(2)}`
+                      formatSAR(shipping)
                     )}
                   </span>
                 </div>
@@ -504,7 +505,7 @@ export default function Checkout() {
 
                 <div className="flex justify-between font-bold text-base">
                   <span>Total</span>
-                  <span>${(total / 100).toFixed(2)}</span>
+                  <span>{formatSAR(total)}</span>
                 </div>
               </div>
 

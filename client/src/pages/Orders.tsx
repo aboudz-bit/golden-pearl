@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Order } from "@shared/schema";
+import { formatSAR } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { label: string; labelAr: string; color: string; icon: typeof Circle }> = {
   processing: { label: "Processing", labelAr: "قيد المعالجة", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", icon: Circle },
@@ -109,7 +110,7 @@ export default function Orders() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-foreground">${(order.total / 100).toFixed(2)}</p>
+                    <p className="font-bold text-foreground">{formatSAR(order.total)}</p>
                     <p className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
@@ -181,7 +182,7 @@ export default function Orders() {
                         <p className="text-xs font-medium text-foreground truncate">{item.nameEn}</p>
                         <p className="text-xs text-muted-foreground">{item.size} / {item.color} x{item.quantity}</p>
                       </div>
-                      <span className="text-xs font-medium text-foreground">${(item.price * item.quantity / 100).toFixed(2)}</span>
+                      <span className="text-xs font-medium text-foreground">{formatSAR(item.price * item.quantity)}</span>
                     </div>
                   ))}
                   {items.length > 3 && (
@@ -194,23 +195,23 @@ export default function Orders() {
                 <div className="flex flex-col gap-1 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="text-foreground">${(order.subtotal / 100).toFixed(2)}</span>
+                    <span className="text-foreground">{formatSAR(order.subtotal)}</span>
                   </div>
                   {order.discount > 0 && (
                     <div className="flex justify-between">
                       <span className="text-emerald-600 dark:text-emerald-400">Discount{order.discountCode ? ` (${order.discountCode})` : ""}</span>
-                      <span className="text-emerald-600 dark:text-emerald-400">-${(order.discount / 100).toFixed(2)}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">-{formatSAR(order.discount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>
                     <span className="text-foreground">
-                      {order.shipping === 0 ? "Free" : `$${(order.shipping / 100).toFixed(2)}`}
+                      {order.shipping === 0 ? "Free" : formatSAR(order.shipping)}
                     </span>
                   </div>
                   <div className="flex justify-between font-bold text-sm mt-1">
                     <span>Total</span>
-                    <span>${(order.total / 100).toFixed(2)}</span>
+                    <span>{formatSAR(order.total)}</span>
                   </div>
                 </div>
               </div>

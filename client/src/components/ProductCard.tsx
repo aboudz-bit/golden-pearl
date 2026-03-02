@@ -5,6 +5,7 @@ import type { Product } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatSAR } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -97,11 +98,11 @@ export function ProductCard({ product }: ProductCardProps) {
               data-testid={`text-product-price-${product.id}`}
               className="text-base font-bold text-foreground"
             >
-              ${(product.price / 100).toFixed(2)}
+              {formatSAR(product.price)}
             </span>
             {product.originalPrice && (
               <span className="text-sm text-muted-foreground line-through">
-                ${(product.originalPrice / 100).toFixed(2)}
+                {formatSAR(product.originalPrice)}
               </span>
             )}
           </div>

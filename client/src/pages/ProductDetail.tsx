@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Product } from "@shared/schema";
 import { ProductCard } from "@/components/ProductCard";
+import { formatSAR } from "@/lib/utils";
 
 const badgeVariantMap: Record<string, string> = {
   Sale: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
@@ -158,11 +159,11 @@ export default function ProductDetail() {
                 data-testid="text-detail-price"
                 className="text-3xl font-bold text-foreground"
               >
-                ${(product.price / 100).toFixed(2)}
+                {formatSAR(product.price)}
               </span>
               {product.originalPrice && (
                 <span className="text-lg text-muted-foreground line-through">
-                  ${(product.originalPrice / 100).toFixed(2)}
+                  {formatSAR(product.originalPrice)}
                 </span>
               )}
               {discount && (

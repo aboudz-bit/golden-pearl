@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema, insertStoreSchema } from "@shared/schema";
 import { z } from "zod";
+import { payments } from "./payments";
+import { shipping } from "./shipping";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -283,6 +285,76 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete store" });
+    }
+  });
+
+  // Payment routes
+  app.post("/api/payments/session", async (req, res) => {
+    try {
+      const { orderId, amount, method } = req.body;
+      if (!orderId || !amount || !method) {
+        return res.status(400).json({ message: "orderId, amount, and method are required" });
+      }
+      const session = await payments.createPaymentSession({ orderId, amount, method, currency: "SAR" });
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create payment session" });
+    }
+  });
+
+  app.post("/api/payments/:sessionId/confirm", async (req, res) => {
+    try {
+      const session = await payments.confirmPayment(req.params.sessionId);
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to confirm payment" });
+    }
+  });
+
+  app.post("/api/payments/:sessionId/refund", async (req, res) => {
+    try {
+      const { amount, reason } = req.body;
+      const session = await payments.refundPayment({ sessionId: req.params.sessionId, amount, reason });
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to refund payment" });
+    }
+  });
+
+  // Shipping routes
+  app.post("/api/shipping/quote", async (req, res) => {
+    try {
+      const { destinationCity, destinationCountry, itemCount, subtotal } = req.body;
+      if (!destinationCity || !destinationCountry) {
+        return res.status(400).json({ message: "destinationCity and destinationCountry are required" });
+      }
+      const quotes = await shipping.quoteShipping({
+        destinationCity,
+        destinationCountry,
+        itemCount: itemCount ?? 1,
+        subtotal: subtotal ?? 0,
+      });
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get shipping quotes" });
+    }
+  });
+
+  app.post("/api/shipping/create", async (req, res) => {
+    try {
+      const shipment = await shipping.createShipment(req.body);
+      res.json(shipment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create shipment" });
+    }
+  });
+
+  app.get("/api/shipping/track/:trackingNumber", async (req, res) => {
+    try {
+      const shipment = await shipping.trackShipment(req.params.trackingNumber);
+      res.json(shipment);
+    } catch (error: any) {
+      res.status(404).json({ message: error.message || "Shipment not found" });
     }
   });
 

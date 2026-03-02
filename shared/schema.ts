@@ -23,6 +23,11 @@ export const products = pgTable("products", {
   badge: text("badge"),
   rating: real("rating").notNull().default(4.5),
   reviewCount: integer("review_count").notNull().default(0),
+  arEnabled: boolean("ar_enabled").notNull().default(false),
+  arAssetType: text("ar_asset_type"),
+  arAssetUrl: text("ar_asset_url"),
+  arScaleHint: real("ar_scale_hint"),
+  arPlacementHint: text("ar_placement_hint"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

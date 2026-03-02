@@ -124,5 +124,20 @@
         "type": "int"
       }
     }
-  }
+  },
+  "deliveryMethod": "Delivery Method",
+  "delivery": "Delivery",
+  "storePickup": "Store Pickup",
+  "selectStore": "Select Store",
+  "noStoresAvailable": "No stores available at the moment",
+  "contactInfo": "Contact Information",
+  "fulfillment": "Fulfillment",
+  "pickupInstructions": "Pickup Instructions",
+  "pickupIdRequired": "Valid ID is required for pickup",
+  "pickupOrderNumber": "Show your order confirmation number",
+  "pickupReadyTime": "Your order will be ready within 24 hours",
+  "confirmed": "Confirmed",
+  "readyForPickup": "Ready for Pickup",
+  "pickedUp": "Picked Up",
+  "cancelled": "Cancelled"
 }

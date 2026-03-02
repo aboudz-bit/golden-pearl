@@ -134,9 +134,9 @@ export default function Shop() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Prices</SelectItem>
-                <SelectItem value="under100">Under $100</SelectItem>
-                <SelectItem value="100-250">$100 - $250</SelectItem>
-                <SelectItem value="over250">Over $250</SelectItem>
+                <SelectItem value="under100">Under SAR 100</SelectItem>
+                <SelectItem value="100-250">SAR 100 - 250</SelectItem>
+                <SelectItem value="over250">Over SAR 250</SelectItem>
               </SelectContent>
             </Select>
 

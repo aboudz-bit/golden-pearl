@@ -124,5 +124,20 @@
         "type": "int"
       }
     }
-  }
+  },
+  "deliveryMethod": "طريقة التوصيل",
+  "delivery": "توصيل",
+  "storePickup": "استلام من المتجر",
+  "selectStore": "اختاري المتجر",
+  "noStoresAvailable": "لا توجد متاجر متاحة حالياً",
+  "contactInfo": "معلومات التواصل",
+  "fulfillment": "طريقة الاستلام",
+  "pickupInstructions": "تعليمات الاستلام",
+  "pickupIdRequired": "يجب إحضار هوية سارية للاستلام",
+  "pickupOrderNumber": "أظهري رقم تأكيد الطلب",
+  "pickupReadyTime": "سيكون طلبك جاهزاً خلال ٢٤ ساعة",
+  "confirmed": "تم التأكيد",
+  "readyForPickup": "جاهز للاستلام",
+  "pickedUp": "تم الاستلام",
+  "cancelled": "ملغي"
 }
