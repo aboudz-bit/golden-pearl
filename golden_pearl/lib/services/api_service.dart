@@ -107,13 +107,6 @@ class ApiService {
     return data.map((json) => Store.fromJson(json)).toList();
   }
 
-  Future<List<Store>> getStores() async {
-    final response = await _client.get(Uri.parse('$baseUrl/api/stores'), headers: _headers);
-    _updateCookie(response);
-    final List data = jsonDecode(response.body);
-    return data.map((json) => Store.fromJson(json)).toList();
-  }
-
   Future<Map<String, dynamic>?> validateDiscount(String code) async {
     final response = await _client.post(
       Uri.parse('$baseUrl/api/discounts/validate'),
