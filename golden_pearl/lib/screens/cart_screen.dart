@@ -114,7 +114,7 @@ class _CartScreenState extends State<CartScreen> {
                                       children: [
                                         Text(product.name(lang), style: playfairDisplay(fontSize: 14, fontWeight: FontWeight.w600, color: kCharcoal), maxLines: 2, overflow: TextOverflow.ellipsis),
                                         const SizedBox(height: 4),
-                                        Text('${item.size} · ${item.color}', style: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A))),
+                                        Text('${item.size} · ${item.color}', style: const TextStyle(fontSize: 12, color: kSecondaryText)),
                                         const SizedBox(height: 10),
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -204,7 +204,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               else if (_stores.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Text(l10n.noStoresAvailable, style: const TextStyle(color: Color(0xFF8A8A8A))),
+                  child: Text(l10n.noStoresAvailable, style: const TextStyle(color: kSecondaryText)),
                 )
               else
                 ..._stores.map((store) => _storeCard(store, lang)),
@@ -340,7 +340,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon, color: isSelected ? kGoldPrimary : const Color(0xFF8A8A8A), size: 28),
+            Icon(icon, color: isSelected ? kGoldPrimary : kSecondaryText, size: 28),
             const SizedBox(height: 8),
             Text(
               label,
@@ -398,25 +398,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF8A8A8A)),
+                      const Icon(Icons.location_on_outlined, size: 14, color: kSecondaryText),
                       const SizedBox(width: 4),
-                      Expanded(child: Text(store.address(lang), style: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A)))),
+                      Expanded(child: Text(store.address(lang), style: const TextStyle(fontSize: 12, color: kSecondaryText))),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.access_time_outlined, size: 14, color: Color(0xFF8A8A8A)),
+                      const Icon(Icons.access_time_outlined, size: 14, color: kSecondaryText),
                       const SizedBox(width: 4),
-                      Text(store.hours(lang), style: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A))),
+                      Text(store.hours(lang), style: const TextStyle(fontSize: 12, color: kSecondaryText)),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF8A8A8A)),
+                      const Icon(Icons.phone_outlined, size: 14, color: kSecondaryText),
                       const SizedBox(width: 4),
-                      Text(store.phone, style: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A))),
+                      Text(store.phone, style: const TextStyle(fontSize: 12, color: kSecondaryText)),
                     ],
                   ),
                 ],
@@ -432,7 +432,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E8),
+        color: kCreamBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kGoldPrimary.withOpacity(0.3)),
       ),
@@ -461,8 +461,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('  •  ', style: TextStyle(fontSize: 12, color: Color(0xFF8A8A8A))),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF666666)))),
+          const Text('  •  ', style: TextStyle(fontSize: 12, color: kSecondaryText)),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: kSecondaryText))),
         ],
       ),
     );

@@ -18,9 +18,11 @@ import 'utils/arabic_digits.dart';
 
 const kGoldPrimary = Color(0xFFB89B5E);
 const kGoldDark = Color(0xFF9C7F42);
-const kCreamBg = Color(0xFFF6F3EE);
+const kCreamBg = Color(0xFFF4F4F4);
+const kCardBg = Color(0xFFFFFFFF);
 const kCharcoal = Color(0xFF1C1C1C);
-const kDivider = Color(0xFFE8E3D8);
+const kSecondaryText = Color(0xFF6B6B6B);
+const kDivider = Color(0xFFEAEAEA);
 
 const _playfairFamily = 'PlayfairDisplay';
 
@@ -67,7 +69,7 @@ class GoldenPearlApp extends StatelessWidget {
           brightness: Brightness.light,
           primary: kGoldPrimary,
           secondary: kGoldDark,
-          surface: Colors.white,
+          surface: kCardBg,
           onSurface: kCharcoal,
         ),
         scaffoldBackgroundColor: kCreamBg,
@@ -89,9 +91,9 @@ class GoldenPearlApp extends StatelessWidget {
           headlineMedium: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w600, color: kCharcoal),
           titleLarge: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal),
           titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: kCharcoal),
-          bodyLarge: const TextStyle(fontSize: 16, color: Color(0xFF4A4A4A)),
-          bodyMedium: const TextStyle(fontSize: 14, color: Color(0xFF4A4A4A)),
-          bodySmall: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A)),
+          bodyLarge: const TextStyle(fontSize: 16, color: kSecondaryText),
+          bodyMedium: const TextStyle(fontSize: 14, color: kSecondaryText),
+          bodySmall: const TextStyle(fontSize: 12, color: kSecondaryText),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -105,25 +107,25 @@ class GoldenPearlApp extends StatelessWidget {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: kGoldPrimary,
-            side: const BorderSide(color: kGoldPrimary, width: 1.5),
+            foregroundColor: kCharcoal,
+            side: const BorderSide(color: kDivider, width: 1),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         cardTheme: CardTheme(
-          elevation: 1,
-          shadowColor: Colors.black.withOpacity(0.06),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: kCreamBg,
+          elevation: 0,
+          shadowColor: Colors.black.withOpacity(0.04),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: kCardBg,
         ),
         dividerColor: kDivider,
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: kCardBg,
           selectedItemColor: kGoldPrimary,
-          unselectedItemColor: Color(0xFF8A8A8A),
+          unselectedItemColor: kSecondaryText,
           type: BottomNavigationBarType.fixed,
-          elevation: 4,
+          elevation: 0,
         ),
         useMaterial3: true,
       ),

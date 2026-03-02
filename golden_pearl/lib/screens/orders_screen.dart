@@ -125,12 +125,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 Icon(
                                   order.isPickup ? Icons.store_outlined : Icons.local_shipping_outlined,
                                   size: 14,
-                                  color: const Color(0xFF8A8A8A),
+                                  color: kSecondaryText,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   order.isPickup ? l10n.storePickup : l10n.delivery,
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A)),
+                                  style: const TextStyle(fontSize: 12, color: kSecondaryText),
                                 ),
                               ],
                             ),
@@ -138,7 +138,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(order.customerName, style: const TextStyle(color: Color(0xFF8A8A8A))),
+                                Text(order.customerName, style: const TextStyle(color: kSecondaryText)),
                                 Text(
                                   MoneyFormatter.format(order.total, lang),
                                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kGoldPrimary),
@@ -169,7 +169,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           if (order.pickupAddress != null)
                                             Text(
                                               order.pickupAddress!,
-                                              style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A8A)),
+                                              style: const TextStyle(fontSize: 11, color: kSecondaryText),
                                             ),
                                         ],
                                       ),
@@ -184,7 +184,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 children: [
                                   const Icon(Icons.local_shipping_outlined, size: 16, color: kGoldPrimary),
                                   const SizedBox(width: 6),
-                                  Text(order.trackingNumber!, style: const TextStyle(fontSize: 13, color: Color(0xFF4A4A4A))),
+                                  Text(order.trackingNumber!, style: const TextStyle(fontSize: 13, color: kSecondaryText)),
                                 ],
                               ),
                             ],

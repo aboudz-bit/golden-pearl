@@ -41,9 +41,9 @@ class _ShimmerPlaceholderState extends State<ShimmerPlaceholder> with SingleTick
               begin: Alignment(-1.0 + 2.0 * v, 0),
               end: Alignment(2.0 * v, 0),
               colors: const [
-                Color(0xFFE8E3D8),
-                Color(0xFFF6F3EE),
-                Color(0xFFE8E3D8),
+                Color(0xFFEAEAEA),
+                Color(0xFFF4F4F4),
+                Color(0xFFEAEAEA),
               ],
               stops: const [0.0, 0.5, 1.0],
             ),

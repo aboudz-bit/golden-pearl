@@ -6,7 +6,6 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
-import '../widgets/category_icons.dart';
 import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,10 +21,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _heroController = PageController();
   int _currentHeroPage = 0;
 
+  // Category product images cache
+  Map<String, String> _categoryImages = {};
+
   @override
   void initState() {
     super.initState();
     _loadFeatured();
+    _loadCategoryImages();
     _startHeroAutoScroll();
   }
 
@@ -45,6 +48,21 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _loadCategoryImages() async {
+    try {
+      final allProducts = await apiService.getProducts();
+      final images = <String, String>{};
+      for (final cat in ['dresses', 'jalabiyas', 'kids', 'gifts']) {
+        final match = allProducts.where((p) => p.category == cat && p.images.isNotEmpty).toList();
+        if (match.isNotEmpty) {
+          final img = match.first.images.first;
+          images[cat] = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
+        }
+      }
+      if (mounted) setState(() => _categoryImages = images);
+    } catch (_) {}
   }
 
   @override
@@ -71,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
             actions: [
               IconButton(
-                icon: const Icon(Icons.language, color: kGoldPrimary),
+                icon: Icon(Icons.language, color: kSecondaryText),
                 onPressed: () => Provider.of<LanguageProvider>(context, listen: false).toggleLanguage(),
               ),
             ],
@@ -100,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: _currentHeroPage == i ? 24 : 8,
                         height: 3,
                         decoration: BoxDecoration(
-                          color: _currentHeroPage == i ? kGoldPrimary : Colors.white54,
+                          color: _currentHeroPage == i ? Colors.white : Colors.white54,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       )),
@@ -135,16 +153,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 110,
+              height: 140,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 children: [
-                  _CategoryHighlight(label: l10n.dresses, iconWidget: const DressIcon(size: 28), category: 'dresses'),
-                  _CategoryHighlight(label: l10n.jalabiyas, iconWidget: const KaftanIcon(size: 28), category: 'jalabiyas'),
-                  _CategoryHighlight(label: l10n.kids, iconWidget: const RibbonBowIcon(size: 28), category: 'kids'),
-                  _CategoryHighlight(label: l10n.gifts, iconWidget: const GiftBoxIcon(size: 28), category: 'gifts'),
+                  _CategoryCircle(label: l10n.dresses, imageUrl: _categoryImages['dresses'], category: 'dresses'),
+                  _CategoryCircle(label: l10n.jalabiyas, imageUrl: _categoryImages['jalabiyas'], category: 'jalabiyas'),
+                  _CategoryCircle(label: l10n.kids, imageUrl: _categoryImages['kids'], category: 'kids'),
+                  _CategoryCircle(label: l10n.gifts, imageUrl: _categoryImages['gifts'], category: 'gifts'),
                 ],
               ),
             ),
@@ -162,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
                       transitionDuration: const Duration(milliseconds: 280),
                     )),
-                    child: Text(l10n.viewAll, style: const TextStyle(color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                    child: Text(l10n.viewAll, style: TextStyle(color: kSecondaryText, fontWeight: FontWeight.w500)),
                   ),
                 ],
               ),
@@ -191,8 +209,11 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.all(20),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0ECE3),
+                color: kCardBg,
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+                ],
               ),
               child: Column(
                 children: [
@@ -239,7 +260,7 @@ class _HeroSlide extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
-              colors: [Colors.black.withOpacity(0.65), Colors.black.withOpacity(0.05)],
+              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
             ),
           ),
         ),
@@ -265,24 +286,26 @@ class _HeroSlide extends StatelessWidget {
   }
 }
 
-class _CategoryHighlight extends StatefulWidget {
+/// Large circular category with real product image (96-110px).
+class _CategoryCircle extends StatefulWidget {
   final String label;
-  final Widget iconWidget;
+  final String? imageUrl;
   final String category;
 
-  const _CategoryHighlight({required this.label, required this.iconWidget, required this.category});
+  const _CategoryCircle({required this.label, this.imageUrl, required this.category});
 
   @override
-  State<_CategoryHighlight> createState() => _CategoryHighlightState();
+  State<_CategoryCircle> createState() => _CategoryCircleState();
 }
 
-class _CategoryHighlightState extends State<_CategoryHighlight> {
+class _CategoryCircleState extends State<_CategoryCircle> {
   double _scale = 1.0;
 
   @override
   Widget build(BuildContext context) {
+    final isSelected = false; // No selection state on home
     return GestureDetector(
-      onTapDown: (_) => setState(() => _scale = 0.92),
+      onTapDown: (_) => setState(() => _scale = 0.95),
       onTapUp: (_) {
         setState(() => _scale = 1.0);
         Navigator.pushNamed(context, '/category/${widget.category}');
@@ -293,19 +316,34 @@ class _CategoryHighlightState extends State<_CategoryHighlight> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
         child: Container(
-          width: 80,
+          width: 100,
           margin: const EdgeInsets.only(right: 16),
           child: Column(
             children: [
               Container(
-                width: 68,
-                height: 68,
+                width: 96,
+                height: 96,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: kCreamBg,
-                  border: Border.all(color: kGoldPrimary, width: 2),
+                  border: isSelected
+                      ? Border.all(color: kGoldPrimary, width: 2)
+                      : null,
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                  ],
                 ),
-                child: Center(child: widget.iconWidget),
+                child: ClipOval(
+                  child: widget.imageUrl != null
+                      ? Image.network(
+                          widget.imageUrl!,
+                          width: 96,
+                          height: 96,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallback(),
+                        )
+                      : _fallback(),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -321,6 +359,15 @@ class _CategoryHighlightState extends State<_CategoryHighlight> {
       ),
     );
   }
+
+  Widget _fallback() {
+    return Container(
+      width: 96,
+      height: 96,
+      color: kDivider,
+      child: Icon(Icons.category_outlined, color: kSecondaryText, size: 32),
+    );
+  }
 }
 
 class _ServiceBadge extends StatelessWidget {
@@ -334,9 +381,9 @@ class _ServiceBadge extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Icon(icon, size: 22, color: kGoldPrimary),
+          Icon(icon, size: 22, color: kSecondaryText),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF666666)), textAlign: TextAlign.center, maxLines: 2),
+          Text(label, style: TextStyle(fontSize: 10, color: kSecondaryText), textAlign: TextAlign.center, maxLines: 2),
         ],
       ),
     );

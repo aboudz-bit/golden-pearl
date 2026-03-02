@@ -164,7 +164,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         const SizedBox(width: 12),
                         Text(
                           MoneyFormatter.format(p.originalPrice!, lang),
-                          style: const TextStyle(fontSize: 15, decoration: TextDecoration.lineThrough, color: Color(0xFF999999)),
+                          style: const TextStyle(fontSize: 15, decoration: TextDecoration.lineThrough, color: kSecondaryText),
                         ),
                         const SizedBox(width: 8),
                         Container(
@@ -212,7 +212,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             border: Border.all(color: isSelected ? kCharcoal : kDivider),
                           ),
                           child: Text(size, style: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
+                            color: isSelected ? Colors.white : kSecondaryText,
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                           )),
                         ),
@@ -239,7 +239,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                           child: Text(color, style: TextStyle(
                             fontSize: 13,
-                            color: isSelected ? kGoldDark : const Color(0xFF4A4A4A),
+                            color: isSelected ? kGoldDark : kSecondaryText,
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                           )),
                         ),

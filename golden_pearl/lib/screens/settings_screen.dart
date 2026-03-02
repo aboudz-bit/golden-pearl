@@ -45,7 +45,7 @@ class SettingsScreen extends StatelessWidget {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0ECE3),
+                      color: kCreamBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -63,7 +63,7 @@ class SettingsScreen extends StatelessWidget {
                             child: Text('AR', style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: langProvider.isArabic ? Colors.white : const Color(0xFF4A4A4A),
+                              color: langProvider.isArabic ? Colors.white : kSecondaryText,
                             )),
                           ),
                         ),
@@ -80,7 +80,7 @@ class SettingsScreen extends StatelessWidget {
                             child: Text('EN', style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: !langProvider.isArabic ? Colors.white : const Color(0xFF4A4A4A),
+                              color: !langProvider.isArabic ? Colors.white : kSecondaryText,
                             )),
                           ),
                         ),

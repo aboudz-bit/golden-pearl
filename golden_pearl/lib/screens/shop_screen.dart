@@ -120,7 +120,7 @@ class _ShopScreenState extends State<ShopScreen> {
                     selectedColor: kGoldPrimary,
                     backgroundColor: Colors.white,
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
+                      color: isSelected ? Colors.white : kSecondaryText,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                     side: BorderSide(color: isSelected ? kGoldPrimary : kDivider),
