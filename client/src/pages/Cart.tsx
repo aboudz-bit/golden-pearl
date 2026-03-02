@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ShoppingBag, Trash2, Plus, Minus, ArrowLeft, ArrowRight, Package } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,19 +11,20 @@ import type { CartItemWithProduct } from "@shared/schema";
 export default function Cart() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data: cartItems, isLoading } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
   });
 
   const updateItem = useMutation({
-    mutationFn: ({ id, quantity }: { id: string; quantity: number }) =>
+    mutationFn: ({ id, quantity }: { id: number; quantity: number }) =>
       apiRequest("PATCH", `/api/cart/${id}`, { quantity }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/cart"] }),
   });
 
   const removeItem = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/cart/${id}`),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/cart/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       toast({ title: "Item removed", description: "Item removed from your bag." });
@@ -39,7 +40,9 @@ export default function Cart() {
   });
 
   const subtotal = cartItems?.reduce((sum, item) => sum + item.product.price * item.quantity, 0) ?? 0;
-  const shipping = subtotal > 60 ? 0 : 5.99;
+  const FREE_SHIPPING_THRESHOLD = 15000;
+  const SHIPPING_FEE = 1500;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
   const total = subtotal + shipping;
 
   if (isLoading) {
@@ -136,8 +139,8 @@ export default function Cart() {
                 <Link href={`/product/${item.productId}`}>
                   <div className="w-20 sm:w-28 h-28 sm:h-36 rounded-md overflow-hidden bg-accent/30 shrink-0 cursor-pointer">
                     <img
-                      src={item.product.image}
-                      alt={item.product.name}
+                      src={item.product.images[0]}
+                      alt={item.product.nameEn}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -151,7 +154,7 @@ export default function Cart() {
                           data-testid={`text-cart-item-name-${item.id}`}
                           className="font-semibold text-sm text-foreground hover:text-primary cursor-pointer transition-colors truncate"
                         >
-                          {item.product.name}
+                          {item.product.nameEn}
                         </h3>
                       </Link>
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -169,7 +172,7 @@ export default function Cart() {
                       data-testid={`button-remove-${item.id}`}
                       onClick={() => removeItem.mutate(item.id)}
                       disabled={removeItem.isPending}
-                      aria-label={`Remove ${item.product.name}`}
+                      aria-label={`Remove ${item.product.nameEn}`}
                       className="shrink-0 text-muted-foreground"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -216,11 +219,11 @@ export default function Cart() {
                         data-testid={`text-item-price-${item.id}`}
                         className="font-bold text-foreground"
                       >
-                        ${(item.product.price * item.quantity).toFixed(2)}
+                        ${(item.product.price * item.quantity / 100).toFixed(2)}
                       </span>
                       {item.quantity > 1 && (
                         <span className="text-xs text-muted-foreground">
-                          ${item.product.price.toFixed(2)} each
+                          ${(item.product.price / 100).toFixed(2)} each
                         </span>
                       )}
                     </div>
@@ -237,7 +240,7 @@ export default function Cart() {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal ({cartItems.length} items)</span>
-                  <span className="font-medium text-foreground" data-testid="text-subtotal">${subtotal.toFixed(2)}</span>
+                  <span className="font-medium text-foreground" data-testid="text-subtotal">${(subtotal / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
@@ -245,13 +248,13 @@ export default function Cart() {
                     {shipping === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Free</span>
                     ) : (
-                      `$${shipping.toFixed(2)}`
+                      `$${(shipping / 100).toFixed(2)}`
                     )}
                   </span>
                 </div>
-                {subtotal < 60 && (
+                {subtotal < FREE_SHIPPING_THRESHOLD && (
                   <p className="text-xs text-muted-foreground bg-accent/40 rounded-md px-3 py-2">
-                    Add ${(60 - subtotal).toFixed(2)} more for free shipping
+                    Add ${((FREE_SHIPPING_THRESHOLD - subtotal) / 100).toFixed(2)} more for free shipping
                   </p>
                 )}
 
@@ -259,7 +262,7 @@ export default function Cart() {
 
                 <div className="flex justify-between font-bold text-base">
                   <span>Total</span>
-                  <span data-testid="text-total">${total.toFixed(2)}</span>
+                  <span data-testid="text-total">${(total / 100).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -267,7 +270,7 @@ export default function Cart() {
                 size="lg"
                 className="w-full mt-6"
                 data-testid="button-checkout"
-                onClick={() => toast({ title: "Checkout", description: "Checkout functionality coming soon!" })}
+                onClick={() => setLocation("/checkout")}
               >
                 Proceed to Checkout
                 <ArrowRight className="ml-2 w-4 h-4" />

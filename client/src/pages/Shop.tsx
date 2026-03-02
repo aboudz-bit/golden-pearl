@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ProductCard } from "@/components/ProductCard";
@@ -58,16 +58,17 @@ export default function Shop() {
 
   const filtered = (products ?? [])
     .filter(p => {
-      if (priceRange === "under100") return p.price < 100;
-      if (priceRange === "100-250") return p.price >= 100 && p.price <= 250;
-      if (priceRange === "over250") return p.price > 250;
+      const dollars = p.price / 100;
+      if (priceRange === "under100") return dollars < 100;
+      if (priceRange === "100-250") return dollars >= 100 && dollars <= 250;
+      if (priceRange === "over250") return dollars > 250;
       return true;
     })
     .sort((a, b) => {
       if (sortBy === "price-asc") return a.price - b.price;
       if (sortBy === "price-desc") return b.price - a.price;
       if (sortBy === "rating") return b.rating - a.rating;
-      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "name") return a.nameEn.localeCompare(b.nameEn);
       return 0;
     });
 

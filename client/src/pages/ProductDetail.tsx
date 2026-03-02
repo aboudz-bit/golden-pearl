@@ -40,7 +40,7 @@ export default function ProductDetail() {
     queryKey: ["/api/products"],
   });
 
-  const related = allProducts?.filter(p => p.id !== id && p.category === product?.category).slice(0, 4) ?? [];
+  const related = allProducts?.filter(p => String(p.id) !== id && p.category === product?.category).slice(0, 4) ?? [];
 
   useEffect(() => {
     if (product) {
@@ -60,7 +60,7 @@ export default function ProductDetail() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      toast({ title: "Added to bag", description: `${product?.name} added to your bag.` });
+      toast({ title: "Added to bag", description: `${product?.nameEn} added to your bag.` });
     },
   });
 
@@ -110,8 +110,8 @@ export default function ProductDetail() {
           <div className="relative">
             <div className="aspect-[3/4] rounded-lg overflow-hidden bg-accent/20">
               <img
-                src={product.image}
-                alt={product.name}
+                src={product.images[0]}
+                alt={product.nameEn}
                 className="w-full h-full object-cover"
                 data-testid="img-product-detail"
               />
@@ -137,7 +137,7 @@ export default function ProductDetail() {
                 data-testid="text-product-detail-name"
                 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mt-1.5 leading-tight"
               >
-                {product.name}
+                {product.nameEn}
               </h1>
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex gap-0.5">
@@ -158,11 +158,11 @@ export default function ProductDetail() {
                 data-testid="text-detail-price"
                 className="text-3xl font-bold text-foreground"
               >
-                ${product.price.toFixed(2)}
+                ${(product.price / 100).toFixed(2)}
               </span>
               {product.originalPrice && (
                 <span className="text-lg text-muted-foreground line-through">
-                  ${product.originalPrice.toFixed(2)}
+                  ${(product.originalPrice / 100).toFixed(2)}
                 </span>
               )}
               {discount && (
@@ -171,13 +171,13 @@ export default function ProductDetail() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed text-sm" data-testid="text-detail-description">
-              {product.description}
+              {product.descriptionEn}
             </p>
 
-            {product.fabric && (
+            {product.fabricEn && (
               <div className="text-sm">
                 <span className="font-semibold text-foreground">Fabric: </span>
-                <span className="text-muted-foreground">{product.fabric}</span>
+                <span className="text-muted-foreground">{product.fabricEn}</span>
               </div>
             )}
 

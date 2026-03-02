@@ -8,6 +8,8 @@ import Home from "@/pages/Home";
 import Shop from "@/pages/Shop";
 import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
+import Checkout from "@/pages/Checkout";
+import Orders from "@/pages/Orders";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
@@ -21,6 +23,8 @@ function Router() {
           <Route path="/shop" component={Shop} />
           <Route path="/product/:id" component={ProductDetail} />
           <Route path="/cart" component={Cart} />
+          <Route path="/checkout" component={Checkout} />
+          <Route path="/orders" component={Orders} />
           <Route component={NotFound} />
         </Switch>
       </main>

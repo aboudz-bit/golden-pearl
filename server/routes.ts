@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema } from "@shared/schema";
+import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema, insertStoreSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -129,6 +129,26 @@ export async function registerRoutes(
     }
   });
 
+  // Store routes
+  app.get("/api/stores", async (_req, res) => {
+    try {
+      const storesList = await storage.getActiveStores();
+      res.json(storesList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stores" });
+    }
+  });
+
+  app.get("/api/stores/:id", async (req, res) => {
+    try {
+      const store = await storage.getStore(parseInt(req.params.id));
+      if (!store) return res.status(404).json({ message: "Store not found" });
+      res.json(store);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch store" });
+    }
+  });
+
   app.post("/api/discounts/validate", async (req, res) => {
     try {
       const { code } = req.body;
@@ -147,6 +167,7 @@ export async function registerRoutes(
     }
   });
 
+  // Admin routes
   app.post("/api/admin/products", async (req, res) => {
     try {
       const result = insertProductSchema.safeParse(req.body);
@@ -223,6 +244,45 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete discount" });
+    }
+  });
+
+  app.post("/api/admin/stores", async (req, res) => {
+    try {
+      const result = insertStoreSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: "Invalid store", errors: result.error.flatten() });
+      const store = await storage.createStore(result.data);
+      res.json(store);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create store" });
+    }
+  });
+
+  app.get("/api/admin/stores", async (_req, res) => {
+    try {
+      const storesList = await storage.getStores();
+      res.json(storesList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stores" });
+    }
+  });
+
+  app.patch("/api/admin/stores/:id", async (req, res) => {
+    try {
+      const store = await storage.updateStore(parseInt(req.params.id), req.body);
+      if (!store) return res.status(404).json({ message: "Store not found" });
+      res.json(store);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update store" });
+    }
+  });
+
+  app.delete("/api/admin/stores/:id", async (req, res) => {
+    try {
+      await storage.deleteStore(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete store" });
     }
   });
 

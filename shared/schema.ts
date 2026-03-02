@@ -35,6 +35,21 @@ export const cartItems = pgTable("cart_items", {
   color: text("color").notNull(),
 });
 
+export const stores = pgTable("stores", {
+  id: serial("id").primaryKey(),
+  nameEn: text("name_en").notNull(),
+  nameAr: text("name_ar").notNull(),
+  addressEn: text("address_en").notNull(),
+  addressAr: text("address_ar").notNull(),
+  city: text("city").notNull(),
+  phone: text("phone").notNull(),
+  hoursEn: text("hours_en").notNull(),
+  hoursAr: text("hours_ar").notNull(),
+  mapUrl: text("map_url"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   sessionId: text("session_id").notNull(),
@@ -44,12 +59,17 @@ export const orders = pgTable("orders", {
   discount: integer("discount").notNull().default(0),
   total: integer("total").notNull(),
   status: text("status").notNull().default("processing"),
+  fulfillmentType: text("fulfillment_type").notNull().default("delivery"),
+  pickupStoreId: integer("pickup_store_id"),
+  pickupStoreName: text("pickup_store_name"),
+  pickupAddress: text("pickup_address"),
+  pickupHours: text("pickup_hours"),
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email"),
   customerPhone: text("customer_phone").notNull(),
-  shippingAddress: text("shipping_address").notNull(),
-  shippingCity: text("shipping_city").notNull(),
-  shippingCountry: text("shipping_country").notNull(),
+  shippingAddress: text("shipping_address").notNull().default(""),
+  shippingCity: text("shipping_city").notNull().default(""),
+  shippingCountry: text("shipping_country").notNull().default(""),
   trackingNumber: text("tracking_number"),
   discountCode: text("discount_code"),
   notes: text("notes"),
@@ -76,16 +96,19 @@ export const adminUsers = pgTable("admin_users", {
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
+export const insertStoreSchema = createInsertSchema(stores).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, status: true, trackingNumber: true });
 export const insertDiscountCodeSchema = createInsertSchema(discountCodes).omit({ id: true, usedCount: true });
 
 export type Product = typeof products.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
+export type Store = typeof stores.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type DiscountCode = typeof discountCodes.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type InsertStore = z.infer<typeof insertStoreSchema>;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type InsertDiscountCode = z.infer<typeof insertDiscountCodeSchema>;
 

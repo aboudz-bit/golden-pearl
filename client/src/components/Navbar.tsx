@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ShoppingBag, Search, Menu, X, Heart } from "lucide-react";
+import { ShoppingBag, Search, Menu, X, Heart, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
@@ -91,6 +91,12 @@ export function Navbar() {
               </Button>
             )}
 
+            <Link href="/orders" data-testid="link-orders">
+              <Button size="icon" variant="ghost" data-testid="button-orders" aria-label="My Orders">
+                <Package className="w-4 h-4" />
+              </Button>
+            </Link>
+
             <Button size="icon" variant="ghost" data-testid="button-wishlist" aria-label="Wishlist">
               <Heart className="w-4 h-4" />
             </Button>
@@ -133,6 +139,15 @@ export function Navbar() {
                         </span>
                       </Link>
                     ))}
+                    <Link href="/orders">
+                      <span
+                        data-testid="link-mobile-orders"
+                        onClick={() => setMobileOpen(false)}
+                        className="block px-3 py-3 text-base font-medium rounded-md cursor-pointer text-foreground"
+                      >
+                        My Orders / طلباتي
+                      </span>
+                    </Link>
                   </nav>
                 </div>
               </SheetContent>

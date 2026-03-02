@@ -36,7 +36,7 @@ export function ProductCard({ product }: ProductCardProps) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      toast({ title: "Added to bag", description: `${product.name} has been added to your bag.` });
+      toast({ title: "Added to bag", description: `${product.nameEn} has been added to your bag.` });
     },
   });
 
@@ -48,8 +48,8 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/product/${product.id}`}>
         <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg cursor-pointer bg-accent/30">
           <img
-            src={product.image}
-            alt={product.name}
+            src={product.images[0]}
+            alt={product.nameEn}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             data-testid={`img-product-${product.id}`}
           />
@@ -80,7 +80,7 @@ export function ProductCard({ product }: ProductCardProps) {
               data-testid={`text-product-name-${product.id}`}
               className="font-semibold text-sm text-foreground leading-snug cursor-pointer hover:text-primary transition-colors line-clamp-2"
             >
-              {product.name}
+              {product.nameEn}
             </h3>
           </Link>
         </div>
@@ -97,11 +97,11 @@ export function ProductCard({ product }: ProductCardProps) {
               data-testid={`text-product-price-${product.id}`}
               className="text-base font-bold text-foreground"
             >
-              ${product.price.toFixed(2)}
+              ${(product.price / 100).toFixed(2)}
             </span>
             {product.originalPrice && (
               <span className="text-sm text-muted-foreground line-through">
-                ${product.originalPrice.toFixed(2)}
+                ${(product.originalPrice / 100).toFixed(2)}
               </span>
             )}
           </div>

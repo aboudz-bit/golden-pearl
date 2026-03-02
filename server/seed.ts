@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { products, discountCodes } from "@shared/schema";
+import { products, discountCodes, stores } from "@shared/schema";
 
 const SEED_PRODUCTS = [
   {
@@ -231,6 +231,45 @@ const SEED_DISCOUNTS = [
   },
 ];
 
+const SEED_STORES = [
+  {
+    nameEn: "Golden Pearl - The Avenues Mall",
+    nameAr: "Golden Pearl - مجمع الأفنيوز",
+    addressEn: "The Avenues Mall, Phase 2, Al Rai, Kuwait City",
+    addressAr: "مجمع الأفنيوز، المرحلة الثانية، الري، مدينة الكويت",
+    city: "Kuwait City",
+    phone: "+965 2225 0001",
+    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
+    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
+    mapUrl: "https://maps.google.com/?q=29.2577,47.9373",
+    isActive: true,
+  },
+  {
+    nameEn: "Golden Pearl - 360 Mall",
+    nameAr: "Golden Pearl - مجمع 360",
+    addressEn: "360 Mall, 6th Ring Road, Zahra, Kuwait",
+    addressAr: "مجمع 360، الطريق الدائري السادس، الزهراء، الكويت",
+    city: "Kuwait City",
+    phone: "+965 2530 0002",
+    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
+    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
+    mapUrl: "https://maps.google.com/?q=29.2892,48.0012",
+    isActive: true,
+  },
+  {
+    nameEn: "Golden Pearl - Marina Mall",
+    nameAr: "Golden Pearl - مجمع المارينا",
+    addressEn: "Marina Mall, Salmiya, Kuwait",
+    addressAr: "مجمع المارينا، السالمية، الكويت",
+    city: "Salmiya",
+    phone: "+965 2571 0003",
+    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
+    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
+    mapUrl: "https://maps.google.com/?q=29.3375,48.0821",
+    isActive: true,
+  },
+];
+
 export async function seedDatabase() {
   try {
     const existingProducts = await db.select().from(products);
@@ -243,6 +282,15 @@ export async function seedDatabase() {
       console.log(`Seeded ${SEED_DISCOUNTS.length} discount codes`);
     } else {
       console.log(`Database already has ${existingProducts.length} products, skipping seed`);
+    }
+
+    const existingStores = await db.select().from(stores);
+    if (existingStores.length === 0) {
+      console.log("Seeding database with stores...");
+      await db.insert(stores).values(SEED_STORES);
+      console.log(`Seeded ${SEED_STORES.length} stores`);
+    } else {
+      console.log(`Database already has ${existingStores.length} stores, skipping seed`);
     }
   } catch (error) {
     console.error("Seed error:", error);
