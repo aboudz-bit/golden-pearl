@@ -1,0 +1,128 @@
+{
+  "@@locale": "en",
+  "appName": "Golden Pearl",
+  "home": "Home",
+  "shop": "Shop",
+  "cart": "Cart",
+  "settings": "Settings",
+  "orders": "Orders",
+  "heroTitle": "Elegance Redefined",
+  "heroSubtitle": "Discover our latest collection of handcrafted luxury fashion",
+  "newCollection": "New Collection 2026",
+  "exploreCollection": "Explore Collection",
+  "shopNow": "Shop Now",
+  "categories": "Categories",
+  "dresses": "Dresses",
+  "jalabiyas": "Jalabiyas",
+  "kids": "Kids",
+  "gifts": "Gifts",
+  "all": "All",
+  "featuredPieces": "Featured Pieces",
+  "viewAll": "View All",
+  "addToBag": "Add to Bag",
+  "addedToBag": "Added to bag",
+  "size": "Size",
+  "color": "Color",
+  "quantity": "Quantity",
+  "description": "Description",
+  "fabricCare": "Fabric & Care",
+  "selectSize": "Select Size",
+  "selectColor": "Select Color",
+  "price": "Price",
+  "sortBy": "Sort By",
+  "newest": "Newest",
+  "priceLowHigh": "Price: Low to High",
+  "priceHighLow": "Price: High to Low",
+  "bestSellers": "Best Sellers",
+  "filterBy": "Filter By",
+  "clearFilters": "Clear Filters",
+  "noProducts": "No products found",
+  "searchProducts": "Search products...",
+  "yourBag": "Your Bag",
+  "emptyBag": "Your bag is empty",
+  "continueShopping": "Continue Shopping",
+  "subtotal": "Subtotal",
+  "shipping": "Shipping",
+  "discount": "Discount",
+  "total": "Total",
+  "freeShipping": "Free",
+  "proceedToCheckout": "Proceed to Checkout",
+  "checkout": "Checkout",
+  "shippingAddress": "Shipping Address",
+  "fullName": "Full Name",
+  "email": "Email",
+  "phone": "Phone",
+  "address": "Address",
+  "city": "City",
+  "country": "Country",
+  "discountCode": "Discount Code",
+  "apply": "Apply",
+  "invalidCode": "Invalid discount code",
+  "placeOrder": "Place Order",
+  "orderConfirmed": "Order Confirmed!",
+  "orderConfirmedMessage": "Thank you for your order. You will receive a confirmation email shortly.",
+  "orderNumber": "Order #{number}",
+  "@orderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "orderHistory": "Order History",
+  "noOrders": "No orders yet",
+  "processing": "Processing",
+  "shipped": "Shipped",
+  "delivered": "Delivered",
+  "trackOrder": "Track Order",
+  "language": "Language",
+  "arabic": "العربية",
+  "english": "English",
+  "remove": "Remove",
+  "clearAll": "Clear All",
+  "confirmRemove": "Remove this item?",
+  "yes": "Yes",
+  "no": "No",
+  "cancel": "Cancel",
+  "ok": "OK",
+  "error": "Error",
+  "tryAgain": "Try Again",
+  "networkError": "Network error. Please try again.",
+  "required": "This field is required",
+  "invalidEmail": "Invalid email address",
+  "invalidPhone": "Invalid phone number",
+  "shippingInfo": "Free shipping on orders over SAR 560",
+  "returnPolicy": "30-day return policy",
+  "securePayment": "Secure payment",
+  "handcrafted": "Handcrafted with love",
+  "eidCollection": "Eid Collection",
+  "newDrop": "New Drop",
+  "aboutBrand": "Luxury fashion house specializing in handcrafted embroidered pieces",
+  "itemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "orderStatus": "Status: {status}",
+  "@orderStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "welcomeDiscount": "Use code WELCOME10 for 10% off your first order",
+  "sizeGuide": "Size Guide",
+  "wishlist": "Wishlist",
+  "reviews": "{count} Reviews",
+  "@reviews": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "@@locale": "ar",
+  "appName": "Golden Pearl",
+  "home": "الرئيسية",
+  "shop": "المتجر",
+  "cart": "السلة",
+  "settings": "الإعدادات",
+  "orders": "الطلبات",
+  "heroTitle": "أناقة لا تُضاهى",
+  "heroSubtitle": "اكتشفي أحدث مجموعتنا من الأزياء الفاخرة المصنوعة يدوياً",
+  "newCollection": "مجموعة جديدة ٢٠٢٦",
+  "exploreCollection": "استكشفي المجموعة",
+  "shopNow": "تسوقي الآن",
+  "categories": "الأقسام",
+  "dresses": "فساتين",
+  "jalabiyas": "جلابيات",
+  "kids": "أطفال",
+  "gifts": "هدايا",
+  "all": "الكل",
+  "featuredPieces": "قطع مميزة",
+  "viewAll": "عرض الكل",
+  "addToBag": "أضيفي إلى الحقيبة",
+  "addedToBag": "تمت الإضافة إلى الحقيبة",
+  "size": "المقاس",
+  "color": "اللون",
+  "quantity": "الكمية",
+  "description": "الوصف",
+  "fabricCare": "القماش والعناية",
+  "selectSize": "اختاري المقاس",
+  "selectColor": "اختاري اللون",
+  "price": "السعر",
+  "sortBy": "ترتيب حسب",
+  "newest": "الأحدث",
+  "priceLowHigh": "السعر: من الأقل للأعلى",
+  "priceHighLow": "السعر: من الأعلى للأقل",
+  "bestSellers": "الأكثر مبيعاً",
+  "filterBy": "تصفية حسب",
+  "clearFilters": "مسح الفلاتر",
+  "noProducts": "لا توجد منتجات",
+  "searchProducts": "ابحثي عن منتجات...",
+  "yourBag": "حقيبتك",
+  "emptyBag": "حقيبتك فارغة",
+  "continueShopping": "متابعة التسوق",
+  "subtotal": "المجموع الفرعي",
+  "shipping": "الشحن",
+  "discount": "الخصم",
+  "total": "المجموع",
+  "freeShipping": "مجاني",
+  "proceedToCheckout": "إتمام الطلب",
+  "checkout": "الدفع",
+  "shippingAddress": "عنوان الشحن",
+  "fullName": "الاسم الكامل",
+  "email": "البريد الإلكتروني",
+  "phone": "الهاتف",
+  "address": "العنوان",
+  "city": "المدينة",
+  "country": "الدولة",
+  "discountCode": "كود الخصم",
+  "apply": "تطبيق",
+  "invalidCode": "كود الخصم غير صالح",
+  "placeOrder": "تأكيد الطلب",
+  "orderConfirmed": "تم تأكيد الطلب!",
+  "orderConfirmedMessage": "شكراً لطلبك. ستتلقين رسالة تأكيد قريباً.",
+  "orderNumber": "طلب رقم #{number}",
+  "@orderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "orderHistory": "سجل الطلبات",
+  "noOrders": "لا توجد طلبات بعد",
+  "processing": "قيد المعالجة",
+  "shipped": "تم الشحن",
+  "delivered": "تم التوصيل",
+  "trackOrder": "تتبع الطلب",
+  "language": "اللغة",
+  "arabic": "العربية",
+  "english": "English",
+  "remove": "حذف",
+  "clearAll": "مسح الكل",
+  "confirmRemove": "حذف هذا المنتج؟",
+  "yes": "نعم",
+  "no": "لا",
+  "cancel": "إلغاء",
+  "ok": "حسناً",
+  "error": "خطأ",
+  "tryAgain": "حاولي مرة أخرى",
+  "networkError": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
+  "required": "هذا الحقل مطلوب",
+  "invalidEmail": "بريد إلكتروني غير صالح",
+  "invalidPhone": "رقم هاتف غير صالح",
+  "shippingInfo": "شحن مجاني للطلبات فوق ٥٦٠ ر.س",
+  "returnPolicy": "سياسة إرجاع ٣٠ يوم",
+  "securePayment": "دفع آمن",
+  "handcrafted": "مصنوع يدوياً بحب",
+  "eidCollection": "مجموعة العيد",
+  "newDrop": "وصل حديثاً",
+  "aboutBrand": "دار أزياء فاخرة متخصصة في القطع المطرزة يدوياً",
+  "itemCount": "{count, plural, =1{منتج واحد} other{{count} منتجات}}",
+  "@itemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "orderStatus": "الحالة: {status}",
+  "@orderStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "welcomeDiscount": "استخدمي كود WELCOME10 لخصم ١٠٪ على طلبك الأول",
+  "sizeGuide": "دليل المقاسات",
+  "wishlist": "المفضلة",
+  "reviews": "{count} تقييم",
+  "@reviews": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}
