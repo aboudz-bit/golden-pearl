@@ -66,6 +66,31 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
+          if (auth.isAdmin) ...[
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: kGoldPrimary.withOpacity(0.3)),
+                boxShadow: [BoxShadow(color: kGoldPrimary.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: kGoldPrimary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.admin_panel_settings, color: kGoldPrimary, size: 22),
+                ),
+                title: Text(l10n.adminPanel, style: const TextStyle(fontWeight: FontWeight.w600, color: kCharcoal)),
+                trailing: const Icon(Icons.chevron_right, color: kGoldPrimary),
+                onTap: () => Navigator.pushNamed(context, '/admin'),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -161,15 +186,6 @@ class SettingsScreen extends StatelessWidget {
                   leading: const Icon(Icons.lock_outline, color: kGoldPrimary),
                   title: Text(l10n.securePayment),
                 ),
-                if (auth.isAdmin) ...[
-                  Divider(height: 0, color: kDivider),
-                  ListTile(
-                    leading: const Icon(Icons.admin_panel_settings, color: kGoldPrimary),
-                    title: Text(l10n.adminPanel),
-                    trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
-                    onTap: () => Navigator.pushNamed(context, '/admin'),
-                  ),
-                ],
                 if (auth.isLoggedIn) ...[
                   Divider(height: 0, color: kDivider),
                   ListTile(
