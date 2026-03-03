@@ -1,5 +1,7 @@
 import { db } from "./db";
-import { products, discountCodes } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { products, discountCodes, users, siteSettings } from "@shared/schema";
+import bcrypt from "bcrypt";
 
 const SEED_PRODUCTS = [
   {
@@ -244,6 +246,36 @@ export async function seedDatabase() {
       console.log(`Seeded ${SEED_DISCOUNTS.length} discount codes`);
     } else {
       console.log(`Database already has ${existingProducts.length} products, skipping seed`);
+    }
+
+    const existingAdmin = await db.select().from(users).where(
+      eq(users.email, "admin@goldenpearl.com")
+    );
+    if (existingAdmin.length === 0) {
+      const passwordHash = await bcrypt.hash("admin123", 10);
+      await db.insert(users).values({
+        email: "admin@goldenpearl.com",
+        passwordHash,
+        name: "Admin",
+        phone: "0555012942",
+        role: "admin",
+      });
+      console.log("Seeded admin user: admin@goldenpearl.com / admin123");
+    } else {
+      console.log("Admin user already exists, skipping seed");
+    }
+
+    const existingSettings = await db.select().from(siteSettings);
+    if (existingSettings.length === 0) {
+      const defaultSettings = [
+        { key: "hero_banner", value: "" },
+        { key: "category_dresses", value: "" },
+        { key: "category_jalabiyas", value: "" },
+        { key: "category_kids", value: "" },
+        { key: "category_gifts", value: "" },
+      ];
+      await db.insert(siteSettings).values(defaultSettings);
+      console.log("Seeded default site settings");
     }
 
   } catch (error) {

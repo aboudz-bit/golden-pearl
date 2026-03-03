@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/money_formatter.dart';
 import '../data/locations.dart';
 
@@ -43,6 +44,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   static const _storeHoursEn = 'Sat-Thu: 10AM-10PM, Fri: 4PM-10PM';
   static const _storeHoursAr = 'السبت-الخميس: ١٠ص-١٠م، الجمعة: ٤م-١٠م';
   static const _storeMapUrl = 'https://www.google.com/maps/dir/?api=1&destination=26.4833,49.9667';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLogin();
+    });
+  }
+
+  Future<void> _checkLogin() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isLoggedIn) {
+      final result = await Navigator.pushNamed(context, '/login');
+      if (!mounted) return;
+      final authAfter = Provider.of<AuthProvider>(context, listen: false);
+      if (!authAfter.isLoggedIn) {
+        Navigator.pop(context);
+      }
+    }
+  }
 
   @override
   void dispose() {

@@ -5,6 +5,7 @@ import 'l10n/generated/app_localizations.dart';
 import 'providers/language_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/favorites_provider.dart';
+import 'providers/auth_provider.dart';
 import 'services/api_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/shop_screen.dart';
@@ -16,6 +17,8 @@ import 'screens/orders_screen.dart';
 import 'screens/order_confirmation_screen.dart';
 import 'screens/category_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/admin/admin_dashboard.dart';
 import 'utils/arabic_digits.dart';
 
 const kGoldPrimary = Color(0xFFB89B5E);
@@ -42,6 +45,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider(apiService)),
         ChangeNotifierProvider(create: (_) => FavoritesProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => AuthProvider(apiService)),
       ],
       child: const GoldenPearlApp(),
     ),
@@ -150,6 +154,10 @@ class GoldenPearlApp extends StatelessWidget {
           page = const OrdersScreen();
         } else if (settings.name == '/order-confirmation') {
           page = OrderConfirmationScreen(order: settings.arguments);
+        } else if (settings.name == '/login') {
+          page = const LoginScreen();
+        } else if (settings.name == '/admin') {
+          page = const AdminDashboard();
         }
         if (page != null) {
           return PageRouteBuilder(
@@ -197,6 +205,7 @@ class _MainNavigationState extends State<MainNavigation> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CartProvider>(context, listen: false).loadCart();
       Provider.of<FavoritesProvider>(context, listen: false).load();
+      Provider.of<AuthProvider>(context, listen: false).checkAuth();
     });
   }
 

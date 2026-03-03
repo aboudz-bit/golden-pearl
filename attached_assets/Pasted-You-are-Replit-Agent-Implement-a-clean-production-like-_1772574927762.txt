@@ -1,0 +1,92 @@
+You are Replit Agent. Implement a clean, production-like “Guest Browsing + Login-on-Checkout” flow with persistent cart & favorites, plus an Admin Panel for website management.
+
+SCOPE
+- The client can use the website and mobile web app without signing in (guest mode).
+- Login is REQUIRED only when the user proceeds to payment/checkout.
+- After login, the user’s existing guest basket (cart) and likes (favorites/wishlist) must NOT be lost. They must merge into the user account and continue to persist across refreshes and future sessions.
+
+PART A — AUTH + GUEST MODE + DATA PERSISTENCE
+1) Guest browsing:
+   - Allow full browsing: categories, product details, search, add-to-cart, favorites.
+   - No login prompts during browsing.
+2) Login requirement:
+   - Enforce login only at: “Pay / Place Order / Checkout”.
+   - If guest clicks Pay, open login modal/screen. After success, resume checkout without losing state.
+3) Persistence rules:
+   - Guest cart & favorites persist locally (localStorage) across refresh.
+   - Logged-in cart & favorites persist per-user (localStorage keyed by userId OR DB if present).
+4) Merge logic (critical):
+   - On successful login:
+     - Merge guestCart into userCart:
+       - For identical product+variant, sum quantities (or prefer max) and avoid duplicates.
+     - Merge guestFavorites into userFavorites (set union).
+     - Then clear guestCart/guestFavorites keys so future guest sessions start clean.
+   - Ensure the UI immediately reflects merged results (cart count, favorites icons).
+5) Multi-device note:
+   - If you already have a backend DB, store user cart/favorites server-side; otherwise keep client-side but properly keyed by userId.
+   - Do NOT lose data when switching routes or refreshing.
+
+PART B — ADMIN USER + ADMIN PANEL (WEBSITE)
+Create exactly ONE admin user for the owner (me). Use a simple demo credential (email + password) stored securely enough for demo (env var or seed). Add role-based gating:
+- Only admin can access /admin routes.
+- Hide admin UI from normal users.
+
+Admin can do:
+1) Change the banner photo in the homepage.
+   - Admin uploads/selects an image URL/file and saves it.
+   - Homepage instantly uses the updated banner.
+2) Choose the category photo for each category on Home Page.
+   - For each category tile (Jalabiyas, Kids, Gifts, etc.), admin sets image.
+3) See orders and status for each order.
+   - Admin orders table: orderId, date, customer (if logged), guest flag, total, status, fulfillment type (delivery/pickup).
+   - Order detail view with items and timeline.
+4) View pickup orders (filter).
+   - Filter tab: Pickup Orders only.
+5) Confirm order is ready to pick up.
+   - Status transitions: NEW → PREPARING → READY_FOR_PICKUP → PICKED_UP (or COMPLETED).
+   - Add a “Mark Ready” action for pickup orders; log time and status.
+6) Edit / add / remove products.
+   - Full CRUD: name, price (SAR), description, images, category, stock, variants (optional).
+7) Analytics: how many clients visited.
+   - Track unique sessions + total visits (simple local analytics):
+     - On each app load, create/keep a sessionId in localStorage and record a pageview counter.
+     - Aggregate counts and show in Admin dashboard: total visits, unique sessions, most viewed pages/products (basic).
+   - If backend exists, store pageviews server-side; otherwise store in a lightweight JSON/DB table.
+8) Storage management:
+   - Maintain inventory/stock per product (and per variant if used).
+   - Admin can add stock, remove stock, and set stock level.
+   - Prevent checkout if stock is insufficient; show “Out of stock” message.
+
+PART C — UI/UX REQUIREMENTS
+- Keep current design language (luxury theme, gold accents).
+- Admin area should look professional: sidebar, cards, tables, filters, status badges.
+- Ensure all prices are SAR and formatted consistently.
+- Ensure bottom nav: REMOVE the notifications icon from bottom bar (as requested earlier) and put notifications/settings management only inside Settings/Admin if needed.
+
+PART D — IMPLEMENTATION CHECKLIST
+- Identify existing code structure (Flutter web / Node/Express / DB).
+- Implement:
+  - guest state store (cart + favorites)
+  - auth guard for checkout route only
+  - merge-on-login function with tests
+  - admin role + /admin routes + UI
+  - admin CRUD for banner/category images/products/orders/inventory/analytics
+- Add minimal seed data:
+  - One admin account
+  - A few products with stock
+  - A few categories with editable images
+- Verify:
+  - Add items as guest → login at checkout → cart/favorites still there
+  - Logout → guest browsing works
+  - Admin can update banner/category images and see changes on homepage immediately
+  - Admin can mark pickup orders ready
+  - Analytics increments visits correctly
+
+DELIVERABLE
+- Commit changes with clear messages.
+- Provide a short “How to use” section in README/replit.md:
+  - Admin login credentials
+  - Where to access /admin
+  - How guest-to-user merge works
+
+Do not remove or break existing app features. Focus on correctness, persistence, and clean admin gating.

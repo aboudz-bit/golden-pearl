@@ -3,6 +3,16 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  role: text("role").notNull().default("user"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   nameEn: text("name_en").notNull(),
@@ -23,6 +33,7 @@ export const products = pgTable("products", {
   badge: text("badge"),
   rating: real("rating").notNull().default(4.5),
   reviewCount: integer("review_count").notNull().default(0),
+  stock: integer("stock").notNull().default(100),
   createdAt: timestamp("created_at").defaultNow(),
   videoUrl: text("video_url"),
 });
@@ -30,6 +41,7 @@ export const products = pgTable("products", {
 export const cartItems = pgTable("cart_items", {
   id: serial("id").primaryKey(),
   sessionId: text("session_id").notNull(),
+  userId: integer("user_id"),
   productId: integer("product_id").notNull(),
   quantity: integer("quantity").notNull().default(1),
   size: text("size").notNull(),
@@ -39,6 +51,7 @@ export const cartItems = pgTable("cart_items", {
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   sessionId: text("session_id").notNull(),
+  userId: integer("user_id"),
   items: jsonb("items").notNull(),
   subtotal: integer("subtotal").notNull(),
   shipping: integer("shipping").notNull().default(0),
@@ -86,22 +99,46 @@ export const adminUsers = pgTable("admin_users", {
   passwordHash: text("password_hash").notNull(),
 });
 
+export const siteSettings = pgTable("site_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pageViews = pgTable("page_views", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  page: text("page").notNull(),
+  productId: integer("product_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, status: true, trackingNumber: true });
 export const insertDiscountCodeSchema = createInsertSchema(discountCodes).omit({ id: true, usedCount: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+export const insertSiteSettingSchema = createInsertSchema(siteSettings).omit({ id: true, updatedAt: true });
+export const insertPageViewSchema = createInsertSchema(pageViews).omit({ id: true, createdAt: true });
 
+export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type DiscountCode = typeof discountCodes.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type SiteSetting = typeof siteSettings.$inferSelect;
+export type PageView = typeof pageViews.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type InsertDiscountCode = z.infer<typeof insertDiscountCodeSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
+export type InsertPageView = z.infer<typeof insertPageViewSchema>;
 
 export type CartItemWithProduct = CartItem & { product: Product };

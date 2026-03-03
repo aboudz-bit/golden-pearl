@@ -418,4 +418,112 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get storePhone => '055 501 2942';
+
+  @override
+  String get login => 'Login';
+
+  @override
+  String get register => 'Register';
+
+  @override
+  String get password => 'Password';
+
+  @override
+  String get loginToProceed => 'Login to proceed with checkout';
+
+  @override
+  String get createAccount => 'Create a new account';
+
+  @override
+  String get alreadyHaveAccount => 'Already have an account?';
+
+  @override
+  String get dontHaveAccount => 'Don\'t have an account?';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 6 characters';
+
+  @override
+  String get loginSuccess => 'Logged in successfully';
+
+  @override
+  String get registerSuccess => 'Account created successfully';
+
+  @override
+  String get logoutSuccess => 'Logged out successfully';
+
+  @override
+  String get logout => 'Logout';
+
+  @override
+  String get adminPanel => 'Admin Panel';
+
+  @override
+  String get dashboard => 'Dashboard';
+
+  @override
+  String get products => 'Products';
+
+  @override
+  String get analytics => 'Analytics';
+
+  @override
+  String get adminSettings => 'Settings';
+
+  @override
+  String get totalVisits => 'Total Visits';
+
+  @override
+  String get uniqueSessions => 'Unique Sessions';
+
+  @override
+  String get quickActions => 'Quick Actions';
+
+  @override
+  String get addProduct => 'Add Product';
+
+  @override
+  String get manageOrders => 'Manage Orders';
+
+  @override
+  String get manageBanners => 'Manage Banners';
+
+  @override
+  String get viewAnalytics => 'View Analytics';
+
+  @override
+  String get updateStock => 'Update Stock';
+
+  @override
+  String get stock => 'Stock';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get saved => 'Saved';
+
+  @override
+  String get updateStatus => 'Update Status';
+
+  @override
+  String get heroBanner => 'Hero Banner Image';
+
+  @override
+  String get imageUrlHint => 'Enter image URL...';
+
+  @override
+  String get topProducts => 'Top Viewed Products';
+
+  @override
+  String get views => 'views';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get account => 'Account';
+
+  @override
+  String get welcomeBack => 'Welcome';
 }

@@ -19,6 +19,7 @@ class Product {
   final String? badge;
   final double rating;
   final int reviewCount;
+  final int stock;
 
   Product({
     required this.id,
@@ -41,6 +42,7 @@ class Product {
     this.badge,
     required this.rating,
     required this.reviewCount,
+    this.stock = 100,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class Product {
       badge: json['badge'],
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
       reviewCount: json['reviewCount'] ?? 0,
+      stock: (json['stock'] as num?)?.toInt() ?? 100,
     );
   }
 

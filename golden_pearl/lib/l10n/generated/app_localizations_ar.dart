@@ -416,4 +416,112 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get storePhone => '055 501 2942';
+
+  @override
+  String get login => 'تسجيل الدخول';
+
+  @override
+  String get register => 'إنشاء حساب';
+
+  @override
+  String get password => 'كلمة المرور';
+
+  @override
+  String get loginToProceed => 'سجلي الدخول لإتمام الطلب';
+
+  @override
+  String get createAccount => 'إنشاء حساب جديد';
+
+  @override
+  String get alreadyHaveAccount => 'لديك حساب؟';
+
+  @override
+  String get dontHaveAccount => 'ليس لديك حساب؟';
+
+  @override
+  String get passwordTooShort => 'كلمة المرور يجب أن تكون ٦ أحرف على الأقل';
+
+  @override
+  String get loginSuccess => 'تم تسجيل الدخول بنجاح';
+
+  @override
+  String get registerSuccess => 'تم إنشاء الحساب بنجاح';
+
+  @override
+  String get logoutSuccess => 'تم تسجيل الخروج';
+
+  @override
+  String get logout => 'تسجيل الخروج';
+
+  @override
+  String get adminPanel => 'لوحة التحكم';
+
+  @override
+  String get dashboard => 'الرئيسية';
+
+  @override
+  String get products => 'المنتجات';
+
+  @override
+  String get analytics => 'التحليلات';
+
+  @override
+  String get adminSettings => 'الإعدادات';
+
+  @override
+  String get totalVisits => 'إجمالي الزيارات';
+
+  @override
+  String get uniqueSessions => 'الجلسات الفريدة';
+
+  @override
+  String get quickActions => 'إجراءات سريعة';
+
+  @override
+  String get addProduct => 'إضافة منتج';
+
+  @override
+  String get manageOrders => 'إدارة الطلبات';
+
+  @override
+  String get manageBanners => 'إدارة البانرات';
+
+  @override
+  String get viewAnalytics => 'عرض التحليلات';
+
+  @override
+  String get updateStock => 'تعديل المخزون';
+
+  @override
+  String get stock => 'المخزون';
+
+  @override
+  String get save => 'حفظ';
+
+  @override
+  String get saved => 'تم الحفظ';
+
+  @override
+  String get updateStatus => 'تحديث الحالة';
+
+  @override
+  String get heroBanner => 'صورة البانر الرئيسي';
+
+  @override
+  String get imageUrlHint => 'أدخلي رابط الصورة...';
+
+  @override
+  String get topProducts => 'المنتجات الأكثر مشاهدة';
+
+  @override
+  String get views => 'مشاهدة';
+
+  @override
+  String get notes => 'ملاحظات';
+
+  @override
+  String get account => 'الحساب';
+
+  @override
+  String get welcomeBack => 'مرحباً';
 }

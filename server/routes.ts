@@ -1,15 +1,104 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema } from "@shared/schema";
 import { z } from "zod";
 import { payments } from "./payments";
 import { shipping } from "./shipping";
+import bcrypt from "bcrypt";
+
+declare module "express-session" {
+  interface SessionData {
+    userId?: number;
+  }
+}
+
+async function isAdmin(req: Request, res: Response, next: NextFunction) {
+  const userId = req.session?.userId;
+  if (!userId) return res.status(401).json({ message: "Authentication required" });
+  const user = await storage.getUserById(userId);
+  if (!user || user.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+  next();
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, password, name, phone } = req.body;
+      if (!email || !password || !name) {
+        return res.status(400).json({ message: "Email, password, and name are required" });
+      }
+      const existing = await storage.getUserByEmail(email);
+      if (existing) return res.status(409).json({ message: "Email already registered" });
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({ email: email.toLowerCase(), passwordHash, name, phone });
+      req.session!.userId = user.id;
+
+      const { passwordHash: _, ...safeUser } = user;
+      res.json({ user: safeUser });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to register" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(401).json({ message: "Invalid email or password" });
+
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      if (!valid) return res.status(401).json({ message: "Invalid email or password" });
+
+      req.session!.userId = user.id;
+      const { passwordHash: _, ...safeUser } = user;
+      res.json({ user: safeUser });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      delete req.session!.userId;
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to logout" });
+    }
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) return res.json({ user: null });
+      const user = await storage.getUserById(userId);
+      if (!user) return res.json({ user: null });
+      const { passwordHash: _, ...safeUser } = user;
+      res.json({ user: safeUser });
+    } catch (error) {
+      res.json({ user: null });
+    }
+  });
+
+  app.post("/api/auth/merge", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) return res.status(401).json({ message: "Must be logged in to merge" });
+      const sessionId = req.session!.id;
+      await storage.migrateCartToUser(sessionId, userId);
+      const items = await storage.getCartItemsByUserId(userId);
+      res.json({ success: true, cartItems: items });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to merge cart" });
+    }
+  });
 
   app.get("/api/products", async (req, res) => {
     try {
@@ -48,6 +137,11 @@ export async function registerRoutes(
 
   app.get("/api/cart", async (req, res) => {
     try {
+      const userId = req.session?.userId;
+      if (userId) {
+        const items = await storage.getCartItemsByUserId(userId);
+        return res.json(items);
+      }
       const sessionId = req.session?.id || "anonymous";
       const items = await storage.getCartItems(sessionId);
       res.json(items);
@@ -59,7 +153,17 @@ export async function registerRoutes(
   app.post("/api/cart", async (req, res) => {
     try {
       const sessionId = req.session?.id || "anonymous";
-      const result = insertCartItemSchema.safeParse({ ...req.body, sessionId });
+      const userId = req.session?.userId;
+
+      const product = await storage.getProduct(req.body.productId);
+      if (product && product.stock <= 0) {
+        return res.status(400).json({ message: "Product is out of stock" });
+      }
+
+      const itemData: any = { ...req.body, sessionId };
+      if (userId) itemData.userId = userId;
+
+      const result = insertCartItemSchema.safeParse(itemData);
       if (!result.success) return res.status(400).json({ message: "Invalid cart item", errors: result.error.flatten() });
       const item = await storage.addCartItem(result.data);
       res.json(item);
@@ -104,12 +208,46 @@ export async function registerRoutes(
   app.post("/api/orders", async (req, res) => {
     try {
       const sessionId = req.session?.id || "anonymous";
-      const result = insertOrderSchema.safeParse({ ...req.body, sessionId });
+      const userId = req.session?.userId;
+
+      const orderData: any = { ...req.body, sessionId };
+      if (userId) orderData.userId = userId;
+
+      const result = insertOrderSchema.safeParse(orderData);
       if (!result.success) return res.status(400).json({ message: "Invalid order", errors: result.error.flatten() });
+
+      const items = req.body.items as any[];
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          if (item.productId) {
+            const product = await storage.getProduct(item.productId);
+            if (product && product.stock < (item.quantity || 1)) {
+              return res.status(400).json({ message: `Insufficient stock for ${product.nameEn}` });
+            }
+          }
+        }
+      }
+
       const order = await storage.createOrder(result.data);
       res.json(order);
+
       try {
+        if (items && Array.isArray(items)) {
+          for (const item of items) {
+            if (item.productId) {
+              const product = await storage.getProduct(item.productId);
+              if (product) {
+                await storage.updateProductStock(item.productId, Math.max(0, product.stock - (item.quantity || 1)));
+              }
+            }
+          }
+        }
+
+        if (userId) {
+          await storage.clearCart(`user_${userId}`);
+        }
         await storage.clearCart(sessionId);
+
         if (order.discountCode) {
           const discount = await storage.getDiscountCode(order.discountCode);
           if (discount) {
@@ -126,6 +264,11 @@ export async function registerRoutes(
 
   app.get("/api/orders", async (req, res) => {
     try {
+      const userId = req.session?.userId;
+      if (userId) {
+        const ordersList = await storage.getOrdersByUserId(userId);
+        return res.json(ordersList);
+      }
       const sessionId = req.session?.id || "anonymous";
       const ordersList = await storage.getOrders(sessionId);
       res.json(ordersList);
@@ -192,7 +335,27 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/products", async (req, res) => {
+  app.get("/api/settings/:key", async (req, res) => {
+    try {
+      const value = await storage.getSetting(req.params.key);
+      res.json({ key: req.params.key, value: value || null });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get setting" });
+    }
+  });
+
+  app.post("/api/analytics/pageview", async (req, res) => {
+    try {
+      const { sessionId, page, productId } = req.body;
+      if (!sessionId || !page) return res.status(400).json({ message: "sessionId and page are required" });
+      await storage.createPageView({ sessionId, page, productId: productId || null });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to record pageview" });
+    }
+  });
+
+  app.post("/api/admin/products", isAdmin, async (req, res) => {
     try {
       const result = insertProductSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: "Invalid product", errors: result.error.flatten() });
@@ -203,7 +366,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/admin/products/:id", async (req, res) => {
+  app.patch("/api/admin/products/:id", isAdmin, async (req, res) => {
     try {
       const product = await storage.updateProduct(parseInt(req.params.id), req.body);
       if (!product) return res.status(404).json({ message: "Product not found" });
@@ -213,7 +376,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/admin/products/:id", async (req, res) => {
+  app.delete("/api/admin/products/:id", isAdmin, async (req, res) => {
     try {
       await storage.deleteProduct(parseInt(req.params.id));
       res.json({ success: true });
@@ -222,7 +385,19 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/orders", async (_req, res) => {
+  app.patch("/api/admin/products/:id/stock", isAdmin, async (req, res) => {
+    try {
+      const { stock } = req.body;
+      if (typeof stock !== "number" || stock < 0) return res.status(400).json({ message: "Invalid stock value" });
+      const product = await storage.updateProductStock(parseInt(req.params.id), stock);
+      if (!product) return res.status(404).json({ message: "Product not found" });
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update stock" });
+    }
+  });
+
+  app.get("/api/admin/orders", isAdmin, async (_req, res) => {
     try {
       const allOrders = await storage.getAllOrders();
       res.json(allOrders);
@@ -231,7 +406,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/admin/orders/:id/status", async (req, res) => {
+  app.patch("/api/admin/orders/:id/status", isAdmin, async (req, res) => {
     try {
       const { status, trackingNumber } = req.body;
       if (!status) return res.status(400).json({ message: "Status is required" });
@@ -274,7 +449,36 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/discounts", async (req, res) => {
+  app.get("/api/admin/settings", isAdmin, async (_req, res) => {
+    try {
+      const settings = await storage.getAllSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.put("/api/admin/settings/:key", isAdmin, async (req, res) => {
+    try {
+      const { value } = req.body;
+      if (value === undefined) return res.status(400).json({ message: "Value is required" });
+      const setting = await storage.setSetting(req.params.key, value);
+      res.json(setting);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update setting" });
+    }
+  });
+
+  app.get("/api/admin/analytics", isAdmin, async (_req, res) => {
+    try {
+      const analytics = await storage.getAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  app.post("/api/admin/discounts", isAdmin, async (req, res) => {
     try {
       const result = insertDiscountCodeSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: "Invalid discount", errors: result.error.flatten() });
@@ -285,7 +489,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/discounts", async (_req, res) => {
+  app.get("/api/admin/discounts", isAdmin, async (_req, res) => {
     try {
       const discounts = await storage.getAllDiscountCodes();
       res.json(discounts);
@@ -294,7 +498,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/admin/discounts/:id", async (req, res) => {
+  app.delete("/api/admin/discounts/:id", isAdmin, async (req, res) => {
     try {
       await storage.deleteDiscountCode(parseInt(req.params.id));
       res.json({ success: true });
