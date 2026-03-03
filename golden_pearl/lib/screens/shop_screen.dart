@@ -117,11 +117,22 @@ class _ShopScreenState extends State<ShopScreen> {
                         _loadProducts();
                       }
                     },
-                    selectedColor: kGoldPrimary,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : kSecondaryText,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? kGoldPrimary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? kGoldPrimary : kDivider),
+                      ),
+                      child: Text(
+                        cat['label']!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
                     ),
                   ),
                 );

@@ -17,7 +17,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featured = [];
-  Map<String, String> _categoryImages = {};
   bool _loading = true;
   final PageController _heroController = PageController();
   int _currentHeroPage = 0;
@@ -31,21 +30,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadFeatured();
     _loadCategoryImages();
     _startHeroAutoScroll();
-  }
-
-  Future<void> _loadCategoryImages() async {
-    try {
-      final products = await apiService.getProducts();
-      final Map<String, String> images = {};
-      for (final cat in ['dresses', 'jalabiyas', 'kids', 'gifts']) {
-        final catProducts = products.where((p) => p.category == cat).toList();
-        if (catProducts.isNotEmpty && catProducts[0].images.isNotEmpty) {
-          final img = catProducts[0].images[0];
-          images[cat] = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
-        }
-      }
-      if (mounted) setState(() => _categoryImages = images);
-    } catch (e) {}
   }
 
   void _startHeroAutoScroll() {
@@ -227,6 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 color: kCardBg,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kDivider),
                 boxShadow: [
                   BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
                 ],
@@ -319,7 +304,6 @@ class _CategoryCircleState extends State<_CategoryCircle> {
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = false; // No selection state on home
     return GestureDetector(
       onTapDown: (_) => setState(() => _scale = 0.95),
       onTapUp: (_) {
@@ -342,11 +326,9 @@ class _CategoryCircleState extends State<_CategoryCircle> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: kCreamBg,
-                  border: isSelected
-                      ? Border.all(color: kGoldPrimary, width: 2)
-                      : null,
+                  border: Border.all(color: kGoldPrimary.withOpacity(0.3), width: 2),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                    BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2)),
                   ],
                 ),
                 child: ClipOval(
@@ -356,6 +338,7 @@ class _CategoryCircleState extends State<_CategoryCircle> {
                           width: 96,
                           height: 96,
                           fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
                           errorBuilder: (_, __, ___) => _fallback(),
                         )
                       : _fallback(),
@@ -380,8 +363,8 @@ class _CategoryCircleState extends State<_CategoryCircle> {
     return Container(
       width: 96,
       height: 96,
-      color: kDivider,
-      child: Icon(Icons.category_outlined, color: kSecondaryText, size: 32),
+      color: kCreamBg,
+      child: Icon(Icons.category, color: kGoldPrimary.withOpacity(0.4), size: 32),
     );
   }
 }

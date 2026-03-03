@@ -135,8 +135,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     final p = _product!;
     final hasDiscount = p.originalPrice != null && p.originalPrice! > p.price;
-    final hasVideo = p.videoUrl != null && p.videoUrl!.isNotEmpty;
-    final totalSlides = p.images.length + (hasVideo ? 1 : 0);
 
     return Scaffold(
       body: CustomScrollView(
@@ -151,67 +149,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   PageView.builder(
-                    itemCount: totalSlides,
-                    onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                    controller: _pageController,
+                    itemCount: _mediaSlides.length,
+                    onPageChanged: (i) => setState(() => _currentSlideIndex = i),
                     itemBuilder: (context, index) {
-                      // Video slide (last position)
-                      if (hasVideo && index == totalSlides - 1) {
-                        final videoSrc = p.videoUrl!.startsWith('http')
-                            ? p.videoUrl!
-                            : '${ApiService.baseUrl}${p.videoUrl!}';
-                        final thumbUrl = p.images.isNotEmpty
-                            ? (p.images[0].startsWith('http')
-                                ? p.images[0]
-                                : '${ApiService.baseUrl}${p.images[0]}')
-                            : null;
-                        return AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 400),
-                          child: LuxuryVideoPlayer(
-                            key: ValueKey(videoSrc),
-                            videoUrl: videoSrc,
-                            thumbnailUrl: thumbUrl,
-                          ),
-                        );
+                      final slide = _mediaSlides[index];
+                      if (slide.type == _MediaType.video) {
+                        return _VideoSlideWidget(videoUrl: slide.url);
                       }
-                      // Image slides
-                      final img = p.images[index];
-                      final url = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
-                      return Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: kCreamBg));
+                      return GestureDetector(
+                        onTap: () => _openImageViewer(slide.url),
+                        child: Image.network(slide.url, fit: BoxFit.cover, alignment: Alignment.topCenter, errorBuilder: (_, __, ___) => Container(color: kCreamBg)),
+                      );
                     },
                   ),
-                  if (totalSlides > 1)
+                  if (_mediaSlides.length > 1)
                     Positioned(
                       bottom: 16,
                       left: 0,
                       right: 0,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(totalSlides, (i) {
-                          final isVideo = hasVideo && i == totalSlides - 1;
-                          final isActive = _currentImageIndex == i;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 280),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: isActive ? 20 : 6,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: isActive ? kGoldPrimary : Colors.white54,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: isVideo && !isActive
-                                ? Center(
-                                    child: Container(
-                                      width: 6,
-                                      height: 3,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white54,
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                  )
-                                : null,
-                          );
-                        }),
+                        children: List.generate(_mediaSlides.length, (i) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 280),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: _currentSlideIndex == i ? 20 : 6,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: _currentSlideIndex == i ? kGoldPrimary : Colors.white54,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        )),
                       ),
                     ),
                   if (p.badge != null)
@@ -430,13 +398,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           color: Colors.white,
           boxShadow: [BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, -2))],
         ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: _addToBag,
-            icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-            label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _adding ? null : _addToCart,
+              icon: _adding
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.shopping_bag_outlined, size: 20),
+              label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
+            ),
           ),
         ),
       ),
