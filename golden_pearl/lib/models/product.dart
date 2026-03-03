@@ -9,6 +9,7 @@ class Product {
   final String category;
   final String? subcategory;
   final List<String> images;
+  final String? videoUrl;
   final List<String> sizes;
   final List<String> colors;
   final String? fabricEn;
@@ -36,6 +37,7 @@ class Product {
     required this.category,
     this.subcategory,
     required this.images,
+    this.videoUrl,
     required this.sizes,
     required this.colors,
     this.fabricEn,
@@ -65,6 +67,7 @@ class Product {
       category: json['category'] ?? '',
       subcategory: json['subcategory'],
       images: List<String>.from(json['images'] ?? []),
+      videoUrl: json['videoUrl'],
       sizes: List<String>.from(json['sizes'] ?? []),
       colors: List<String>.from(json['colors'] ?? []),
       fabricEn: json['fabricEn'],

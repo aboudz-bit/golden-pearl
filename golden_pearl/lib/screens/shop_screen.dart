@@ -110,12 +110,12 @@ class _ShopScreenState extends State<ShopScreen> {
                 final isSelected = _selectedCategory == cat['key'];
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    selected: isSelected,
-                    label: Text(cat['label']!),
-                    onSelected: (_) {
-                      setState(() { _selectedCategory = cat['key']!; _searchQuery = ''; _searchController.clear(); });
-                      _loadProducts();
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_selectedCategory != cat['key']) {
+                        setState(() { _selectedCategory = cat['key']!; _searchQuery = ''; _searchController.clear(); });
+                        _loadProducts();
+                      }
                     },
                     selectedColor: kGoldPrimary,
                     backgroundColor: Colors.white,
@@ -123,8 +123,6 @@ class _ShopScreenState extends State<ShopScreen> {
                       color: isSelected ? Colors.white : kSecondaryText,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
-                    side: BorderSide(color: isSelected ? kGoldPrimary : kDivider),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                 );
               },

@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featured = [];
+  Map<String, String> _categoryImages = {};
   bool _loading = true;
   final PageController _heroController = PageController();
   int _currentHeroPage = 0;
@@ -30,6 +31,21 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadFeatured();
     _loadCategoryImages();
     _startHeroAutoScroll();
+  }
+
+  Future<void> _loadCategoryImages() async {
+    try {
+      final products = await apiService.getProducts();
+      final Map<String, String> images = {};
+      for (final cat in ['dresses', 'jalabiyas', 'kids', 'gifts']) {
+        final catProducts = products.where((p) => p.category == cat).toList();
+        if (catProducts.isNotEmpty && catProducts[0].images.isNotEmpty) {
+          final img = catProducts[0].images[0];
+          images[cat] = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
+        }
+      }
+      if (mounted) setState(() => _categoryImages = images);
+    } catch (e) {}
   }
 
   void _startHeroAutoScroll() {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +31,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   int _discountAmount = 0;
   String? _discountError;
   bool _discountApplied = false;
+  String _deliveryMethod = 'delivery';
 
   // Fulfillment
   String _fulfillmentType = 'delivery';
@@ -138,6 +140,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'shipping': shipping,
         'discount': _discountAmount,
         'total': total,
+        'deliveryMethod': _deliveryMethod,
         'customerName': _nameController.text,
         'customerEmail': _emailController.text,
         'customerPhone': _phoneController.text,
@@ -286,7 +289,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: InputDecoration(
                       hintText: 'WELCOME10',
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: kCardBg,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kGoldPrimary)),
@@ -311,7 +314,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: kCardBg,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: kDivider),
               ),
@@ -639,7 +642,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: kCardBg,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kGoldPrimary)),

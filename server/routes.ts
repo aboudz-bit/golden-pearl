@@ -209,17 +209,6 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/admin/orders/:id", async (req, res) => {
-    try {
-      const { status, trackingNumber } = req.body;
-      const order = await storage.updateOrderStatus(parseInt(req.params.id), status, trackingNumber);
-      if (!order) return res.status(404).json({ message: "Order not found" });
-      res.json(order);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update order" });
-    }
-  });
-
   app.post("/api/admin/discounts", async (req, res) => {
     try {
       const result = insertDiscountCodeSchema.safeParse(req.body);

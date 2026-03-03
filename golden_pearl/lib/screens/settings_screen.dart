@@ -39,6 +39,20 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.notifications_outlined, color: kGoldPrimary),
+                  title: Text(l10n.notifications),
+                  trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                  onTap: () => Navigator.pushNamed(context, '/notifications'),
+                ),
+                Divider(height: 0, color: kDivider),
+                ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined, color: kGoldPrimary),
+                  title: Text(l10n.myOrders),
+                  trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                  onTap: () => Navigator.pushNamed(context, '/orders'),
+                ),
+                Divider(height: 0, color: kDivider),
+                ListTile(
                   leading: const Icon(Icons.language, color: kGoldPrimary),
                   title: Text(l10n.language),
                   subtitle: Text(langProvider.isArabic ? l10n.arabic : l10n.english),
