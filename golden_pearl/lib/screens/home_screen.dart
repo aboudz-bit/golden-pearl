@@ -87,12 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
             stretch: true,
             backgroundColor: kCreamBg,
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.language, color: kSecondaryText),
-                onPressed: () => Provider.of<LanguageProvider>(context, listen: false).toggleLanguage(),
-              ),
-            ],
+            actions: const [],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,

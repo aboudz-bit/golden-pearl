@@ -227,8 +227,11 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
+          if (index == 3) {
+            setState(() => _currentIndex = 4);
+            return;
+          }
           setState(() => _currentIndex = index);
-          if (index == 3) _loadUnreadCount();
         },
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: l10n.home),
