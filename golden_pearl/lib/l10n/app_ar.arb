@@ -139,5 +139,7 @@
   "confirmed": "تم التأكيد",
   "readyForPickup": "جاهز للاستلام",
   "pickedUp": "تم الاستلام",
-  "cancelled": "ملغي"
+  "cancelled": "ملغي",
+  "call": "اتصال",
+  "openInMaps": "فتح في الخريطة"
 }

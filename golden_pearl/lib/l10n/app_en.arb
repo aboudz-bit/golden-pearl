@@ -139,5 +139,7 @@
   "confirmed": "Confirmed",
   "readyForPickup": "Ready for Pickup",
   "pickedUp": "Picked Up",
-  "cancelled": "Cancelled"
+  "cancelled": "Cancelled",
+  "call": "Call",
+  "openInMaps": "Open in Maps"
 }

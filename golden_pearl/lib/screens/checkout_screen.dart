@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
 import '../utils/money_formatter.dart';
@@ -358,6 +359,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _storeCard(Store store, String lang) {
+    final l10n = AppLocalizations.of(context)!;
     final isSelected = _selectedStore?.id == store.id;
     return GestureDetector(
       onTap: () => setState(() => _selectedStore = store),
@@ -412,13 +414,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone_outlined, size: 14, color: kSecondaryText),
-                      const SizedBox(width: 4),
-                      Text(store.phone, style: const TextStyle(fontSize: 12, color: kSecondaryText)),
-                    ],
+                  GestureDetector(
+                    onTap: () => launchUrl(Uri.parse('tel:${store.phone}')),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.phone_outlined, size: 14, color: kGoldPrimary),
+                        const SizedBox(width: 4),
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(store.phone, style: const TextStyle(fontSize: 12, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                        ),
+                      ],
+                    ),
                   ),
+                  if (store.mapUrl != null && store.mapUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => launchUrl(Uri.parse(store.mapUrl!), mode: LaunchMode.externalApplication),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: kGoldPrimary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: kGoldPrimary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.map_outlined, size: 14, color: kGoldPrimary),
+                            const SizedBox(width: 6),
+                            Text(l10n.openInMaps, style: const TextStyle(fontSize: 12, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
