@@ -1,13 +1,14 @@
 import { db } from "./db";
-import { eq, and, ilike, or, desc, count, sql, gte } from "drizzle-orm";
+import { eq, and, ilike, or, desc, asc, count, sql, gte } from "drizzle-orm";
 import {
   products, cartItems, orders, discountCodes, adminUsers, notifications,
-  users, siteSettings, pageViews,
+  users, siteSettings, pageViews, banners, categories,
   type Product, type CartItem, type CartItemWithProduct,
   type InsertCartItem, type InsertProduct, type Order,
   type InsertOrder, type DiscountCode, type InsertDiscountCode,
   type Notification, type InsertNotification,
-  type User, type InsertUser, type SiteSetting, type PageView, type InsertPageView
+  type User, type InsertUser, type SiteSetting, type PageView, type InsertPageView,
+  type Banner, type InsertBanner, type Category, type InsertCategory
 } from "@shared/schema";
 
 export interface IStorage {
@@ -20,6 +21,7 @@ export interface IStorage {
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<void>;
   updateProductStock(id: number, stock: number): Promise<Product | undefined>;
+  reorderProducts(items: { id: number; orderIndex: number }[]): Promise<void>;
 
   getCartItems(sessionId: string): Promise<CartItemWithProduct[]>;
   getCartItemsByUserId(userId: number): Promise<CartItemWithProduct[]>;
@@ -47,10 +49,12 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationRead(id: number): Promise<Notification | undefined>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+  sendNotificationToAll(title: string, message: string, productId?: number): Promise<void>;
 
   createUser(user: InsertUser & { role?: string }): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
 
   getSetting(key: string): Promise<string | undefined>;
   setSetting(key: string, value: string): Promise<SiteSetting>;
@@ -59,16 +63,28 @@ export interface IStorage {
   createPageView(view: InsertPageView): Promise<PageView>;
   getAnalytics(): Promise<{ totalViews: number; uniqueSessions: number; topProducts: { productId: number; views: number; product?: Product }[] }>;
 
+  getBanners(): Promise<Banner[]>;
+  getActiveBanners(): Promise<Banner[]>;
+  createBanner(banner: InsertBanner): Promise<Banner>;
+  updateBanner(id: number, data: Partial<InsertBanner>): Promise<Banner | undefined>;
+  deleteBanner(id: number): Promise<void>;
+  reorderBanners(items: { id: number; sortOrder: number }[]): Promise<void>;
+
+  getCategories(): Promise<Category[]>;
+  getVisibleCategories(): Promise<Category[]>;
+  updateCategory(id: number, data: Partial<InsertCategory>): Promise<Category | undefined>;
+  reorderCategories(items: { id: number; sortOrder: number }[]): Promise<void>;
+
   getAdminByUsername(username: string): Promise<typeof adminUsers.$inferSelect | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
   async getProducts(): Promise<Product[]> {
-    return db.select().from(products).orderBy(desc(products.createdAt));
+    return db.select().from(products).orderBy(asc(products.orderIndex), desc(products.createdAt));
   }
 
   async getProductsByCategory(category: string): Promise<Product[]> {
-    return db.select().from(products).where(eq(products.category, category));
+    return db.select().from(products).where(eq(products.category, category)).orderBy(asc(products.orderIndex), desc(products.createdAt));
   }
 
   async getFeaturedProducts(): Promise<Product[]> {
@@ -110,6 +126,12 @@ export class DatabaseStorage implements IStorage {
   async updateProductStock(id: number, stock: number): Promise<Product | undefined> {
     const [updated] = await db.update(products).set({ stock, inStock: stock > 0 }).where(eq(products.id, id)).returning();
     return updated;
+  }
+
+  async reorderProducts(items: { id: number; orderIndex: number }[]): Promise<void> {
+    for (const item of items) {
+      await db.update(products).set({ orderIndex: item.orderIndex }).where(eq(products.id, item.id));
+    }
   }
 
   async getCartItems(sessionId: string): Promise<CartItemWithProduct[]> {
@@ -271,6 +293,19 @@ export class DatabaseStorage implements IStorage {
     return result?.count ?? 0;
   }
 
+  async sendNotificationToAll(title: string, message: string, productId?: number): Promise<void> {
+    const allUsers = await db.select().from(users);
+    for (const user of allUsers) {
+      await db.insert(notifications).values({
+        userId: String(user.id),
+        title,
+        message,
+        productId: productId || null,
+        read: false,
+      });
+    }
+  }
+
   async createUser(user: InsertUser & { role?: string }): Promise<User> {
     const values: any = { ...user };
     if (user.role) values.role = user.role;
@@ -286,6 +321,10 @@ export class DatabaseStorage implements IStorage {
   async getUserById(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
   }
 
   async getSetting(key: string): Promise<string | undefined> {
@@ -343,6 +382,53 @@ export class DatabaseStorage implements IStorage {
       uniqueSessions: totals?.uniqueSessions ?? 0,
       topProducts,
     };
+  }
+
+  async getBanners(): Promise<Banner[]> {
+    return db.select().from(banners).orderBy(asc(banners.sortOrder));
+  }
+
+  async getActiveBanners(): Promise<Banner[]> {
+    return db.select().from(banners).where(eq(banners.active, true)).orderBy(asc(banners.sortOrder));
+  }
+
+  async createBanner(banner: InsertBanner): Promise<Banner> {
+    const [created] = await db.insert(banners).values(banner).returning();
+    return created;
+  }
+
+  async updateBanner(id: number, data: Partial<InsertBanner>): Promise<Banner | undefined> {
+    const [updated] = await db.update(banners).set(data).where(eq(banners.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBanner(id: number): Promise<void> {
+    await db.delete(banners).where(eq(banners.id, id));
+  }
+
+  async reorderBanners(items: { id: number; sortOrder: number }[]): Promise<void> {
+    for (const item of items) {
+      await db.update(banners).set({ sortOrder: item.sortOrder }).where(eq(banners.id, item.id));
+    }
+  }
+
+  async getCategories(): Promise<Category[]> {
+    return db.select().from(categories).orderBy(asc(categories.sortOrder));
+  }
+
+  async getVisibleCategories(): Promise<Category[]> {
+    return db.select().from(categories).where(eq(categories.visible, true)).orderBy(asc(categories.sortOrder));
+  }
+
+  async updateCategory(id: number, data: Partial<InsertCategory>): Promise<Category | undefined> {
+    const [updated] = await db.update(categories).set(data).where(eq(categories.id, id)).returning();
+    return updated;
+  }
+
+  async reorderCategories(items: { id: number; sortOrder: number }[]): Promise<void> {
+    for (const item of items) {
+      await db.update(categories).set({ sortOrder: item.sortOrder }).where(eq(categories.id, item.id));
+    }
   }
 
   async getAdminByUsername(username: string) {

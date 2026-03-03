@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { products, discountCodes, users, siteSettings } from "@shared/schema";
+import { products, discountCodes, users, siteSettings, categories } from "@shared/schema";
 import bcrypt from "bcrypt";
 
 const SEED_PRODUCTS = [
@@ -276,6 +276,17 @@ export async function seedDatabase() {
       ];
       await db.insert(siteSettings).values(defaultSettings);
       console.log("Seeded default site settings");
+    }
+
+    const existingCategories = await db.select().from(categories);
+    if (existingCategories.length === 0) {
+      await db.insert(categories).values([
+        { slug: "dresses", nameEn: "Dresses", nameAr: "فساتين", sortOrder: 0 },
+        { slug: "jalabiyas", nameEn: "Jalabiyas", nameAr: "جلابيات", sortOrder: 1 },
+        { slug: "kids", nameEn: "Kids", nameAr: "أطفال", sortOrder: 2 },
+        { slug: "gifts", nameEn: "Gifts", nameAr: "هدايا", sortOrder: 3 },
+      ]);
+      console.log("Seeded default categories");
     }
 
   } catch (error) {

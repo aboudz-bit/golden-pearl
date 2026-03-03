@@ -1,0 +1,197 @@
+You are working inside my existing Replit project (Golden Pearl) as a SINGLE-STORE ecommerce app (NOT a marketplace). Upgrade the Admin Panel to a professional single-store CMS (Shopify-like). Do NOT add “stores”, “multi-tenant”, or marketplace logic. Do NOT break existing features (guest browsing, login-on-checkout, cart merge, current UI theme).
+
+PRIMARY GOAL
+Make admin management visual, simple, and fast:
+- Upload media directly (no URLs)
+- Manage multiple hero banners (images/videos)
+- Manage category images + order
+- Manage products by category tabs + drag sorting
+- Orders show product thumbnails
+- Fix Add Product navigation bug
+- Add promotions/discount codes
+- Add in-app notifications (admin sends, users view)
+- Improve performance with compression + caching
+
+---------------------------------------------------
+1) MEDIA UPLOAD (NO URL INPUTS)
+---------------------------------------------------
+Replace any "Enter image URL" fields with direct upload.
+
+Backend:
+- Add POST /api/admin/upload (multipart/form-data, field: file)
+- Accept: image/* and video/*
+- Save to /uploads/ with unique filename
+- Return JSON: { url: "/uploads/<filename>", type: "image" | "video" }
+
+Static serving:
+- app.use("/uploads", express.static("uploads"))
+
+Frontend (Admin):
+- Upload button + drag&drop zone
+- Preview image/video
+- Replace file
+- Delete file
+
+---------------------------------------------------
+2) HOMEPAGE HERO: MULTIPLE BANNERS (IMAGE/VIDEO)
+---------------------------------------------------
+Admin can add unlimited hero banners and reorder them.
+
+Data model:
+Banner { id, type: "image"|"video", url, active, order }
+
+Admin UI:
+- List of banners with previews
+- Add Banner (upload image/video)
+- Toggle active
+- Delete
+- Drag to reorder
+
+Storefront:
+- Homepage hero loads banners dynamically as carousel/slider
+- If banner is video: autoplay + muted + loop + playsinline
+- Ensure iOS/Safari compatible (Range requests + correct headers if needed)
+
+---------------------------------------------------
+3) CATEGORIES (SINGLE STORE SECTIONS)
+---------------------------------------------------
+Categories are exactly:
+- Dresses
+- Jalabiyas
+- Kids
+- Gifts
+
+Admin can:
+- Upload category image
+- Toggle category visibility
+- Drag reorder categories
+(NO adding stores, NO marketplace categories)
+
+Home category cards use these images + order.
+
+---------------------------------------------------
+4) PRODUCTS: CATEGORY TABS + DRAG SORTING
+---------------------------------------------------
+Admin Products page must be organized with tabs:
+All | Dresses | Jalabiyas | Kids | Gifts
+
+Each product row/card shows:
+- Thumbnail
+- Name
+- Price
+- Stock badge
+- Category
+
+Actions:
+Edit | Duplicate | Delete | Update Stock
+
+Sorting:
+- Admin can drag products to reorder within a category
+- Save orderIndex per product
+- Storefront category listing respects orderIndex
+
+---------------------------------------------------
+5) ADD PRODUCT PAGE (FIX NAV BUG)
+---------------------------------------------------
+Fix the current bug: “Add Product” sends back to Products list.
+
+Correct behavior:
+- Add Product opens CREATE PRODUCT page.
+
+Create form fields:
+- Name
+- Price
+- Category dropdown (4 categories only)
+- Upload images (multiple)
+- Optional video upload (one)
+- Description
+- Stock
+- Active toggle
+
+Save:
+- Creates product
+- Returns to Products list
+Cancel:
+- Returns without changes
+
+---------------------------------------------------
+6) ORDERS: SHOW PRODUCT THUMBNAILS
+---------------------------------------------------
+Admin Orders list must show:
+- Order ID
+- Customer name
+- Total
+- Status badge
+- Delivery type (Delivery / Store Pickup)
+
+Inside each order card show product thumbnails (small images).
+Tabs:
+All | Delivery | Store Pickup
+
+Admin can update status:
+Pending | Processing | Ready for Pickup | Completed | Cancelled
+
+Pickup flow:
+- Clearly mark Store Pickup orders
+- Button: “Confirm Ready for Pickup”
+
+---------------------------------------------------
+7) PROMOTIONS / DISCOUNT CODES
+---------------------------------------------------
+Add Promotions section:
+
+DiscountCode { code, type: "percentage"|"fixed", value, expiresAt, active }
+
+Admin can:
+- Create, edit, disable, delete codes
+
+Storefront checkout:
+- Apply code input
+- Validate
+- Show discount line
+- Recalculate total
+
+---------------------------------------------------
+8) IN-APP NOTIFICATIONS (SINGLE STORE)
+---------------------------------------------------
+Add Notifications section in Admin:
+- Title
+- Message
+- Optional product link
+- Send
+
+Backend:
+- Store notifications in DB (no external push services)
+Frontend:
+- Users see notifications in Settings > Notifications
+- Mark as read
+
+IMPORTANT: remove Notifications icon from bottom nav.
+Notifications must ONLY be accessible from Settings screen.
+
+---------------------------------------------------
+9) PERFORMANCE (IMAGES & CACHING)
+---------------------------------------------------
+When uploading images:
+- Auto compress/resize server-side
+- Max width 1200px
+- Generate optimized JPG/WEBP if possible
+
+Static caching:
+- Add Cache-Control headers for /uploads
+- Support fast repeat visits
+
+---------------------------------------------------
+10) UX POLISH
+---------------------------------------------------
+Every admin media field must have:
+- preview
+- loading state
+- success toast
+- confirm delete
+- empty states
+
+Keep the same “luxury” look and spacing style.
+
+DELIVERABLE
+Implement all changes end-to-end (backend + Flutter web UI). Ensure it runs in Replit preview without manual steps.

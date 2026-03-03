@@ -34,6 +34,7 @@ export const products = pgTable("products", {
   rating: real("rating").notNull().default(4.5),
   reviewCount: integer("review_count").notNull().default(0),
   stock: integer("stock").notNull().default(100),
+  orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   videoUrl: text("video_url"),
 });
@@ -87,6 +88,7 @@ export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
   orderId: integer("order_id"),
+  productId: integer("product_id"),
   title: text("title").notNull(),
   message: text("message").notNull(),
   read: boolean("read").notNull().default(false),
@@ -114,6 +116,25 @@ export const pageViews = pgTable("page_views", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const banners = pgTable("banners", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull().default("image"),
+  url: text("url").notNull(),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  nameEn: text("name_en").notNull(),
+  nameAr: text("name_ar").notNull(),
+  imageUrl: text("image_url"),
+  visible: boolean("visible").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
@@ -122,6 +143,8 @@ export const insertDiscountCodeSchema = createInsertSchema(discountCodes).omit({
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export const insertSiteSettingSchema = createInsertSchema(siteSettings).omit({ id: true, updatedAt: true });
 export const insertPageViewSchema = createInsertSchema(pageViews).omit({ id: true, createdAt: true });
+export const insertBannerSchema = createInsertSchema(banners).omit({ id: true, createdAt: true });
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
@@ -132,6 +155,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type SiteSetting = typeof siteSettings.$inferSelect;
 export type PageView = typeof pageViews.$inferSelect;
+export type Banner = typeof banners.$inferSelect;
+export type Category = typeof categories.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
@@ -140,5 +165,7 @@ export type InsertDiscountCode = z.infer<typeof insertDiscountCodeSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
 export type InsertPageView = z.infer<typeof insertPageViewSchema>;
+export type InsertBanner = z.infer<typeof insertBannerSchema>;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
 export type CartItemWithProduct = CartItem & { product: Product };

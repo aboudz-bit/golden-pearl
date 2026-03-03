@@ -339,4 +339,147 @@ class ApiService {
     _updateCookie(response);
     _checkResponse(response);
   }
+
+  Future<void> updateDiscount(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/discounts/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<Map<String, dynamic>> uploadFile(List<int> bytes, String filename) async {
+    final uri = Uri.parse('$baseUrl/api/admin/upload');
+    final request = http.MultipartRequest('POST', uri);
+    if (!kIsWeb && _cookie != null) {
+      request.headers['Cookie'] = _cookie!;
+    }
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> deleteUpload(String url) async {
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/api/admin/upload'),
+      headers: _headers,
+      body: jsonEncode({'url': url}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getBanners() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/banners'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getPublicBanners() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/banners'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> createBanner(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/banners'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> updateBanner(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/banners/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> deleteBanner(int id) async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/admin/banners/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> reorderBanners(List<Map<String, dynamic>> items) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/banners/reorder'),
+      headers: _headers,
+      body: jsonEncode({'items': items}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getCategories() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/categories'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getPublicCategories() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/categories'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> updateCategory(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/categories/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> reorderCategories(List<Map<String, dynamic>> items) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/categories/reorder'),
+      headers: _headers,
+      body: jsonEncode({'items': items}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> reorderProducts(List<Map<String, dynamic>> items) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/products/reorder'),
+      headers: _headers,
+      body: jsonEncode({'items': items}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> sendNotification(String title, String message, {int? productId}) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/notifications/send'),
+      headers: _headers,
+      body: jsonEncode({'title': title, 'message': message, 'productId': productId}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
 }

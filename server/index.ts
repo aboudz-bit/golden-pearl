@@ -110,6 +110,7 @@ app.use((req, res, next) => {
   }
 
   const cacheOptions = { maxAge: "7d", immutable: true };
+  app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads"), { maxAge: "7d" }));
   app.use("/images", express.static(path.resolve(flutterBuildPath, "images"), cacheOptions));
   app.use("/videos", express.static(path.resolve(flutterBuildPath, "videos"), cacheOptions));
   app.use(express.static(flutterBuildPath));

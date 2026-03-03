@@ -131,6 +131,11 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
     return map[status] ?? status;
   }
 
+  List<Map<String, dynamic>> _orderItems(Order order) {
+    if (order.items is List) return List<Map<String, dynamic>>.from(order.items);
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -169,18 +174,21 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final order = filtered[index];
+                    final items = _orderItems(order);
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
                         color: kCardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: kDivider),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
                       ),
                       child: InkWell(
                         onTap: () => _showOrderDetail(order, l10n, lang),
                         borderRadius: BorderRadius.circular(12),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -209,7 +217,53 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
                                   Text(MoneyFormatter.format(order.total, lang), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: kGoldPrimary)),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              if (items.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 44,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: items.length > 5 ? 6 : items.length,
+                                    itemBuilder: (ctx, i) {
+                                      if (i == 5) {
+                                        return Container(
+                                          width: 44,
+                                          height: 44,
+                                          margin: const EdgeInsets.only(right: 6),
+                                          decoration: BoxDecoration(
+                                            color: kCreamBg,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: kDivider),
+                                          ),
+                                          child: Center(child: Text('+${items.length - 5}', style: const TextStyle(fontSize: 11, color: kSecondaryText, fontWeight: FontWeight.w600))),
+                                        );
+                                      }
+                                      final item = items[i];
+                                      final img = _firstImage(item);
+                                      return Container(
+                                        width: 44,
+                                        height: 44,
+                                        margin: const EdgeInsets.only(right: 6),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: kDivider),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(5),
+                                          child: img != null
+                                              ? Image.network(
+                                                  img.startsWith('http') ? img : '${ApiService.baseUrl}$img',
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Container(color: kCreamBg, child: const Icon(Icons.image, size: 16, color: kSecondaryText)),
+                                                )
+                                              : Container(color: kCreamBg, child: const Icon(Icons.image, size: 16, color: kSecondaryText)),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
                               Row(
                                 children: [
                                   Icon(
@@ -222,6 +276,10 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
                                     order.deliveryMethod == 'pickup' ? l10n.storePickup : l10n.delivery,
                                     style: const TextStyle(fontSize: 11, color: kSecondaryText),
                                   ),
+                                  if (items.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Text('${items.length} item${items.length > 1 ? 's' : ''}', style: const TextStyle(fontSize: 11, color: kSecondaryText)),
+                                  ],
                                   const Spacer(),
                                   OutlinedButton(
                                     onPressed: () => _updateStatus(order),
@@ -251,7 +309,16 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
     );
   }
 
+  String? _firstImage(Map<String, dynamic> item) {
+    final images = item['images'];
+    if (images is List && images.isNotEmpty) return images.first?.toString();
+    final image = item['image'];
+    if (image is String && image.isNotEmpty) return image;
+    return null;
+  }
+
   void _showOrderDetail(Order order, AppLocalizations l10n, String lang) {
+    final items = _orderItems(order);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -277,6 +344,46 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
             _detailRow(l10n.city, order.shippingCity),
             _detailRow(l10n.deliveryMethod, order.deliveryMethod == 'pickup' ? l10n.storePickup : l10n.delivery),
             if (order.notes != null) _detailRow(l10n.notes, order.notes!),
+            if (items.isNotEmpty) ...[
+              const Divider(height: 24),
+              Text('Items', style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal)),
+              const SizedBox(height: 8),
+              ...items.map((item) {
+                final img = _firstImage(item);
+                final name = item['name'] ?? item['nameEn'] ?? '';
+                final qty = item['quantity'] ?? 1;
+                final size = item['size'] ?? '';
+                final color = item['color'] ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: img != null
+                              ? Image.network(img.startsWith('http') ? img : '${ApiService.baseUrl}$img', fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(color: kCreamBg, child: const Icon(Icons.image, size: 14)))
+                              : Container(color: kCreamBg, child: const Icon(Icons.image, size: 14)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name.toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kCharcoal), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text('Qty: $qty  Size: $size  Color: $color', style: const TextStyle(fontSize: 11, color: kSecondaryText)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
             const Divider(height: 24),
             Text(l10n.subtotal, style: const TextStyle(fontWeight: FontWeight.w600, color: kCharcoal)),
             Text(MoneyFormatter.format(order.subtotal, lang), style: const TextStyle(color: kGoldPrimary, fontWeight: FontWeight.w600)),
