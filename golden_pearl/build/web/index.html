@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Golden Pearl - Loading</title>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      display: flex; 
+      flex-direction: column;
+      align-items: center; 
+      justify-content: center; 
+      height: 100vh; 
+      margin: 0; 
+      background: #F4F4F4; 
+      color: #1C1C1C; 
+    }
+    .loader { text-align: center; padding: 20px; }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: #B89B5E;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader">
+    <h1 style="color: #B89B5E; margin-bottom: 0;">Golden Pearl</h1>
+    <p>Initializing luxury experience...</p>
+    <div class="spinner"></div>
+    <p style="font-size: 0.8em; color: #6B6B6B;">The application is building. This page will refresh automatically.</p>
+    <script>setTimeout(() => window.location.reload(), 15000);</script>
+  </div>
+</body>
+</html>

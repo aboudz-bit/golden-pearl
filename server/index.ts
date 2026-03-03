@@ -9,111 +9,87 @@ import { createServer } from "http";
 import { seedDatabase } from "./seed";
 
 const SessionStore = MemoryStore(session);
-
 const app = express();
 const httpServer = createServer(app);
 
-declare module "express-session" {
-  interface SessionData {
-    id: string;
-  }
-}
+// Use standard Replit port or fallback
+const PORT = process.env.PORT || "8080";
 
-app.use(cors({
-  origin: true,
-  credentials: true,
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+app.use(express.urlencoded({ extended: false }));
+app.use(session({
+  secret: process.env.SESSION_SECRET || "golden-pearl-secret",
+  resave: false,
+  saveUninitialized: true,
+  store: new SessionStore({ checkPeriod: 86400000 }),
+  cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 },
 }));
 
-app.use(
-  express.json({
-    verify: (req: any, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
-app.use(express.urlencoded({ extended: false }));
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "golden-pearl-secret",
-    resave: false,
-    saveUninitialized: true,
-    store: new SessionStore({ checkPeriod: 86400000 }),
-    cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 },
-  })
-);
-
 export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
+  console.log(`${new Date().toLocaleTimeString()} [${source}] ${message}`);
 }
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const reqPath = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+(async () => {
+  // Seed database first
+  try {
+    await seedDatabase();
+  } catch (err) {
+    log(`Database seeding error: ${err}`);
+  }
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+  // Register API routes
+  await registerRoutes(httpServer, app);
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (reqPath.startsWith("/api")) {
-      let logLine = `${req.method} ${reqPath} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse).substring(0, 200)}`;
+  const flutterBuildPath = path.resolve(process.cwd(), "golden_pearl", "build", "web");
+  const indexPath = path.resolve(flutterBuildPath, "index.html");
+
+  // Middleware for static files
+  app.use(express.static(flutterBuildPath));
+  
+  // Catch-all route to serve Flutter app or placeholder
+  app.get("*", (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith("/api")) return next();
+    
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      // Create directory if missing to avoid future ENOENT
+      if (!fs.existsSync(flutterBuildPath)) {
+        fs.mkdirSync(flutterBuildPath, { recursive: true });
       }
-      log(logLine);
+      res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Golden Pearl - Building</title>
+          <style>
+            body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f4f4f4; }
+            .content { text-align: center; color: #1c1c1c; }
+          </style>
+        </head>
+        <body>
+          <div class="content">
+            <h1 style="color: #B89B5E;">Golden Pearl</h1>
+            <p>The application is being prepared for your luxury experience.</p>
+            <p>This page will refresh every 10 seconds until the build is ready.</p>
+            <script>setTimeout(() => location.reload(), 10000);</script>
+          </div>
+        </body>
+        </html>
+      `);
     }
   });
 
-  next();
-});
-
-(async () => {
-  await seedDatabase();
-  await registerRoutes(httpServer, app);
-
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  // Error handling
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    console.error("Internal Server Error:", err);
-    if (res.headersSent) return next(err);
-    return res.status(status).json({ message });
+    res.status(status).json({ message });
   });
 
-  const flutterBuildPath = path.resolve(import.meta.dirname, "..", "golden_pearl", "build", "web");
-  if (fs.existsSync(flutterBuildPath)) {
-    app.use(express.static(flutterBuildPath));
-    app.use((_req, res) => {
-      res.sendFile(path.resolve(flutterBuildPath, "index.html"));
-    });
-    log("Serving Flutter web build");
-  } else {
-    app.get("/", (_req, res) => {
-      res.json({
-        message: "Golden Pearl API",
-        endpoints: {
-          products: "/api/products",
-          cart: "/api/cart",
-          orders: "/api/orders",
-        }
-      });
-    });
-    log("Flutter build not found, serving API only");
-  }
-
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
-    log(`serving on port ${port}`);
+  httpServer.listen({ port: Number(PORT), host: "0.0.0.0" }, () => {
+    log(`Server listening on 0.0.0.0:${PORT}`);
   });
 })();
