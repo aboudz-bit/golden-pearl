@@ -110,21 +110,30 @@ class _ShopScreenState extends State<ShopScreen> {
                 final isSelected = _selectedCategory == cat['key'];
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    selected: isSelected,
-                    label: Text(cat['label']!),
-                    onSelected: (_) {
-                      setState(() { _selectedCategory = cat['key']!; _searchQuery = ''; _searchController.clear(); });
-                      _loadProducts();
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_selectedCategory != cat['key']) {
+                        setState(() { _selectedCategory = cat['key']!; _searchQuery = ''; _searchController.clear(); });
+                        _loadProducts();
+                      }
                     },
-                    selectedColor: kGoldPrimary,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? kGoldPrimary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? kGoldPrimary : kDivider),
+                      ),
+                      child: Text(
+                        cat['label']!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
                     ),
-                    side: BorderSide(color: isSelected ? kGoldPrimary : kDivider),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                 );
               },

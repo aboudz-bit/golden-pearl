@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:video_player/video_player.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
@@ -20,21 +21,45 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Product? _product;
   bool _loading = true;
+  bool _adding = false;
   String? _selectedSize;
   String? _selectedColor;
   int _quantity = 1;
-  int _currentImageIndex = 0;
+  int _currentSlideIndex = 0;
+  late PageController _pageController;
+
+  List<_MediaSlide> _mediaSlides = [];
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     _loadProduct();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _buildMediaSlides(Product p) {
+    _mediaSlides = [];
+    if (p.videoUrl != null && p.videoUrl!.isNotEmpty) {
+      final vUrl = p.videoUrl!.startsWith('http') ? p.videoUrl! : '${ApiService.baseUrl}${p.videoUrl!}';
+      _mediaSlides.add(_MediaSlide(type: _MediaType.video, url: vUrl));
+    }
+    for (final img in p.images) {
+      final url = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
+      _mediaSlides.add(_MediaSlide(type: _MediaType.image, url: url));
+    }
   }
 
   Future<void> _loadProduct() async {
     try {
       final product = await apiService.getProduct(widget.productId);
       if (mounted) {
+        _buildMediaSlides(product);
         setState(() {
           _product = product;
           _selectedSize = product.sizes.isNotEmpty ? product.sizes[0] : null;
@@ -47,20 +72,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  void _addToBag() async {
-    if (_product == null || _selectedSize == null || _selectedColor == null) return;
+  void _addToCart() async {
+    if (_product == null || _selectedSize == null || _selectedColor == null || _adding) return;
+    setState(() => _adding = true);
     final cart = Provider.of<CartProvider>(context, listen: false);
     final success = await cart.addToCart(_product!.id, _selectedSize!, _selectedColor!, quantity: _quantity);
     if (mounted && success) {
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.addedToBag),
           backgroundColor: kGoldPrimary,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 1800),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) Navigator.pop(context);
+    } else {
+      if (mounted) setState(() => _adding = false);
     }
+  }
+
+  void _openImageViewer(String imageUrl) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black87,
+        barrierDismissible: true,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return _FullscreenImageViewer(imageUrl: imageUrl);
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
+  void _jumpToSlide(int index) {
+    _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
   }
 
   @override
@@ -84,10 +137,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     return Scaffold(
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: MediaQuery.of(context).size.height * 0.5,
+            expandedHeight: MediaQuery.of(context).size.width * (5 / 4),
             pinned: true,
             backgroundColor: kCreamBg,
             flexibleSpace: FlexibleSpaceBar(
@@ -95,28 +148,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   PageView.builder(
-                    itemCount: p.images.length,
-                    onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                    controller: _pageController,
+                    itemCount: _mediaSlides.length,
+                    onPageChanged: (i) => setState(() => _currentSlideIndex = i),
                     itemBuilder: (context, index) {
-                      final img = p.images[index];
-                      final url = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
-                      return Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: kCreamBg));
+                      final slide = _mediaSlides[index];
+                      if (slide.type == _MediaType.video) {
+                        return _VideoSlideWidget(videoUrl: slide.url);
+                      }
+                      return GestureDetector(
+                        onTap: () => _openImageViewer(slide.url),
+                        child: Image.network(slide.url, fit: BoxFit.cover, alignment: Alignment.topCenter, errorBuilder: (_, __, ___) => Container(color: kCreamBg)),
+                      );
                     },
                   ),
-                  if (p.images.length > 1)
+                  if (_mediaSlides.length > 1)
                     Positioned(
                       bottom: 16,
                       left: 0,
                       right: 0,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(p.images.length, (i) => AnimatedContainer(
+                        children: List.generate(_mediaSlides.length, (i) => AnimatedContainer(
                           duration: const Duration(milliseconds: 280),
                           margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: _currentImageIndex == i ? 20 : 6,
+                          width: _currentSlideIndex == i ? 20 : 6,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: _currentImageIndex == i ? kGoldPrimary : Colors.white54,
+                            color: _currentSlideIndex == i ? kGoldPrimary : Colors.white54,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         )),
@@ -139,6 +198,52 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
+          if (_mediaSlides.length > 1)
+            SliverToBoxAdapter(
+              child: Container(
+                height: 72,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _mediaSlides.length,
+                  itemBuilder: (context, index) {
+                    final slide = _mediaSlides[index];
+                    final isSelected = _currentSlideIndex == index;
+                    return GestureDetector(
+                      onTap: () => _jumpToSlide(index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 52,
+                        height: 52,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? kGoldPrimary : kDivider,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (slide.type == _MediaType.image)
+                                Image.network(slide.url, fit: BoxFit.cover, alignment: Alignment.topCenter, errorBuilder: (_, __, ___) => Container(color: kCreamBg))
+                              else ...[
+                                Container(color: const Color(0xFF2A2A2A)),
+                                const Center(child: Icon(Icons.play_circle_fill, color: Colors.white70, size: 22)),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -297,12 +402,222 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: _addToBag,
-              icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+              onPressed: _adding ? null : _addToCart,
+              icon: _adding
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.shopping_bag_outlined, size: 20),
               label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+enum _MediaType { image, video }
+
+class _MediaSlide {
+  final _MediaType type;
+  final String url;
+  const _MediaSlide({required this.type, required this.url});
+}
+
+class _VideoSlideWidget extends StatefulWidget {
+  final String videoUrl;
+  const _VideoSlideWidget({required this.videoUrl});
+
+  @override
+  State<_VideoSlideWidget> createState() => _VideoSlideWidgetState();
+}
+
+class _VideoSlideWidgetState extends State<_VideoSlideWidget> {
+  VideoPlayerController? _controller;
+  bool _initialized = false;
+  bool _error = false;
+  bool _showControls = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    try {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      await _controller!.initialize();
+      _controller!.addListener(() {
+        if (mounted) setState(() {});
+      });
+      if (mounted) setState(() => _initialized = true);
+    } catch (e) {
+      if (mounted) setState(() => _error = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayPause() {
+    if (_controller == null || !_initialized) return;
+    setState(() {
+      if (_controller!.value.isPlaying) {
+        _controller!.pause();
+        _showControls = true;
+      } else {
+        _controller!.play();
+        _showControls = false;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error) {
+      return Container(
+        color: const Color(0xFF1C1C1C),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.videocam_off, color: Colors.white38, size: 48),
+              SizedBox(height: 12),
+              Text('تعذر تشغيل الفيديو', style: TextStyle(color: Colors.white54, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_initialized) {
+      return Container(
+        color: const Color(0xFF1C1C1C),
+        child: const Center(child: CircularProgressIndicator(color: kGoldPrimary)),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => setState(() => _showControls = !_showControls),
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Center(
+              child: AspectRatio(
+                aspectRatio: _controller!.value.aspectRatio,
+                child: VideoPlayer(_controller!),
+              ),
+            ),
+            if (_showControls || !_controller!.value.isPlaying)
+              GestureDetector(
+                onTap: _togglePlayPause,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+              ),
+            if (_initialized)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: VideoProgressIndicator(
+                  _controller!,
+                  allowScrubbing: true,
+                  colors: const VideoProgressColors(
+                    playedColor: kGoldPrimary,
+                    bufferedColor: Colors.white24,
+                    backgroundColor: Colors.white12,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FullscreenImageViewer extends StatefulWidget {
+  final String imageUrl;
+  const _FullscreenImageViewer({required this.imageUrl});
+
+  @override
+  State<_FullscreenImageViewer> createState() => _FullscreenImageViewerState();
+}
+
+class _FullscreenImageViewerState extends State<_FullscreenImageViewer> {
+  final TransformationController _controller = TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleDoubleTap() {
+    if (_controller.value != Matrix4.identity()) {
+      _controller.value = Matrix4.identity();
+    } else {
+      final position = _doubleTapDetails?.localPosition ?? Offset.zero;
+      _controller.value = Matrix4.identity()
+        ..translate(-position.dx * 1.5, -position.dy * 1.5)
+        ..scale(2.5);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          GestureDetector(
+            onDoubleTapDown: (details) => _doubleTapDetails = details,
+            onDoubleTap: _handleDoubleTap,
+            onVerticalDragEnd: (details) {
+              if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 300) {
+                Navigator.pop(context);
+              }
+            },
+            child: Center(
+              child: InteractiveViewer(
+                transformationController: _controller,
+                minScale: 0.5,
+                maxScale: 5.0,
+                child: Image.network(
+                  widget.imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white54, size: 64),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              style: IconButton.styleFrom(backgroundColor: Colors.black45),
+            ),
+          ),
+        ],
       ),
     );
   }

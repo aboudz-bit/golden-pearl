@@ -14,6 +14,7 @@ export const products = pgTable("products", {
   category: text("category").notNull(),
   subcategory: text("subcategory"),
   images: text("images").array().notNull(),
+  videoUrl: text("video_url"),
   sizes: text("sizes").array().notNull(),
   colors: text("colors").array().notNull(),
   fabricEn: text("fabric_en"),
@@ -43,7 +44,8 @@ export const orders = pgTable("orders", {
   shipping: integer("shipping").notNull().default(0),
   discount: integer("discount").notNull().default(0),
   total: integer("total").notNull(),
-  status: text("status").notNull().default("processing"),
+  status: text("status").notNull().default("pending"),
+  deliveryMethod: text("delivery_method").notNull().default("delivery"),
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email"),
   customerPhone: text("customer_phone").notNull(),
@@ -68,6 +70,16 @@ export const discountCodes = pgTable("discount_codes", {
   expiresAt: timestamp("expires_at"),
 });
 
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  orderId: integer("order_id"),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -78,15 +90,18 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true,
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, status: true, trackingNumber: true });
 export const insertDiscountCodeSchema = createInsertSchema(discountCodes).omit({ id: true, usedCount: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 
 export type Product = typeof products.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type DiscountCode = typeof discountCodes.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type InsertDiscountCode = z.infer<typeof insertDiscountCodeSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 export type CartItemWithProduct = CartItem & { product: Product };

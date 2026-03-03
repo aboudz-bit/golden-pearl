@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'providers/language_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/favorites_provider.dart';
 import 'services/api_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/shop_screen.dart';
@@ -14,13 +15,16 @@ import 'screens/checkout_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/order_confirmation_screen.dart';
 import 'screens/category_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'utils/arabic_digits.dart';
 
 const kGoldPrimary = Color(0xFFB89B5E);
 const kGoldDark = Color(0xFF9C7F42);
-const kCreamBg = Color(0xFFF6F3EE);
+const kCreamBg = Color(0xFFF4F4F4);
+const kCardBg = Color(0xFFFFFFFF);
 const kCharcoal = Color(0xFF1C1C1C);
-const kDivider = Color(0xFFE8E3D8);
+const kSecondaryText = Color(0xFF6B6B6B);
+const kDivider = Color(0xFFEAEAEA);
 
 const _playfairFamily = 'PlayfairDisplay';
 
@@ -37,6 +41,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider(apiService)),
       ],
       child: const GoldenPearlApp(),
     ),
@@ -115,7 +120,7 @@ class GoldenPearlApp extends StatelessWidget {
           elevation: 1,
           shadowColor: Colors.black.withOpacity(0.06),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: kCreamBg,
+          color: kCardBg,
         ),
         dividerColor: kDivider,
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -137,6 +142,8 @@ class GoldenPearlApp extends StatelessWidget {
         } else if (settings.name?.startsWith('/category/') ?? false) {
           final slug = settings.name!.replaceFirst('/category/', '');
           if (slug.isNotEmpty) page = CategoryScreen(slug: slug);
+        } else if (settings.name == '/notifications') {
+          page = const NotificationsScreen();
         } else if (settings.name == '/checkout') {
           page = const CheckoutScreen();
         } else if (settings.name == '/orders') {
@@ -176,12 +183,12 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  int _unreadNotifications = 0;
 
   final _screens = const [
     HomeScreen(),
     ShopScreen(),
     CartScreen(),
-    OrdersScreen(),
     SettingsScreen(),
   ];
 
@@ -190,7 +197,16 @@ class _MainNavigationState extends State<MainNavigation> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CartProvider>(context, listen: false).loadCart();
+      Provider.of<FavoritesProvider>(context, listen: false).load();
+      _loadUnreadCount();
     });
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await apiService.getUnreadNotificationCount();
+      if (mounted) setState(() => _unreadNotifications = count);
+    } catch (_) {}
   }
 
   @override
@@ -199,7 +215,7 @@ class _MainNavigationState extends State<MainNavigation> {
     final cartProvider = Provider.of<CartProvider>(context);
     final langProvider = Provider.of<LanguageProvider>(context);
     final lang = langProvider.languageCode;
-    final badgeText = ArabicDigits.convert(cartProvider.itemCount, lang);
+    final cartBadge = ArabicDigits.convert(cartProvider.itemCount, lang);
 
     return Scaffold(
       body: IndexedStack(
@@ -215,19 +231,18 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Badge(
               isLabelVisible: cartProvider.itemCount > 0,
-              label: Text(badgeText, style: const TextStyle(fontSize: 10)),
+              label: Text(cartBadge, style: const TextStyle(fontSize: 10)),
               backgroundColor: kGoldPrimary,
               child: const Icon(Icons.shopping_cart_outlined),
             ),
             activeIcon: Badge(
               isLabelVisible: cartProvider.itemCount > 0,
-              label: Text(badgeText, style: const TextStyle(fontSize: 10)),
+              label: Text(cartBadge, style: const TextStyle(fontSize: 10)),
               backgroundColor: kGoldPrimary,
               child: const Icon(Icons.shopping_cart),
             ),
             label: l10n.cart,
           ),
-          BottomNavigationBarItem(icon: const Icon(Icons.receipt_long_outlined), activeIcon: const Icon(Icons.receipt_long), label: l10n.orders),
           BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), activeIcon: const Icon(Icons.settings), label: l10n.settings),
         ],
       ),

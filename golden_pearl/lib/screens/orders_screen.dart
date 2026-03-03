@@ -34,7 +34,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
+      case 'pending': return Colors.orange;
+      case 'paid': return Colors.blue;
       case 'processing': return const Color(0xFFE8A830);
+      case 'ready_for_pickup': return kGoldPrimary;
+      case 'picked_up': return Colors.green;
       case 'shipped': return Colors.blue;
       case 'delivered': return Colors.green;
       default: return Colors.grey;
@@ -43,7 +47,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   String _statusLabel(String status, AppLocalizations l10n) {
     switch (status) {
+      case 'pending': return l10n.pending;
+      case 'paid': return l10n.paid;
       case 'processing': return l10n.processing;
+      case 'ready_for_pickup': return l10n.readyForPickup;
+      case 'picked_up': return l10n.pickedUp;
       case 'shipped': return l10n.shipped;
       case 'delivered': return l10n.delivered;
       default: return status;

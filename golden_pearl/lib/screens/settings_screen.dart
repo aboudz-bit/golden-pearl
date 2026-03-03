@@ -39,13 +39,27 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.notifications_outlined, color: kGoldPrimary),
+                  title: Text(l10n.notifications),
+                  trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                  onTap: () => Navigator.pushNamed(context, '/notifications'),
+                ),
+                Divider(height: 0, color: kDivider),
+                ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined, color: kGoldPrimary),
+                  title: Text(l10n.myOrders),
+                  trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                  onTap: () => Navigator.pushNamed(context, '/orders'),
+                ),
+                Divider(height: 0, color: kDivider),
+                ListTile(
                   leading: const Icon(Icons.language, color: kGoldPrimary),
                   title: Text(l10n.language),
                   subtitle: Text(langProvider.isArabic ? l10n.arabic : l10n.english),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0ECE3),
+                      color: kCreamBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -63,7 +77,7 @@ class SettingsScreen extends StatelessWidget {
                             child: Text('AR', style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: langProvider.isArabic ? Colors.white : const Color(0xFF4A4A4A),
+                              color: langProvider.isArabic ? Colors.white : kSecondaryText,
                             )),
                           ),
                         ),
@@ -80,7 +94,7 @@ class SettingsScreen extends StatelessWidget {
                             child: Text('EN', style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: !langProvider.isArabic ? Colors.white : const Color(0xFF4A4A4A),
+                              color: !langProvider.isArabic ? Colors.white : kSecondaryText,
                             )),
                           ),
                         ),

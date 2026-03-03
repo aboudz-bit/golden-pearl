@@ -19,8 +19,8 @@
   "all": "الكل",
   "featuredPieces": "قطع مميزة",
   "viewAll": "عرض الكل",
-  "addToBag": "أضيفي إلى الحقيبة",
-  "addedToBag": "تمت الإضافة إلى الحقيبة",
+  "addToBag": "أضيفي إلى السلة",
+  "addedToBag": "تمت الإضافة إلى السلة",
   "size": "المقاس",
   "color": "اللون",
   "quantity": "الكمية",
@@ -38,8 +38,8 @@
   "clearFilters": "مسح الفلاتر",
   "noProducts": "لا توجد منتجات",
   "searchProducts": "ابحثي عن منتجات...",
-  "yourBag": "حقيبتك",
-  "emptyBag": "حقيبتك فارغة",
+  "yourBag": "سلتك",
+  "emptyBag": "سلتك فارغة",
   "continueShopping": "متابعة التسوق",
   "subtotal": "المجموع الفرعي",
   "shipping": "الشحن",
@@ -124,5 +124,25 @@
         "type": "int"
       }
     }
-  }
+  },
+  "notifications": "الإشعارات",
+  "noNotifications": "لا توجد إشعارات",
+  "deliveryMethod": "طريقة الاستلام",
+  "deliverToAddress": "توصيل إلى العنوان",
+  "storePickup": "استلام من المتجر",
+  "storeInfo": "معلومات المتجر",
+  "storeName": "Golden Pearl Boutique",
+  "storeAddress": "الشارع الخامس عشر، السلام، سيهات ٣٢٤٣٧",
+  "storeCity": "سيهات، المملكة العربية السعودية",
+  "storeHours": "الأحد–الخميس: ١٠ ص – ١٠ م، الجمعة–السبت: ٢ م – ١١ م",
+  "storePhone": "055 501 2942",
+  "mapOpenFailed": "تعذر فتح الخرائط",
+  "copyLink": "نسخ الرابط",
+  "openInMaps": "فتح في الخرائط",
+  "pending": "قيد الانتظار",
+  "paid": "تم الدفع",
+  "readyForPickup": "جاهز للاستلام",
+  "pickedUp": "تم الاستلام",
+  "myOrders": "طلباتي",
+  "noFavorites": "لا توجد مفضلات بعد"
 }

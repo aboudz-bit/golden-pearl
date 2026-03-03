@@ -1,10 +1,11 @@
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
 import {
-  products, cartItems, orders, discountCodes, adminUsers,
+  products, cartItems, orders, discountCodes, adminUsers, notifications,
   type Product, type CartItem, type CartItemWithProduct,
   type InsertCartItem, type InsertProduct, type Order,
-  type InsertOrder, type DiscountCode, type InsertDiscountCode
+  type InsertOrder, type DiscountCode, type InsertDiscountCode,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 
 export interface IStorage {
@@ -35,6 +36,11 @@ export interface IStorage {
   updateDiscountCode(id: number, data: Partial<InsertDiscountCode>): Promise<DiscountCode | undefined>;
   deleteDiscountCode(id: number): Promise<void>;
   incrementDiscountUsage(id: number): Promise<void>;
+
+  getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationRead(id: number): Promise<Notification | undefined>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 
   getAdminByUsername(username: string): Promise<typeof adminUsers.$inferSelect | undefined>;
 }
@@ -179,6 +185,27 @@ export class DatabaseStorage implements IStorage {
     if (discount) {
       await db.update(discountCodes).set({ usedCount: discount.usedCount + 1 }).where(eq(discountCodes.id, id));
     }
+  }
+
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async markNotificationRead(id: number): Promise<Notification | undefined> {
+    const [updated] = await db.update(notifications).set({ read: true }).where(eq(notifications.id, id)).returning();
+    return updated;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select().from(notifications).where(
+      and(eq(notifications.userId, userId), eq(notifications.read, false))
+    );
+    return result.length;
   }
 
   async getAdminByUsername(username: string) {

@@ -7,6 +7,7 @@ class Order {
   final int discount;
   final int total;
   final String status;
+  final String deliveryMethod;
   final String customerName;
   final String? customerEmail;
   final String customerPhone;
@@ -27,6 +28,7 @@ class Order {
     required this.discount,
     required this.total,
     required this.status,
+    this.deliveryMethod = 'delivery',
     required this.customerName,
     this.customerEmail,
     required this.customerPhone,
@@ -48,7 +50,8 @@ class Order {
       shipping: (json['shipping'] as num?)?.toInt() ?? 0,
       discount: (json['discount'] as num?)?.toInt() ?? 0,
       total: (json['total'] as num).toInt(),
-      status: json['status'] ?? 'processing',
+      status: json['status'] ?? 'pending',
+      deliveryMethod: json['deliveryMethod'] ?? 'delivery',
       customerName: json['customerName'] ?? '',
       customerEmail: json['customerEmail'],
       customerPhone: json['customerPhone'] ?? '',
@@ -58,6 +61,38 @@ class Order {
       trackingNumber: json['trackingNumber'],
       discountCode: json['discountCode'],
       notes: json['notes'],
+      createdAt: json['createdAt'],
+    );
+  }
+}
+
+class AppNotification {
+  final int id;
+  final String userId;
+  final int? orderId;
+  final String title;
+  final String message;
+  final bool read;
+  final String? createdAt;
+
+  AppNotification({
+    required this.id,
+    required this.userId,
+    this.orderId,
+    required this.title,
+    required this.message,
+    required this.read,
+    this.createdAt,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
+      id: json['id'],
+      userId: json['userId'] ?? '',
+      orderId: json['orderId'],
+      title: json['title'] ?? '',
+      message: json['message'] ?? '',
+      read: json['read'] ?? false,
       createdAt: json['createdAt'],
     );
   }

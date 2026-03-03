@@ -6,7 +6,6 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
-import '../widgets/category_icons.dart';
 import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featured = [];
+  Map<String, String> _categoryImages = {};
   bool _loading = true;
   final PageController _heroController = PageController();
   int _currentHeroPage = 0;
@@ -26,7 +26,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadFeatured();
+    _loadCategoryImages();
     _startHeroAutoScroll();
+  }
+
+  Future<void> _loadCategoryImages() async {
+    try {
+      final products = await apiService.getProducts();
+      final Map<String, String> images = {};
+      for (final cat in ['dresses', 'jalabiyas', 'kids', 'gifts']) {
+        final catProducts = products.where((p) => p.category == cat).toList();
+        if (catProducts.isNotEmpty && catProducts[0].images.isNotEmpty) {
+          final img = catProducts[0].images[0];
+          images[cat] = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
+        }
+      }
+      if (mounted) setState(() => _categoryImages = images);
+    } catch (e) {}
   }
 
   void _startHeroAutoScroll() {
@@ -69,12 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
             stretch: true,
             backgroundColor: kCreamBg,
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.language, color: kGoldPrimary),
-                onPressed: () => Provider.of<LanguageProvider>(context, listen: false).toggleLanguage(),
-              ),
-            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -135,16 +145,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 110,
+              height: 140,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 children: [
-                  _CategoryHighlight(label: l10n.dresses, iconWidget: const DressIcon(size: 28), category: 'dresses'),
-                  _CategoryHighlight(label: l10n.jalabiyas, iconWidget: const KaftanIcon(size: 28), category: 'jalabiyas'),
-                  _CategoryHighlight(label: l10n.kids, iconWidget: const RibbonBowIcon(size: 28), category: 'kids'),
-                  _CategoryHighlight(label: l10n.gifts, iconWidget: const GiftBoxIcon(size: 28), category: 'gifts'),
+                  _CategoryHighlight(label: l10n.dresses, imageUrl: _categoryImages['dresses'], category: 'dresses'),
+                  _CategoryHighlight(label: l10n.jalabiyas, imageUrl: _categoryImages['jalabiyas'], category: 'jalabiyas'),
+                  _CategoryHighlight(label: l10n.kids, imageUrl: _categoryImages['kids'], category: 'kids'),
+                  _CategoryHighlight(label: l10n.gifts, imageUrl: _categoryImages['gifts'], category: 'gifts'),
                 ],
               ),
             ),
@@ -191,8 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.all(20),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0ECE3),
+                color: kCardBg,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kDivider),
               ),
               child: Column(
                 children: [
@@ -267,10 +278,10 @@ class _HeroSlide extends StatelessWidget {
 
 class _CategoryHighlight extends StatefulWidget {
   final String label;
-  final Widget iconWidget;
+  final String? imageUrl;
   final String category;
 
-  const _CategoryHighlight({required this.label, required this.iconWidget, required this.category});
+  const _CategoryHighlight({required this.label, this.imageUrl, required this.category});
 
   @override
   State<_CategoryHighlight> createState() => _CategoryHighlightState();
@@ -293,19 +304,37 @@ class _CategoryHighlightState extends State<_CategoryHighlight> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
         child: Container(
-          width: 80,
+          width: 96,
           margin: const EdgeInsets.only(right: 16),
           child: Column(
             children: [
               Container(
-                width: 68,
-                height: 68,
+                width: 96,
+                height: 96,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: kCreamBg,
-                  border: Border.all(color: kGoldPrimary, width: 2),
+                  border: Border.all(color: kGoldPrimary.withOpacity(0.3), width: 2),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2)),
+                  ],
                 ),
-                child: Center(child: widget.iconWidget),
+                child: ClipOval(
+                  child: widget.imageUrl != null
+                      ? Image.network(
+                          widget.imageUrl!,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: kCreamBg,
+                            child: Icon(Icons.category, color: kGoldPrimary.withOpacity(0.4), size: 32),
+                          ),
+                        )
+                      : Container(
+                          color: kCreamBg,
+                          child: Icon(Icons.category, color: kGoldPrimary.withOpacity(0.4), size: 32),
+                        ),
+                ),
               ),
               const SizedBox(height: 8),
               Text(

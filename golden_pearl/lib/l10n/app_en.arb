@@ -19,8 +19,8 @@
   "all": "All",
   "featuredPieces": "Featured Pieces",
   "viewAll": "View All",
-  "addToBag": "Add to Bag",
-  "addedToBag": "Added to bag",
+  "addToBag": "Add to Cart",
+  "addedToBag": "Added to cart",
   "size": "Size",
   "color": "Color",
   "quantity": "Quantity",
@@ -38,8 +38,8 @@
   "clearFilters": "Clear Filters",
   "noProducts": "No products found",
   "searchProducts": "Search products...",
-  "yourBag": "Your Bag",
-  "emptyBag": "Your bag is empty",
+  "yourBag": "Your Cart",
+  "emptyBag": "Your cart is empty",
   "continueShopping": "Continue Shopping",
   "subtotal": "Subtotal",
   "shipping": "Shipping",
@@ -124,5 +124,25 @@
         "type": "int"
       }
     }
-  }
+  },
+  "notifications": "Notifications",
+  "noNotifications": "No notifications",
+  "deliveryMethod": "Delivery Method",
+  "deliverToAddress": "Deliver to Address",
+  "storePickup": "Store Pickup",
+  "storeInfo": "Store Information",
+  "storeName": "Golden Pearl Boutique",
+  "storeAddress": "15th Street, Al Salam, Saihat 32437",
+  "storeCity": "Saihat, Saudi Arabia",
+  "storeHours": "Sun–Thu: 10 AM – 10 PM, Fri–Sat: 2 PM – 11 PM",
+  "storePhone": "055 501 2942",
+  "mapOpenFailed": "Could not open maps",
+  "copyLink": "Copy Link",
+  "openInMaps": "Open in Maps",
+  "pending": "Pending",
+  "paid": "Paid",
+  "readyForPickup": "Ready for Pickup",
+  "pickedUp": "Picked Up",
+  "myOrders": "My Orders",
+  "noFavorites": "No favorites yet"
 }

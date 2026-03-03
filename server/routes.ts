@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema } from "@shared/schema";
+import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema, insertNotificationSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -186,17 +186,6 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/admin/orders/:id", async (req, res) => {
-    try {
-      const { status, trackingNumber } = req.body;
-      const order = await storage.updateOrderStatus(parseInt(req.params.id), status, trackingNumber);
-      if (!order) return res.status(404).json({ message: "Order not found" });
-      res.json(order);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update order" });
-    }
-  });
-
   app.post("/api/admin/discounts", async (req, res) => {
     try {
       const result = insertDiscountCodeSchema.safeParse(req.body);
@@ -223,6 +212,98 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete discount" });
+    }
+  });
+
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const sessionId = req.session?.id || "anonymous";
+      const notifs = await storage.getNotifications(sessionId);
+      res.json(notifs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", async (req, res) => {
+    try {
+      const sessionId = req.session?.id || "anonymous";
+      const count = await storage.getUnreadNotificationCount(sessionId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const notif = await storage.markNotificationRead(parseInt(req.params.id));
+      if (!notif) return res.status(404).json({ message: "Notification not found" });
+      res.json(notif);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification read" });
+    }
+  });
+
+  app.patch("/api/admin/orders/:id", async (req, res) => {
+    try {
+      const { status, trackingNumber } = req.body;
+      const order = await storage.updateOrderStatus(parseInt(req.params.id), status, trackingNumber);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      if (status === "ready_for_pickup") {
+        await storage.createNotification({
+          userId: order.sessionId,
+          orderId: order.id,
+          title: "طلبك جاهز للاستلام | Your order is ready",
+          message: "طلبك رقم #" + order.id + " أصبح جاهزاً للاستلام من المتجر. | Your order #" + order.id + " is ready for pickup at the store.",
+          read: false,
+        });
+      }
+
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  app.post("/api/payments/create", async (req, res) => {
+    try {
+      const { orderId, amount } = req.body;
+      if (!orderId || !amount) {
+        return res.status(400).json({ message: "orderId and amount are required" });
+      }
+      res.json({
+        id: `pay_${Date.now()}`,
+        status: "initiated",
+        amount,
+        currency: "SAR",
+        orderId,
+        message: "Moyasar payment integration pending — connect API keys to activate",
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  app.post("/api/webhooks/moyasar", async (req, res) => {
+    try {
+      const { id, status, metadata } = req.body;
+      if (status === "paid" && metadata?.orderId) {
+        const order = await storage.updateOrderStatus(parseInt(metadata.orderId), "paid");
+        if (order) {
+          await storage.createNotification({
+            userId: order.sessionId,
+            orderId: order.id,
+            title: "تم تأكيد الدفع | Payment Confirmed",
+            message: "تم تأكيد دفع طلبك رقم #" + order.id + " بنجاح. | Your payment for order #" + order.id + " has been confirmed.",
+            read: false,
+          });
+        }
+      }
+      res.json({ received: true });
+    } catch (error) {
+      res.status(500).json({ message: "Webhook processing failed" });
     }
   });
 
