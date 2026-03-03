@@ -165,51 +165,49 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         boxShadow: [BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, -2))],
                       ),
-                      child: SafeArea(
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(l10n.subtotal, style: Theme.of(context).textTheme.bodyLarge),
-                                Text(MoneyFormatter.format(cart.subtotal, lang), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(l10n.shipping, style: Theme.of(context).textTheme.bodyLarge),
-                                Text(
-                                  shipping == 0 ? l10n.freeShipping : MoneyFormatter.format(shipping, lang),
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: shipping == 0 ? Colors.green : null),
-                                ),
-                              ],
-                            ),
-                            Divider(height: 24, color: kDivider),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(l10n.total, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: kCharcoal)),
-                                Text(MoneyFormatter.format(total, lang), style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kGoldPrimary)),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 52,
-                              child: ElevatedButton(
-                                onPressed: () => Navigator.pushNamed(context, '/checkout'),
-                                child: Text(l10n.proceedToCheckout),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(l10n.subtotal, style: Theme.of(context).textTheme.bodyLarge),
+                              Text(MoneyFormatter.format(cart.subtotal, lang), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(l10n.shipping, style: Theme.of(context).textTheme.bodyLarge),
+                              Text(
+                                shipping == 0 ? l10n.freeShipping : MoneyFormatter.format(shipping, lang),
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: shipping == 0 ? Colors.green : null),
                               ),
+                            ],
+                          ),
+                          Divider(height: 24, color: kDivider),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(l10n.total, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: kCharcoal)),
+                              Text(MoneyFormatter.format(total, lang), style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kGoldPrimary)),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.pushNamed(context, '/checkout'),
+                              child: Text(l10n.proceedToCheckout),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
