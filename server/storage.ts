@@ -1,11 +1,11 @@
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
 import {
-  products, cartItems, orders, discountCodes, adminUsers, notifications,
+  products, cartItems, orders, discountCodes, adminUsers, stores,
   type Product, type CartItem, type CartItemWithProduct,
   type InsertCartItem, type InsertProduct, type Order,
   type InsertOrder, type DiscountCode, type InsertDiscountCode,
-  type Notification, type InsertNotification
+  type Store, type InsertStore
 } from "@shared/schema";
 
 export interface IStorage {
@@ -29,6 +29,13 @@ export interface IStorage {
   getOrder(id: number): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
   updateOrderStatus(id: number, status: string, trackingNumber?: string): Promise<Order | undefined>;
+
+  getStores(): Promise<Store[]>;
+  getActiveStores(): Promise<Store[]>;
+  getStore(id: number): Promise<Store | undefined>;
+  createStore(store: InsertStore): Promise<Store>;
+  updateStore(id: number, store: Partial<InsertStore>): Promise<Store | undefined>;
+  deleteStore(id: number): Promise<void>;
 
   getDiscountCode(code: string): Promise<DiscountCode | undefined>;
   createDiscountCode(discount: InsertDiscountCode): Promise<DiscountCode>;
@@ -155,6 +162,33 @@ export class DatabaseStorage implements IStorage {
     if (trackingNumber) data.trackingNumber = trackingNumber;
     const [updated] = await db.update(orders).set(data).where(eq(orders.id, id)).returning();
     return updated;
+  }
+
+  async getStores(): Promise<Store[]> {
+    return db.select().from(stores);
+  }
+
+  async getActiveStores(): Promise<Store[]> {
+    return db.select().from(stores).where(eq(stores.isActive, true));
+  }
+
+  async getStore(id: number): Promise<Store | undefined> {
+    const [store] = await db.select().from(stores).where(eq(stores.id, id));
+    return store;
+  }
+
+  async createStore(store: InsertStore): Promise<Store> {
+    const [created] = await db.insert(stores).values(store).returning();
+    return created;
+  }
+
+  async updateStore(id: number, store: Partial<InsertStore>): Promise<Store | undefined> {
+    const [updated] = await db.update(stores).set(store).where(eq(stores.id, id)).returning();
+    return updated;
+  }
+
+  async deleteStore(id: number): Promise<void> {
+    await db.delete(stores).where(eq(stores.id, id));
   }
 
   async getDiscountCode(code: string): Promise<DiscountCode | undefined> {

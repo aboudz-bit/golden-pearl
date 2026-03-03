@@ -37,10 +37,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
       case 'pending': return Colors.orange;
       case 'paid': return Colors.blue;
       case 'processing': return const Color(0xFFE8A830);
-      case 'ready_for_pickup': return kGoldPrimary;
-      case 'picked_up': return Colors.green;
+      case 'confirmed': return const Color(0xFF5B8DEF);
       case 'shipped': return Colors.blue;
       case 'delivered': return Colors.green;
+      case 'ready_for_pickup': return const Color(0xFF8B5CF6);
+      case 'picked_up': return Colors.green;
+      case 'cancelled': return Colors.red;
       default: return Colors.grey;
     }
   }
@@ -50,10 +52,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
       case 'pending': return l10n.pending;
       case 'paid': return l10n.paid;
       case 'processing': return l10n.processing;
-      case 'ready_for_pickup': return l10n.readyForPickup;
-      case 'picked_up': return l10n.pickedUp;
+      case 'confirmed': return l10n.confirmed;
       case 'shipped': return l10n.shipped;
       case 'delivered': return l10n.delivered;
+      case 'ready_for_pickup': return l10n.readyForPickup;
+      case 'picked_up': return l10n.pickedUp;
+      case 'cancelled': return l10n.cancelled;
       default: return status;
     }
   }
@@ -118,24 +122,73 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
+                            // Fulfillment type badge
+                            Row(
+                              children: [
+                                Icon(
+                                  order.isPickup ? Icons.store_outlined : Icons.local_shipping_outlined,
+                                  size: 14,
+                                  color: kSecondaryText,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  order.isPickup ? l10n.storePickup : l10n.delivery,
+                                  style: const TextStyle(fontSize: 12, color: kSecondaryText),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(order.customerName, style: const TextStyle(color: Color(0xFF8A8A8A))),
+                                Text(order.customerName, style: const TextStyle(color: kSecondaryText)),
                                 Text(
                                   MoneyFormatter.format(order.total, lang),
                                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kGoldPrimary),
                                 ),
                               ],
                             ),
+                            // Pickup store info
+                            if (order.isPickup && order.pickupStoreName != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: kGoldPrimary.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.store, size: 16, color: kGoldPrimary),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            order.pickupStoreName!,
+                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kCharcoal),
+                                          ),
+                                          if (order.pickupAddress != null)
+                                            Text(
+                                              order.pickupAddress!,
+                                              style: const TextStyle(fontSize: 11, color: kSecondaryText),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             if (order.trackingNumber != null) ...[
                               const SizedBox(height: 8),
                               Row(
                                 children: [
                                   const Icon(Icons.local_shipping_outlined, size: 16, color: kGoldPrimary),
                                   const SizedBox(width: 6),
-                                  Text(order.trackingNumber!, style: const TextStyle(fontSize: 13, color: Color(0xFF4A4A4A))),
+                                  Text(order.trackingNumber!, style: const TextStyle(fontSize: 13, color: kSecondaryText)),
                                 ],
                               ),
                             ],

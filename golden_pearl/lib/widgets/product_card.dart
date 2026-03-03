@@ -186,10 +186,10 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
         curve: Curves.easeOut,
         child: Container(
           decoration: BoxDecoration(
-            color: kCreamBg,
-            borderRadius: BorderRadius.circular(12),
+            color: kCardBg,
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
             ],
           ),
           child: Column(
@@ -200,7 +200,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                 child: Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                       child: _imageUrl.isNotEmpty
                           ? AnimatedOpacity(
                               opacity: _imageLoaded ? 1.0 : 0.0,
@@ -228,7 +228,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                     if (!_imageLoaded && _imageUrl.isNotEmpty)
                       Positioned.fill(
                         child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           child: ShimmerPlaceholder(borderRadius: BorderRadius.zero),
                         ),
                       ),
@@ -359,7 +359,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
       width: double.infinity,
       height: double.infinity,
       color: kCreamBg,
-      child: const Center(child: Icon(Icons.image_outlined, size: 40, color: Color(0xFFCCCCCC))),
+      child: Center(child: Icon(Icons.image_outlined, size: 40, color: kDivider)),
     );
   }
 }

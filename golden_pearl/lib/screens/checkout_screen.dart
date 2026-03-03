@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
 import '../utils/money_formatter.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../models/store.dart';
+import '../data/locations.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -21,19 +23,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _countryController = TextEditingController();
   final _discountController = TextEditingController();
+  Country? _selectedCountry;
+  City? _selectedCity;
+  bool _showDropdownErrors = false;
   bool _submitting = false;
   int _discountAmount = 0;
   String? _discountError;
   bool _discountApplied = false;
   String _deliveryMethod = 'delivery';
 
+  // Fulfillment
+  String _fulfillmentType = 'delivery';
+  List<Store> _stores = [];
+  Store? _selectedStore;
+  bool _loadingStores = false;
+
   static const _shippingThreshold = 15000;
   static const _shippingFee = 1500;
 
-  bool get _isPickup => _deliveryMethod == 'pickup';
+  @override
+  void initState() {
+    super.initState();
+    _loadStores();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _discountController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadStores() async {
+    setState(() => _loadingStores = true);
+    try {
+      final stores = await apiService.getStores();
+      if (mounted) {
+        setState(() {
+          _stores = stores;
+          _loadingStores = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingStores = false);
+    }
+  }
 
   Future<void> _applyDiscount() async {
     final code = _discountController.text.trim();
@@ -64,11 +102,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    final dropdownsValid = _fulfillmentType != 'delivery' || (_selectedCountry != null && _selectedCity != null);
+    if (!dropdownsValid) setState(() => _showDropdownErrors = true);
+    if (!formValid || !dropdownsValid) return;
+    if (_fulfillmentType == 'pickup' && _selectedStore == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.selectStore),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
     setState(() => _submitting = true);
 
     final cart = Provider.of<CartProvider>(context, listen: false);
-    final shipping = _isPickup ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
+    final lang = Provider.of<LanguageProvider>(context, listen: false).languageCode;
+    final shipping = _fulfillmentType == 'pickup' ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
     final total = cart.subtotal + shipping - _discountAmount;
 
     try {
@@ -81,9 +134,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'name': item.product?.nameEn ?? '',
       }).toList();
 
-      final l10n = AppLocalizations.of(context)!;
-
-      final order = await apiService.createOrder({
+      final orderData = <String, dynamic>{
         'items': items,
         'subtotal': cart.subtotal,
         'shipping': shipping,
@@ -93,11 +144,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'customerName': _nameController.text,
         'customerEmail': _emailController.text,
         'customerPhone': _phoneController.text,
-        'shippingAddress': _isPickup ? l10n.storeAddress : _addressController.text,
-        'shippingCity': _isPickup ? l10n.storeCity : _cityController.text,
-        'shippingCountry': _isPickup ? 'Saudi Arabia' : _countryController.text,
+        'fulfillmentType': _fulfillmentType,
         'discountCode': _discountApplied ? _discountController.text : null,
-      });
+      };
+
+      if (_fulfillmentType == 'delivery') {
+        orderData['shippingAddress'] = _addressController.text;
+        orderData['shippingCity'] = _selectedCity?.name(lang) ?? '';
+        orderData['shippingCountry'] = _selectedCountry?.name(lang) ?? '';
+      } else {
+        orderData['pickupStoreId'] = _selectedStore!.id;
+        orderData['pickupStoreName'] = _selectedStore!.name(lang);
+        orderData['pickupAddress'] = _selectedStore!.address(lang);
+        orderData['pickupHours'] = _selectedStore!.hours(lang);
+        orderData['shippingAddress'] = '';
+        orderData['shippingCity'] = '';
+        orderData['shippingCountry'] = '';
+      }
+
+      final order = await apiService.createOrder(orderData);
 
       await cart.clearCart();
       if (mounted) {
@@ -123,7 +188,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
     final cart = Provider.of<CartProvider>(context);
-    final shipping = _isPickup ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
+    final shipping = _fulfillmentType == 'pickup' ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
     final total = cart.subtotal + shipping - _discountAmount;
 
     return Scaffold(
@@ -134,18 +199,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(20),
           children: [
+            // Fulfillment type selector
             Text(l10n.deliveryMethod, style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal)),
             const SizedBox(height: 12),
-            _buildDeliveryToggle(l10n),
+            Row(
+              children: [
+                Expanded(child: _fulfillmentOption('delivery', l10n.delivery, Icons.local_shipping_outlined)),
+                const SizedBox(width: 12),
+                Expanded(child: _fulfillmentOption('pickup', l10n.storePickup, Icons.store_outlined)),
+              ],
+            ),
             const SizedBox(height: 24),
 
-            if (_isPickup) ...[
-              _buildStoreInfoCard(l10n),
+            // Pickup store selector
+            if (_fulfillmentType == 'pickup') ...[
+              Text(l10n.selectStore, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
+              const SizedBox(height: 12),
+              if (_loadingStores)
+                const Center(child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(color: kGoldPrimary),
+                ))
+              else if (_stores.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(l10n.noStoresAvailable, style: const TextStyle(color: kSecondaryText)),
+                )
+              else
+                ..._stores.map((store) => _storeCard(store, lang)),
+              if (_selectedStore != null) ...[
+                const SizedBox(height: 16),
+                _pickupInstructions(l10n),
+              ],
               const SizedBox(height: 24),
             ],
 
+            // Customer info
             Text(
-              _isPickup ? l10n.fullName : l10n.shippingAddress,
+              _fulfillmentType == 'delivery' ? l10n.shippingAddress : l10n.contactInfo,
               style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal),
             ),
             const SizedBox(height: 16),
@@ -153,13 +244,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             _buildField(l10n.email, _emailController, l10n.invalidEmail, keyboard: TextInputType.emailAddress),
             _buildField(l10n.phone, _phoneController, l10n.invalidPhone, keyboard: TextInputType.phone),
 
-            if (!_isPickup) ...[
+            if (_fulfillmentType == 'delivery') ...[
               _buildField(l10n.address, _addressController, l10n.required),
               Row(
                 children: [
-                  Expanded(child: _buildField(l10n.city, _cityController, l10n.required)),
+                  Expanded(child: _buildDropdownField(
+                    label: l10n.country,
+                    value: _selectedCountry?.name(lang),
+                    errorMsg: l10n.required,
+                    onTap: () => _showCountryPicker(lang, l10n),
+                  )),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildField(l10n.country, _countryController, l10n.required)),
+                  Expanded(child: _buildDropdownField(
+                    label: l10n.city,
+                    value: _selectedCity?.name(lang),
+                    errorMsg: l10n.required,
+                    onTap: () {
+                      if (_selectedCountry == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.selectCountryFirst),
+                            backgroundColor: kGoldPrimary,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                        return;
+                      }
+                      _showCityPicker(lang, l10n);
+                    },
+                  )),
                 ],
               ),
             ],
@@ -195,6 +309,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
             const SizedBox(height: 32),
+
+            // Order summary
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -206,10 +322,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   _summaryRow(l10n.subtotal, MoneyFormatter.format(cart.subtotal, lang)),
                   const SizedBox(height: 8),
-                  _summaryRow(l10n.shipping, shipping == 0 ? l10n.freeShipping : MoneyFormatter.format(shipping, lang)),
+                  _summaryRow(
+                    l10n.shipping,
+                    _fulfillmentType == 'pickup'
+                        ? l10n.freeShipping
+                        : (shipping == 0 ? l10n.freeShipping : MoneyFormatter.format(shipping, lang)),
+                  ),
                   if (_discountAmount > 0) ...[
                     const SizedBox(height: 8),
                     _summaryRow(l10n.discount, '-${MoneyFormatter.format(_discountAmount, lang)}', color: Colors.green),
+                  ],
+                  if (_fulfillmentType == 'pickup') ...[
+                    const SizedBox(height: 8),
+                    _summaryRow(l10n.fulfillment, l10n.storePickup, color: kGoldPrimary),
                   ],
                   Divider(height: 24, color: kDivider),
                   Row(
@@ -239,75 +364,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildDeliveryToggle(AppLocalizations l10n) {
-    return Container(
-      decoration: BoxDecoration(
-        color: kCardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kDivider),
-      ),
-      child: Column(
-        children: [
-          _deliveryOption(
-            icon: Icons.local_shipping_outlined,
-            title: l10n.deliverToAddress,
-            value: 'delivery',
-            l10n: l10n,
+  Widget _fulfillmentOption(String type, String label, IconData icon) {
+    final isSelected = _fulfillmentType == type;
+    return GestureDetector(
+      onTap: () => setState(() => _fulfillmentType = type),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? kGoldPrimary.withOpacity(0.08) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? kGoldPrimary : kDivider,
+            width: isSelected ? 2 : 1,
           ),
-          Divider(height: 0, color: kDivider),
-          _deliveryOption(
-            icon: Icons.store_outlined,
-            title: l10n.storePickup,
-            value: 'pickup',
-            l10n: l10n,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _deliveryOption({
-    required IconData icon,
-    required String title,
-    required String value,
-    required AppLocalizations l10n,
-  }) {
-    final selected = _deliveryMethod == value;
-    return InkWell(
-      onTap: () => setState(() => _deliveryMethod = value),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        ),
+        child: Column(
           children: [
-            Icon(icon, color: selected ? kGoldPrimary : kSecondaryText, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected ? kCharcoal : kSecondaryText,
-                ),
+            Icon(icon, color: isSelected ? kGoldPrimary : kSecondaryText, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? kGoldPrimary : kCharcoal,
               ),
-            ),
-            Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: selected ? kGoldPrimary : kDivider, width: 2),
-              ),
-              child: selected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(shape: BoxShape.circle, color: kGoldPrimary),
-                      ),
-                    )
-                  : null,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -315,113 +399,235 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  static const _mapsUrl = 'https://maps.app.goo.gl/ZHro6TSLAqysY6MfA?g_st=ic';
-  static const _storePhoneRaw = '0555012942';
-
-  Future<void> _openMaps() async {
+  Widget _storeCard(Store store, String lang) {
     final l10n = AppLocalizations.of(context)!;
-    final url = Uri.parse(_mapsUrl);
-    try {
-      final launched = await launchUrl(url, mode: LaunchMode.platformDefault);
-      if (!launched) {
-        _showMapsFallback(l10n);
-      }
-    } catch (_) {
-      _showMapsFallback(l10n);
-    }
-  }
-
-  void _showMapsFallback(AppLocalizations l10n) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.mapOpenFailed),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        action: SnackBarAction(
-          label: l10n.copyLink,
-          textColor: Colors.white,
-          onPressed: () {
-            Clipboard.setData(const ClipboardData(text: _mapsUrl));
-          },
+    final isSelected = _selectedStore?.id == store.id;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedStore = store),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? kGoldPrimary.withOpacity(0.06) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? kGoldPrimary : kDivider,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isSelected ? kGoldPrimary : const Color(0xFFCCCCCC), width: 2),
+              ),
+              child: isSelected
+                  ? Center(child: Container(width: 10, height: 10, decoration: const BoxDecoration(shape: BoxShape.circle, color: kGoldPrimary)))
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(store.name(lang), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kCharcoal)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 14, color: kSecondaryText),
+                      const SizedBox(width: 4),
+                      Expanded(child: Text(store.address(lang), style: const TextStyle(fontSize: 12, color: kSecondaryText))),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_outlined, size: 14, color: kSecondaryText),
+                      const SizedBox(width: 4),
+                      Text(store.hours(lang), style: const TextStyle(fontSize: 12, color: kSecondaryText)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () => launchUrl(Uri.parse('tel:${store.phone}')),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.phone_outlined, size: 14, color: kGoldPrimary),
+                        const SizedBox(width: 4),
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(store.phone, style: const TextStyle(fontSize: 12, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (store.mapUrl != null && store.mapUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => launchUrl(Uri.parse(store.mapUrl!), mode: LaunchMode.externalApplication),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: kGoldPrimary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: kGoldPrimary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.map_outlined, size: 14, color: kGoldPrimary),
+                            const SizedBox(width: 6),
+                            Text(l10n.openInMaps, style: const TextStyle(fontSize: 12, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> _callStore() async {
-    final telUrl = Uri.parse('tel:$_storePhoneRaw');
-    try {
-      final launched = await launchUrl(telUrl);
-      if (!launched) {
-        Clipboard.setData(const ClipboardData(text: '055 501 2942'));
-        if (mounted) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('055 501 2942'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        }
-      }
-    } catch (_) {
-      Clipboard.setData(const ClipboardData(text: '055 501 2942'));
-    }
-  }
-
-  Widget _buildStoreInfoCard(AppLocalizations l10n) {
+  Widget _pickupInstructions(AppLocalizations l10n) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: kCreamBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kGoldPrimary.withOpacity(0.2)),
+        border: Border.all(color: kGoldPrimary.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.store, color: kGoldPrimary, size: 22),
+              const Icon(Icons.info_outline, size: 16, color: kGoldPrimary),
               const SizedBox(width: 8),
-              Text(l10n.storeInfo, style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal)),
+              Text(l10n.pickupInstructions, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kCharcoal)),
             ],
           ),
-          const SizedBox(height: 14),
-          _storeInfoRow(Icons.storefront, l10n.storeName),
-          _storeInfoRow(Icons.location_on_outlined, l10n.storeAddress),
-          _storeInfoRow(Icons.location_city, l10n.storeCity),
-          _storeInfoRow(Icons.access_time, l10n.storeHours),
-          GestureDetector(
-            onTap: _callStore,
-            child: _storeInfoRow(Icons.phone_outlined, l10n.storePhone, tappable: true),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openMaps,
-              icon: const Icon(Icons.map_outlined, size: 18),
-              label: Text(l10n.openInMaps),
-            ),
-          ),
+          const SizedBox(height: 8),
+          _pickupItem(l10n.pickupIdRequired),
+          _pickupItem(l10n.pickupOrderNumber),
+          _pickupItem(l10n.pickupReadyTime),
         ],
       ),
     );
   }
 
-  Widget _storeInfoRow(IconData icon, String text, {bool tappable = false}) {
+  Widget _pickupItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: tappable ? kGoldPrimary : kSecondaryText),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: tappable ? kGoldPrimary : kCharcoal, height: 1.4, decoration: tappable ? TextDecoration.underline : null))),
+          const Text('  •  ', style: TextStyle(fontSize: 12, color: kSecondaryText)),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: kSecondaryText))),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required String errorMsg,
+    required VoidCallback onTap,
+  }) {
+    final hasError = _showDropdownErrors && (value == null || value.isEmpty);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: onTap,
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kGoldPrimary)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red)),
+            errorText: hasError ? errorMsg : null,
+            suffixIcon: const Icon(Icons.keyboard_arrow_down, color: kSecondaryText),
+          ),
+          child: Text(
+            value ?? '',
+            style: TextStyle(
+              fontSize: 16,
+              color: value != null ? kCharcoal : kSecondaryText,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCountryPicker(String lang, AppLocalizations l10n) {
+    _showSearchableBottomSheet<Country>(
+      title: l10n.selectCountry,
+      searchHint: l10n.searchCountry,
+      items: kCountries,
+      getName: (c) => c.name(lang),
+      getSearchTerms: (c) => [c.nameEn, c.nameAr],
+      onSelect: (country) {
+        setState(() {
+          _selectedCountry = country;
+          if (_selectedCity != null) {
+            final cityStillValid = country.cities.any((c) =>
+                c.nameEn == _selectedCity!.nameEn);
+            if (!cityStillValid) _selectedCity = null;
+          }
+        });
+      },
+    );
+  }
+
+  void _showCityPicker(String lang, AppLocalizations l10n) {
+    if (_selectedCountry == null) return;
+    _showSearchableBottomSheet<City>(
+      title: l10n.selectCity,
+      searchHint: l10n.searchCity,
+      items: _selectedCountry!.cities,
+      getName: (c) => c.name(lang),
+      getSearchTerms: (c) => [c.nameEn, c.nameAr],
+      onSelect: (city) => setState(() => _selectedCity = city),
+    );
+  }
+
+  void _showSearchableBottomSheet<T>({
+    required String title,
+    required String searchHint,
+    required List<T> items,
+    required String Function(T) getName,
+    required List<String> Function(T) getSearchTerms,
+    required void Function(T) onSelect,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SearchableBottomSheet<T>(
+        title: title,
+        searchHint: searchHint,
+        items: items,
+        getName: getName,
+        getSearchTerms: getSearchTerms,
+        onSelect: (item) {
+          Navigator.pop(ctx);
+          onSelect(item);
+        },
       ),
     );
   }
@@ -452,6 +658,140 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Text(label, style: Theme.of(context).textTheme.bodyMedium),
         Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
       ],
+    );
+  }
+}
+
+class _SearchableBottomSheet<T> extends StatefulWidget {
+  final String title;
+  final String searchHint;
+  final List<T> items;
+  final String Function(T) getName;
+  final List<String> Function(T) getSearchTerms;
+  final void Function(T) onSelect;
+
+  const _SearchableBottomSheet({
+    super.key,
+    required this.title,
+    required this.searchHint,
+    required this.items,
+    required this.getName,
+    required this.getSearchTerms,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SearchableBottomSheet<T>> createState() => _SearchableBottomSheetState<T>();
+}
+
+class _SearchableBottomSheetState<T> extends State<_SearchableBottomSheet<T>> {
+  final _searchController = TextEditingController();
+  List<T> _filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.items;
+  }
+
+  void _filter(String query) {
+    final q = query.toLowerCase();
+    setState(() {
+      if (q.isEmpty) {
+        _filtered = widget.items;
+      } else {
+        _filtered = widget.items.where((item) =>
+          widget.getSearchTerms(item).any((term) => term.toLowerCase().contains(q)),
+        ).toList();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.65),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(color: kDivider, borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text(widget.title, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              onChanged: _filter,
+              decoration: InputDecoration(
+                hintText: widget.searchHint,
+                prefixIcon: const Icon(Icons.search, color: kGoldPrimary, size: 20),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filter('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: kCreamBg,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: _filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(
+                      AppLocalizations.of(context)!.noResults,
+                      style: const TextStyle(color: kSecondaryText),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: _filtered.length,
+                    itemBuilder: (context, index) {
+                      final item = _filtered[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                        title: Text(
+                          widget.getName(item),
+                          style: const TextStyle(fontSize: 15, color: kCharcoal),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 18, color: kSecondaryText),
+                        onTap: () => widget.onSelect(item),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
