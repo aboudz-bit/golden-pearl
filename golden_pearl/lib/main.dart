@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'providers/language_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/favorites_provider.dart';
@@ -116,7 +116,7 @@ class GoldenPearlApp extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 1,
           shadowColor: Colors.black.withOpacity(0.06),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -189,6 +189,7 @@ class _MainNavigationState extends State<MainNavigation> {
     HomeScreen(),
     ShopScreen(),
     CartScreen(),
+    NotificationsScreen(),
     SettingsScreen(),
   ];
 
@@ -216,6 +217,7 @@ class _MainNavigationState extends State<MainNavigation> {
     final langProvider = Provider.of<LanguageProvider>(context);
     final lang = langProvider.languageCode;
     final cartBadge = ArabicDigits.convert(cartProvider.itemCount, lang);
+    final notifBadge = ArabicDigits.convert(_unreadNotifications, lang);
 
     return Scaffold(
       body: IndexedStack(
@@ -224,7 +226,10 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 3) _loadUnreadCount();
+        },
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: l10n.home),
           BottomNavigationBarItem(icon: const Icon(Icons.shopping_bag_outlined), activeIcon: const Icon(Icons.shopping_bag), label: l10n.shop),
@@ -242,6 +247,21 @@ class _MainNavigationState extends State<MainNavigation> {
               child: const Icon(Icons.shopping_cart),
             ),
             label: l10n.cart,
+          ),
+          BottomNavigationBarItem(
+            icon: Badge(
+              isLabelVisible: _unreadNotifications > 0,
+              label: Text(notifBadge, style: const TextStyle(fontSize: 10)),
+              backgroundColor: kGoldPrimary,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            activeIcon: Badge(
+              isLabelVisible: _unreadNotifications > 0,
+              label: Text(notifBadge, style: const TextStyle(fontSize: 10)),
+              backgroundColor: kGoldPrimary,
+              child: const Icon(Icons.notifications),
+            ),
+            label: l10n.notifications,
           ),
           BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), activeIcon: const Icon(Icons.settings), label: l10n.settings),
         ],

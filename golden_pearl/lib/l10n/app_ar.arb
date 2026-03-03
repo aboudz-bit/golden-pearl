@@ -6,6 +6,8 @@
   "cart": "السلة",
   "settings": "الإعدادات",
   "orders": "الطلبات",
+  "notifications": "الإشعارات",
+  "noNotifications": "لا توجد إشعارات",
   "heroTitle": "أناقة لا تُضاهى",
   "heroSubtitle": "اكتشفي أحدث مجموعتنا من الأزياء الفاخرة المصنوعة يدوياً",
   "newCollection": "مجموعة جديدة ٢٠٢٦",
@@ -71,6 +73,8 @@
   },
   "orderHistory": "سجل الطلبات",
   "noOrders": "لا توجد طلبات بعد",
+  "pending": "قيد الانتظار",
+  "paid": "تم الدفع",
   "processing": "قيد المعالجة",
   "shipped": "تم الشحن",
   "delivered": "تم التوصيل",
@@ -126,6 +130,7 @@
     }
   },
   "deliveryMethod": "طريقة التوصيل",
+  "deliveryToAddress": "توصيل إلى العنوان",
   "delivery": "توصيل",
   "storePickup": "استلام من المتجر",
   "selectStore": "اختاري المتجر",
@@ -147,5 +152,11 @@
   "searchCountry": "ابحثي عن دولة...",
   "searchCity": "ابحثي عن مدينة...",
   "selectCountryFirst": "يرجى اختيار الدولة أولاً",
-  "noResults": "لا توجد نتائج"
+  "noResults": "لا توجد نتائج",
+  "noFavorites": "لا توجد مفضلات",
+  "myOrders": "طلباتي",
+  "storeHours": "أوقات العمل",
+  "storeName": "Golden Pearl - صيحات",
+  "storeAddress": "صيحات ٣٢٤٣٧، المنطقة الشرقية",
+  "storePhone": "055 501 2942"
 }

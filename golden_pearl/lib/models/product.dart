@@ -19,12 +19,6 @@ class Product {
   final String? badge;
   final double rating;
   final int reviewCount;
-  final bool arEnabled;
-  final String? arAssetType;
-  final String? arAssetUrl;
-  final double? arScaleHint;
-  final String? arPlacementHint;
-  final String? videoUrl;
 
   Product({
     required this.id,
@@ -47,12 +41,6 @@ class Product {
     this.badge,
     required this.rating,
     required this.reviewCount,
-    this.arEnabled = false,
-    this.arAssetType,
-    this.arAssetUrl,
-    this.arScaleHint,
-    this.arPlacementHint,
-    this.videoUrl,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -77,12 +65,6 @@ class Product {
       badge: json['badge'],
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
       reviewCount: json['reviewCount'] ?? 0,
-      arEnabled: json['arEnabled'] ?? false,
-      arAssetType: json['arAssetType'],
-      arAssetUrl: json['arAssetUrl'],
-      arScaleHint: json['arScaleHint'] != null ? (json['arScaleHint'] as num).toDouble() : null,
-      arPlacementHint: json['arPlacementHint'],
-      videoUrl: json['videoUrl'],
     );
   }
 

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
 import '../utils/money_formatter.dart';
-import '../models/store.dart';
 import '../data/locations.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -33,20 +32,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _discountApplied = false;
   String _deliveryMethod = 'delivery';
 
-  // Fulfillment
-  String _fulfillmentType = 'delivery';
-  List<Store> _stores = [];
-  Store? _selectedStore;
-  bool _loadingStores = false;
-
   static const _shippingThreshold = 15000;
   static const _shippingFee = 1500;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadStores();
-  }
+  static const _storeNameEn = 'Golden Pearl - Saihat';
+  static const _storeNameAr = 'Golden Pearl - صيحات';
+  static const _storeAddressEn = 'Saihat 32437, Eastern Province, Saudi Arabia';
+  static const _storeAddressAr = 'صيحات ٣٢٤٣٧، المنطقة الشرقية، المملكة العربية السعودية';
+  static const _storePhone = '055 501 2942';
+  static const _storeHoursEn = 'Sat-Thu: 10AM-10PM, Fri: 4PM-10PM';
+  static const _storeHoursAr = 'السبت-الخميس: ١٠ص-١٠م، الجمعة: ٤م-١٠م';
+  static const _storeMapUrl = 'https://www.google.com/maps/dir/?api=1&destination=26.4833,49.9667';
 
   @override
   void dispose() {
@@ -56,21 +52,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _addressController.dispose();
     _discountController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadStores() async {
-    setState(() => _loadingStores = true);
-    try {
-      final stores = await apiService.getStores();
-      if (mounted) {
-        setState(() {
-          _stores = stores;
-          _loadingStores = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _loadingStores = false);
-    }
   }
 
   Future<void> _applyDiscount() async {
@@ -103,25 +84,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _placeOrder() async {
     final formValid = _formKey.currentState!.validate();
-    final dropdownsValid = _fulfillmentType != 'delivery' || (_selectedCountry != null && _selectedCity != null);
+    final dropdownsValid = _deliveryMethod != 'delivery' || (_selectedCountry != null && _selectedCity != null);
     if (!dropdownsValid) setState(() => _showDropdownErrors = true);
     if (!formValid || !dropdownsValid) return;
-    if (_fulfillmentType == 'pickup' && _selectedStore == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.selectStore),
-          backgroundColor: Colors.red.shade400,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
     setState(() => _submitting = true);
 
     final cart = Provider.of<CartProvider>(context, listen: false);
     final lang = Provider.of<LanguageProvider>(context, listen: false).languageCode;
-    final shipping = _fulfillmentType == 'pickup' ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
+    final shipping = _deliveryMethod == 'pickup' ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
     final total = cart.subtotal + shipping - _discountAmount;
 
     try {
@@ -144,22 +114,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'customerName': _nameController.text,
         'customerEmail': _emailController.text,
         'customerPhone': _phoneController.text,
-        'fulfillmentType': _fulfillmentType,
         'discountCode': _discountApplied ? _discountController.text : null,
       };
 
-      if (_fulfillmentType == 'delivery') {
+      if (_deliveryMethod == 'delivery') {
         orderData['shippingAddress'] = _addressController.text;
         orderData['shippingCity'] = _selectedCity?.name(lang) ?? '';
         orderData['shippingCountry'] = _selectedCountry?.name(lang) ?? '';
       } else {
-        orderData['pickupStoreId'] = _selectedStore!.id;
-        orderData['pickupStoreName'] = _selectedStore!.name(lang);
-        orderData['pickupAddress'] = _selectedStore!.address(lang);
-        orderData['pickupHours'] = _selectedStore!.hours(lang);
-        orderData['shippingAddress'] = '';
-        orderData['shippingCity'] = '';
-        orderData['shippingCountry'] = '';
+        final storeName = lang == 'ar' ? _storeNameAr : _storeNameEn;
+        final storeAddr = lang == 'ar' ? _storeAddressAr : _storeAddressEn;
+        orderData['shippingAddress'] = storeName;
+        orderData['shippingCity'] = 'Saihat';
+        orderData['shippingCountry'] = 'Saudi Arabia';
+        orderData['notes'] = 'Store Pickup: $storeName — $storeAddr — $_storePhone';
       }
 
       final order = await apiService.createOrder(orderData);
@@ -188,7 +156,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
     final cart = Provider.of<CartProvider>(context);
-    final shipping = _fulfillmentType == 'pickup' ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
+    final shipping = _deliveryMethod == 'pickup' ? 0 : (cart.subtotal >= _shippingThreshold ? 0 : _shippingFee);
     final total = cart.subtotal + shipping - _discountAmount;
 
     return Scaffold(
@@ -199,44 +167,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(20),
           children: [
-            // Fulfillment type selector
             Text(l10n.deliveryMethod, style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal)),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _fulfillmentOption('delivery', l10n.delivery, Icons.local_shipping_outlined)),
+                Expanded(child: _deliveryOption('delivery', l10n.deliveryToAddress, Icons.local_shipping_outlined)),
                 const SizedBox(width: 12),
-                Expanded(child: _fulfillmentOption('pickup', l10n.storePickup, Icons.store_outlined)),
+                Expanded(child: _deliveryOption('pickup', l10n.storePickup, Icons.store_outlined)),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Pickup store selector
-            if (_fulfillmentType == 'pickup') ...[
-              Text(l10n.selectStore, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
-              const SizedBox(height: 12),
-              if (_loadingStores)
-                const Center(child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: CircularProgressIndicator(color: kGoldPrimary),
-                ))
-              else if (_stores.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(l10n.noStoresAvailable, style: const TextStyle(color: kSecondaryText)),
-                )
-              else
-                ..._stores.map((store) => _storeCard(store, lang)),
-              if (_selectedStore != null) ...[
-                const SizedBox(height: 16),
-                _pickupInstructions(l10n),
-              ],
+            if (_deliveryMethod == 'pickup') ...[
+              _storeInfoCard(lang, l10n),
+              const SizedBox(height: 16),
+              _pickupInstructions(l10n),
               const SizedBox(height: 24),
             ],
 
-            // Customer info
             Text(
-              _fulfillmentType == 'delivery' ? l10n.shippingAddress : l10n.contactInfo,
+              _deliveryMethod == 'delivery' ? l10n.shippingAddress : l10n.contactInfo,
               style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal),
             ),
             const SizedBox(height: 16),
@@ -244,7 +194,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             _buildField(l10n.email, _emailController, l10n.invalidEmail, keyboard: TextInputType.emailAddress),
             _buildField(l10n.phone, _phoneController, l10n.invalidPhone, keyboard: TextInputType.phone),
 
-            if (_fulfillmentType == 'delivery') ...[
+            if (_deliveryMethod == 'delivery') ...[
               _buildField(l10n.address, _addressController, l10n.required),
               Row(
                 children: [
@@ -310,7 +260,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 32),
 
-            // Order summary
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -324,7 +273,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 8),
                   _summaryRow(
                     l10n.shipping,
-                    _fulfillmentType == 'pickup'
+                    _deliveryMethod == 'pickup'
                         ? l10n.freeShipping
                         : (shipping == 0 ? l10n.freeShipping : MoneyFormatter.format(shipping, lang)),
                   ),
@@ -332,7 +281,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     const SizedBox(height: 8),
                     _summaryRow(l10n.discount, '-${MoneyFormatter.format(_discountAmount, lang)}', color: Colors.green),
                   ],
-                  if (_fulfillmentType == 'pickup') ...[
+                  if (_deliveryMethod == 'pickup') ...[
                     const SizedBox(height: 8),
                     _summaryRow(l10n.fulfillment, l10n.storePickup, color: kGoldPrimary),
                   ],
@@ -364,10 +313,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _fulfillmentOption(String type, String label, IconData icon) {
-    final isSelected = _fulfillmentType == type;
+  Widget _deliveryOption(String type, String label, IconData icon) {
+    final isSelected = _deliveryMethod == type;
     return GestureDetector(
-      onTap: () => setState(() => _fulfillmentType = type),
+      onTap: () => setState(() => _deliveryMethod = type),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -399,102 +348,99 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _storeCard(Store store, String lang) {
-    final l10n = AppLocalizations.of(context)!;
-    final isSelected = _selectedStore?.id == store.id;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedStore = store),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? kGoldPrimary.withOpacity(0.06) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? kGoldPrimary : kDivider,
-            width: isSelected ? 2 : 1,
+  Widget _storeInfoCard(String lang, AppLocalizations l10n) {
+    final name = lang == 'ar' ? _storeNameAr : _storeNameEn;
+    final addr = lang == 'ar' ? _storeAddressAr : _storeAddressEn;
+    final hours = lang == 'ar' ? _storeHoursAr : _storeHoursEn;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: kGoldPrimary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kGoldPrimary.withOpacity(0.2), width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: kGoldPrimary.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.store, color: kGoldPrimary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kCharcoal)),
+              ),
+            ],
           ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              margin: const EdgeInsets.only(top: 2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: isSelected ? kGoldPrimary : const Color(0xFFCCCCCC), width: 2),
-              ),
-              child: isSelected
-                  ? Center(child: Container(width: 10, height: 10, decoration: const BoxDecoration(shape: BoxShape.circle, color: kGoldPrimary)))
-                  : null,
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.location_on_outlined, size: 16, color: kSecondaryText),
+              const SizedBox(width: 6),
+              Expanded(child: Text(addr, style: const TextStyle(fontSize: 13, color: kSecondaryText))),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.access_time_outlined, size: 16, color: kSecondaryText),
+              const SizedBox(width: 6),
+              Text(hours, style: const TextStyle(fontSize: 13, color: kSecondaryText)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () => launchUrl(Uri.parse('tel:$_storePhone')),
+            child: Row(
+              children: [
+                const Icon(Icons.phone_outlined, size: 16, color: kGoldPrimary),
+                const SizedBox(width: 6),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(_storePhone, style: const TextStyle(fontSize: 13, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(store.name(lang), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kCharcoal)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 14, color: kSecondaryText),
-                      const SizedBox(width: 4),
-                      Expanded(child: Text(store.address(lang), style: const TextStyle(fontSize: 12, color: kSecondaryText))),
-                    ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => launchUrl(Uri.parse('tel:$_storePhone')),
+                  icon: const Icon(Icons.phone, size: 16),
+                  label: Text(l10n.call),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: kGoldPrimary,
+                    side: BorderSide(color: kGoldPrimary.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time_outlined, size: 14, color: kSecondaryText),
-                      const SizedBox(width: 4),
-                      Text(store.hours(lang), style: const TextStyle(fontSize: 12, color: kSecondaryText)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () => launchUrl(Uri.parse('tel:${store.phone}')),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.phone_outlined, size: 14, color: kGoldPrimary),
-                        const SizedBox(width: 4),
-                        Directionality(
-                          textDirection: TextDirection.ltr,
-                          child: Text(store.phone, style: const TextStyle(fontSize: 12, color: kGoldPrimary, fontWeight: FontWeight.w500)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (store.mapUrl != null && store.mapUrl!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => launchUrl(Uri.parse(store.mapUrl!), mode: LaunchMode.externalApplication),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: kGoldPrimary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: kGoldPrimary.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.map_outlined, size: 14, color: kGoldPrimary),
-                            const SizedBox(width: 6),
-                            Text(l10n.openInMaps, style: const TextStyle(fontSize: 12, color: kGoldPrimary, fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => launchUrl(Uri.parse(_storeMapUrl), mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.map_outlined, size: 16),
+                  label: Text(l10n.openInMaps),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: kGoldPrimary,
+                    side: BorderSide(color: kGoldPrimary.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

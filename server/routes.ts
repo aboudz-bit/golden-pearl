@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema, insertStoreSchema } from "@shared/schema";
+import { insertCartItemSchema, insertOrderSchema, insertProductSchema, insertDiscountCodeSchema } from "@shared/schema";
 import { z } from "zod";
 import { payments } from "./payments";
 import { shipping } from "./shipping";
@@ -131,26 +131,6 @@ export async function registerRoutes(
     }
   });
 
-  // Store routes
-  app.get("/api/stores", async (_req, res) => {
-    try {
-      const storesList = await storage.getActiveStores();
-      res.json(storesList);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch stores" });
-    }
-  });
-
-  app.get("/api/stores/:id", async (req, res) => {
-    try {
-      const store = await storage.getStore(parseInt(req.params.id));
-      if (!store) return res.status(404).json({ message: "Store not found" });
-      res.json(store);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch store" });
-    }
-  });
-
   app.post("/api/discounts/validate", async (req, res) => {
     try {
       const { code } = req.body;
@@ -169,7 +149,36 @@ export async function registerRoutes(
     }
   });
 
-  // Admin routes
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const sessionId = req.session?.id || "anonymous";
+      const notifs = await storage.getNotifications(sessionId);
+      res.json(notifs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", async (req, res) => {
+    try {
+      const sessionId = req.session?.id || "anonymous";
+      const count = await storage.getUnreadNotificationCount(sessionId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const notif = await storage.markNotificationRead(parseInt(req.params.id));
+      if (!notif) return res.status(404).json({ message: "Notification not found" });
+      res.json(notif);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
   app.post("/api/admin/products", async (req, res) => {
     try {
       const result = insertProductSchema.safeParse(req.body);
@@ -209,6 +218,45 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/admin/orders/:id/status", async (req, res) => {
+    try {
+      const { status, trackingNumber } = req.body;
+      if (!status) return res.status(400).json({ message: "Status is required" });
+      const order = await storage.updateOrderStatus(parseInt(req.params.id), status, trackingNumber);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      if (status === "ready_for_pickup" && order.deliveryMethod === "pickup") {
+        await storage.createNotification({
+          userId: order.sessionId,
+          orderId: order.id,
+          title: "طلبك جاهز للاستلام",
+          message: `الطلب رقم #${order.id} جاهز للاستلام من المتجر`,
+          read: false,
+        });
+      } else if (status === "shipped") {
+        await storage.createNotification({
+          userId: order.sessionId,
+          orderId: order.id,
+          title: "تم شحن طلبك",
+          message: `الطلب رقم #${order.id} في الطريق إليك${trackingNumber ? ` - رقم التتبع: ${trackingNumber}` : ''}`,
+          read: false,
+        });
+      } else if (status === "delivered") {
+        await storage.createNotification({
+          userId: order.sessionId,
+          orderId: order.id,
+          title: "تم توصيل طلبك",
+          message: `الطلب رقم #${order.id} تم توصيله بنجاح`,
+          read: false,
+        });
+      }
+
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+
   app.post("/api/admin/discounts", async (req, res) => {
     try {
       const result = insertDiscountCodeSchema.safeParse(req.body);
@@ -238,46 +286,35 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/stores", async (req, res) => {
+  app.post("/api/payments/create", async (req, res) => {
     try {
-      const result = insertStoreSchema.safeParse(req.body);
-      if (!result.success) return res.status(400).json({ message: "Invalid store", errors: result.error.flatten() });
-      const store = await storage.createStore(result.data);
-      res.json(store);
+      const { orderId, amount, method } = req.body;
+      if (!orderId || !amount) {
+        return res.status(400).json({ message: "orderId and amount are required" });
+      }
+      res.json({
+        id: `pay_stub_${Date.now()}`,
+        status: "initiated",
+        amount,
+        currency: "SAR",
+        method: method || "applepay",
+        orderId,
+        message: "Moyasar integration pending — API key required",
+      });
     } catch (error) {
-      res.status(500).json({ message: "Failed to create store" });
+      res.status(500).json({ message: "Failed to create payment" });
     }
   });
 
-  app.get("/api/admin/stores", async (_req, res) => {
+  app.post("/api/webhooks/moyasar", async (req, res) => {
     try {
-      const storesList = await storage.getStores();
-      res.json(storesList);
+      console.log("Moyasar webhook received (stub):", JSON.stringify(req.body).substring(0, 200));
+      res.json({ received: true });
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch stores" });
+      res.status(500).json({ message: "Webhook processing failed" });
     }
   });
 
-  app.patch("/api/admin/stores/:id", async (req, res) => {
-    try {
-      const store = await storage.updateStore(parseInt(req.params.id), req.body);
-      if (!store) return res.status(404).json({ message: "Store not found" });
-      res.json(store);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update store" });
-    }
-  });
-
-  app.delete("/api/admin/stores/:id", async (req, res) => {
-    try {
-      await storage.deleteStore(parseInt(req.params.id));
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete store" });
-    }
-  });
-
-  // Payment routes
   app.post("/api/payments/session", async (req, res) => {
     try {
       const { orderId, amount, method } = req.body;
@@ -310,7 +347,6 @@ export async function registerRoutes(
     }
   });
 
-  // Shipping routes
   app.post("/api/shipping/quote", async (req, res) => {
     try {
       const { destinationCity, destinationCountry, itemCount, subtotal } = req.body;

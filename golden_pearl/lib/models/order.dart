@@ -7,11 +7,7 @@ class Order {
   final int discount;
   final int total;
   final String status;
-  final String fulfillmentType;
-  final int? pickupStoreId;
-  final String? pickupStoreName;
-  final String? pickupAddress;
-  final String? pickupHours;
+  final String deliveryMethod;
   final String customerName;
   final String? customerEmail;
   final String customerPhone;
@@ -32,11 +28,7 @@ class Order {
     required this.discount,
     required this.total,
     required this.status,
-    this.fulfillmentType = 'delivery',
-    this.pickupStoreId,
-    this.pickupStoreName,
-    this.pickupAddress,
-    this.pickupHours,
+    this.deliveryMethod = 'delivery',
     required this.customerName,
     this.customerEmail,
     required this.customerPhone,
@@ -49,7 +41,7 @@ class Order {
     this.createdAt,
   });
 
-  bool get isPickup => fulfillmentType == 'pickup';
+  bool get isPickup => deliveryMethod == 'pickup';
 
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
@@ -61,11 +53,7 @@ class Order {
       discount: (json['discount'] as num?)?.toInt() ?? 0,
       total: (json['total'] as num).toInt(),
       status: json['status'] ?? 'processing',
-      fulfillmentType: json['fulfillmentType'] ?? 'delivery',
-      pickupStoreId: json['pickupStoreId'],
-      pickupStoreName: json['pickupStoreName'],
-      pickupAddress: json['pickupAddress'],
-      pickupHours: json['pickupHours'],
+      deliveryMethod: json['deliveryMethod'] ?? json['delivery_method'] ?? 'delivery',
       customerName: json['customerName'] ?? '',
       customerEmail: json['customerEmail'],
       customerPhone: json['customerPhone'] ?? '',

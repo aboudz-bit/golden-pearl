@@ -6,6 +6,8 @@
   "cart": "Cart",
   "settings": "Settings",
   "orders": "Orders",
+  "notifications": "Notifications",
+  "noNotifications": "No notifications",
   "heroTitle": "Elegance Redefined",
   "heroSubtitle": "Discover our latest collection of handcrafted luxury fashion",
   "newCollection": "New Collection 2026",
@@ -71,6 +73,8 @@
   },
   "orderHistory": "Order History",
   "noOrders": "No orders yet",
+  "pending": "Pending",
+  "paid": "Paid",
   "processing": "Processing",
   "shipped": "Shipped",
   "delivered": "Delivered",
@@ -126,6 +130,7 @@
     }
   },
   "deliveryMethod": "Delivery Method",
+  "deliveryToAddress": "Deliver to Address",
   "delivery": "Delivery",
   "storePickup": "Store Pickup",
   "selectStore": "Select Store",
@@ -147,5 +152,11 @@
   "searchCountry": "Search country...",
   "searchCity": "Search city...",
   "selectCountryFirst": "Please select a country first",
-  "noResults": "No results found"
+  "noResults": "No results found",
+  "noFavorites": "No favorites yet",
+  "myOrders": "My Orders",
+  "storeHours": "Working Hours",
+  "storeName": "Golden Pearl - Saihat",
+  "storeAddress": "Saihat 32437, Eastern Province",
+  "storePhone": "055 501 2942"
 }
