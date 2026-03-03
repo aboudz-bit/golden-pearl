@@ -6,6 +6,7 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
+import '../widgets/hero_video_background.dart';
 import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,10 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featured = [];
   bool _loading = true;
-  final PageController _heroController = PageController();
-  int _currentHeroPage = 0;
 
-  // Category product images cache
   Map<String, String> _categoryImages = {};
 
   @override
@@ -29,16 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadFeatured();
     _loadCategoryImages();
-    _startHeroAutoScroll();
-  }
-
-  void _startHeroAutoScroll() {
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!mounted) return;
-      final nextPage = (_currentHeroPage + 1) % 3;
-      _heroController.animateToPage(nextPage, duration: const Duration(milliseconds: 600), curve: Curves.easeInOut);
-      _startHeroAutoScroll();
-    });
   }
 
   Future<void> _loadFeatured() async {
@@ -67,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _heroController.dispose();
     super.dispose();
   }
 
@@ -92,31 +79,31 @@ class _HomeScreenState extends State<HomeScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  PageView(
-                    controller: _heroController,
-                    onPageChanged: (i) => setState(() => _currentHeroPage = i),
-                    children: [
-                      _HeroSlide(image: 'assets/images/hero1.png', title: l10n.heroTitle, subtitle: l10n.heroSubtitle),
-                      _HeroSlide(image: 'assets/images/hero2.png', title: l10n.eidCollection, subtitle: l10n.heroSubtitle),
-                      _HeroSlide(image: 'assets/images/hero3.png', title: l10n.newDrop, subtitle: l10n.exploreCollection),
-                    ],
+                  const HeroVideoBackground(),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
+                      ),
+                    ),
                   ),
                   Positioned(
-                    bottom: 72,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (i) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 280),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _currentHeroPage == i ? 24 : 8,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: _currentHeroPage == i ? Colors.white : Colors.white54,
-                          borderRadius: BorderRadius.circular(2),
+                    bottom: 90,
+                    left: 24,
+                    right: 24,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          l10n.heroTitle,
+                          style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                          textAlign: TextAlign.center,
                         ),
-                      )),
+                        const SizedBox(height: 8),
+                        Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
+                      ],
                     ),
                   ),
                   Positioned(
@@ -234,50 +221,6 @@ class _HomeScreenState extends State<HomeScreen> {
           const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
         ],
       ),
-    );
-  }
-}
-
-class _HeroSlide extends StatelessWidget {
-  final String image;
-  final String title;
-  final String subtitle;
-
-  const _HeroSlide({required this.image, required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(image, fit: BoxFit.cover),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 110,
-          left: 24,
-          right: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(subtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -26,7 +26,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 
 ## Architecture
 ### Flutter App (`golden_pearl/`)
-- `lib/main.dart` — App entry, luxury theme, navigation (5 tabs: Home, Shop, Cart, Notifications, Settings), route handling
+- `lib/main.dart` — App entry, luxury theme, navigation (4 tabs: Home, Shop, Cart, Settings), route handling
 - `lib/screens/` — HomeScreen, ShopScreen, CategoryScreen, ProductDetailScreen, CartScreen, CheckoutScreen (with store pickup), OrdersScreen, NotificationsScreen, SettingsScreen, OrderConfirmationScreen
 - `lib/providers/` — LanguageProvider (AR/EN with persistence), CartProvider (int halalas), FavoritesProvider (local SharedPreferences)
 - `lib/services/api_service.dart` — HTTP client for Express API (products, cart, orders, notifications, discounts)
@@ -41,6 +41,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - `l10n.yaml` — L10n config with `synthetic-package: false`, output to `lib/l10n/generated/`
 - `assets/images/` — Brand photos (hero1-3, logo, product images)
 - `assets/videos/` — Product videos (dresses_video.mp4, H.264 baseline + AAC, faststart)
+- `lib/widgets/hero_video_background.dart` — Hero section background video (video_player package, muted autoplay loop, BoxFit.cover fallback to hero1.png)
 - `lib/widgets/luxury_video_player.dart` — Luxury video player with error handling and controls overlay
 - `fonts/` — PlayfairDisplay (Regular, SemiBold, Bold)
 
@@ -70,7 +71,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - **Cart**: Tabbed view (Cart + Wishlist), swipe-to-delete, quantity management, free shipping threshold (SAR 150), order summary
 - **Checkout**: Delivery method toggle (delivery / store pickup), hardcoded store info card (Saihat) with map/call buttons, shipping form with country/city pickers, discount code validation
 - **Orders**: Order history with full status tracking (Pending, Paid, Processing, Ready for Pickup, Picked Up, Shipped, Delivered)
-- **Notifications**: In-app notification list with unread badge on bell icon (5th tab), auto-created on order status changes
+- **Notifications**: In-app notification list accessible from Settings screen, auto-created on order status changes
 - **Settings**: AR/EN language toggle, brand info, policies
 
 ## Order Status Flow
