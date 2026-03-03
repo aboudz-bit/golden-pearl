@@ -183,13 +183,11 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
-  int _unreadNotifications = 0;
 
   final _screens = const [
     HomeScreen(),
     ShopScreen(),
     CartScreen(),
-    NotificationsScreen(),
     SettingsScreen(),
   ];
 
@@ -199,15 +197,7 @@ class _MainNavigationState extends State<MainNavigation> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CartProvider>(context, listen: false).loadCart();
       Provider.of<FavoritesProvider>(context, listen: false).load();
-      _loadUnreadCount();
     });
-  }
-
-  Future<void> _loadUnreadCount() async {
-    try {
-      final count = await apiService.getUnreadNotificationCount();
-      if (mounted) setState(() => _unreadNotifications = count);
-    } catch (_) {}
   }
 
   @override
@@ -217,7 +207,6 @@ class _MainNavigationState extends State<MainNavigation> {
     final langProvider = Provider.of<LanguageProvider>(context);
     final lang = langProvider.languageCode;
     final cartBadge = ArabicDigits.convert(cartProvider.itemCount, lang);
-    final notifBadge = ArabicDigits.convert(_unreadNotifications, lang);
 
     return Scaffold(
       body: IndexedStack(
@@ -226,13 +215,7 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == 3) {
-            setState(() => _currentIndex = 4);
-            return;
-          }
-          setState(() => _currentIndex = index);
-        },
+        onTap: (index) => setState(() => _currentIndex = index),
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: l10n.home),
           BottomNavigationBarItem(icon: const Icon(Icons.shopping_bag_outlined), activeIcon: const Icon(Icons.shopping_bag), label: l10n.shop),
@@ -250,21 +233,6 @@ class _MainNavigationState extends State<MainNavigation> {
               child: const Icon(Icons.shopping_cart),
             ),
             label: l10n.cart,
-          ),
-          BottomNavigationBarItem(
-            icon: Badge(
-              isLabelVisible: _unreadNotifications > 0,
-              label: Text(notifBadge, style: const TextStyle(fontSize: 10)),
-              backgroundColor: kGoldPrimary,
-              child: const Icon(Icons.notifications_outlined),
-            ),
-            activeIcon: Badge(
-              isLabelVisible: _unreadNotifications > 0,
-              label: Text(notifBadge, style: const TextStyle(fontSize: 10)),
-              backgroundColor: kGoldPrimary,
-              child: const Icon(Icons.notifications),
-            ),
-            label: l10n.notifications,
           ),
           BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), activeIcon: const Icon(Icons.settings), label: l10n.settings),
         ],
