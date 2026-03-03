@@ -326,20 +326,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
       bottomSheet: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
         decoration: const BoxDecoration(
           color: Colors.white,
           boxShadow: [BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, -2))],
         ),
-        child: SafeArea(
-          child: SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: _addToBag,
-              icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-              label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
-            ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton.icon(
+            onPressed: _addToBag,
+            icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+            label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
           ),
         ),
       ),
