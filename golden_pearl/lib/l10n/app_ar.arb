@@ -146,5 +146,6 @@
   "selectCity": "اختاري المدينة",
   "searchCountry": "ابحثي عن دولة...",
   "searchCity": "ابحثي عن مدينة...",
-  "selectCountryFirst": "يرجى اختيار الدولة أولاً"
+  "selectCountryFirst": "يرجى اختيار الدولة أولاً",
+  "noResults": "لا توجد نتائج"
 }

@@ -146,5 +146,6 @@
   "selectCity": "Select City",
   "searchCountry": "Search country...",
   "searchCity": "Search city...",
-  "selectCountryFirst": "Please select a country first"
+  "selectCountryFirst": "Please select a country first",
+  "noResults": "No results found"
 }

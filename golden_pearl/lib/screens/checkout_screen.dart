@@ -46,6 +46,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _loadStores();
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _discountController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadStores() async {
     setState(() => _loadingStores = true);
     try {
@@ -567,6 +577,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       searchHint: l10n.searchCountry,
       items: kCountries,
       getName: (c) => c.name(lang),
+      getSearchTerms: (c) => [c.nameEn, c.nameAr],
       onSelect: (country) {
         setState(() {
           _selectedCountry = country;
@@ -587,6 +598,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       searchHint: l10n.searchCity,
       items: _selectedCountry!.cities,
       getName: (c) => c.name(lang),
+      getSearchTerms: (c) => [c.nameEn, c.nameAr],
       onSelect: (city) => setState(() => _selectedCity = city),
     );
   }
@@ -596,6 +608,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required String searchHint,
     required List<T> items,
     required String Function(T) getName,
+    required List<String> Function(T) getSearchTerms,
     required void Function(T) onSelect,
   }) {
     showModalBottomSheet(
@@ -607,6 +620,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         searchHint: searchHint,
         items: items,
         getName: getName,
+        getSearchTerms: getSearchTerms,
         onSelect: (item) {
           Navigator.pop(ctx);
           onSelect(item);
@@ -650,6 +664,7 @@ class _SearchableBottomSheet<T> extends StatefulWidget {
   final String searchHint;
   final List<T> items;
   final String Function(T) getName;
+  final List<String> Function(T) getSearchTerms;
   final void Function(T) onSelect;
 
   const _SearchableBottomSheet({
@@ -658,6 +673,7 @@ class _SearchableBottomSheet<T> extends StatefulWidget {
     required this.searchHint,
     required this.items,
     required this.getName,
+    required this.getSearchTerms,
     required this.onSelect,
   });
 
@@ -678,7 +694,13 @@ class _SearchableBottomSheetState<T> extends State<_SearchableBottomSheet<T>> {
   void _filter(String query) {
     final q = query.toLowerCase();
     setState(() {
-      _filtered = widget.items.where((item) => widget.getName(item).toLowerCase().contains(q)).toList();
+      if (q.isEmpty) {
+        _filtered = widget.items;
+      } else {
+        _filtered = widget.items.where((item) =>
+          widget.getSearchTerms(item).any((term) => term.toLowerCase().contains(q)),
+        ).toList();
+      }
     });
   }
 
@@ -743,7 +765,7 @@ class _SearchableBottomSheetState<T> extends State<_SearchableBottomSheet<T>> {
                 ? Padding(
                     padding: const EdgeInsets.all(32),
                     child: Text(
-                      AppLocalizations.of(context)!.noProducts,
+                      AppLocalizations.of(context)!.noResults,
                       style: const TextStyle(color: kSecondaryText),
                     ),
                   )
