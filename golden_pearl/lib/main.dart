@@ -117,8 +117,8 @@ class GoldenPearlApp extends StatelessWidget {
           ),
         ),
         cardTheme: CardTheme(
-          elevation: 0,
-          shadowColor: Colors.black.withOpacity(0.04),
+          elevation: 1,
+          shadowColor: Colors.black.withOpacity(0.06),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           color: kCardBg,
         ),
