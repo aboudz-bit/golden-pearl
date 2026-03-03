@@ -191,8 +191,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 16),
             _buildField(l10n.fullName, _nameController, l10n.required),
-            _buildField(l10n.email, _emailController, l10n.invalidEmail, keyboard: TextInputType.emailAddress),
-            _buildField(l10n.phone, _phoneController, l10n.invalidPhone, keyboard: TextInputType.phone),
+            _buildField(l10n.email, _emailController, l10n.invalidEmail, keyboard: TextInputType.emailAddress, validator: (v) {
+              if (v == null || v.isEmpty) return l10n.invalidEmail;
+              final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+              if (!emailRegex.hasMatch(v.trim())) return l10n.invalidEmail;
+              return null;
+            }),
+            _buildField(l10n.phone, _phoneController, l10n.invalidPhone, keyboard: TextInputType.phone, validator: (v) {
+              if (v == null || v.isEmpty) return l10n.invalidPhone;
+              final digits = v.replaceAll(RegExp(r'[\s\-\+\(\)]'), '');
+              if (digits.length < 9 || digits.length > 15) return l10n.invalidPhone;
+              return null;
+            }),
 
             if (_deliveryMethod == 'delivery') ...[
               _buildField(l10n.address, _addressController, l10n.required),
@@ -578,13 +588,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller, String errorMsg, {TextInputType? keyboard}) {
+  Widget _buildField(String label, TextEditingController controller, String errorMsg, {TextInputType? keyboard, String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboard,
-        validator: (v) => (v == null || v.isEmpty) ? errorMsg : null,
+        validator: validator ?? (v) => (v == null || v.isEmpty) ? errorMsg : null,
         decoration: InputDecoration(
           labelText: label,
           filled: true,

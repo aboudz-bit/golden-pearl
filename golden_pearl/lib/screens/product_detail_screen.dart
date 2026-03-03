@@ -5,6 +5,7 @@ import '../main.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/favorites_provider.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import '../utils/money_formatter.dart';
@@ -74,10 +75,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _addToCart() async {
-    if (_product == null || _selectedSize == null || _selectedColor == null || _adding) return;
+    if (_product == null || _adding) return;
+    if (_selectedSize == null && _product!.sizes.isNotEmpty) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.selectSize),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 2000),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+    if (_selectedColor == null && _product!.colors.isNotEmpty) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.selectColor),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 2000),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
     setState(() => _adding = true);
     final cart = Provider.of<CartProvider>(context, listen: false);
-    final success = await cart.addToCart(_product!.id, _selectedSize!, _selectedColor!, quantity: _quantity);
+    final success = await cart.addToCart(_product!.id, _selectedSize ?? '', _selectedColor ?? '', quantity: _quantity);
     if (mounted && success) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,7 +282,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: Text(p.name(lang), style: playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: kCharcoal))),
-                      IconButton(icon: const Icon(Icons.favorite_border, color: kGoldPrimary), onPressed: () {}),
+                      Consumer<FavoritesProvider>(
+                        builder: (context, fav, _) {
+                          final isFav = fav.isFavorite(p.id);
+                          return IconButton(
+                            icon: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: kGoldPrimary,
+                            ),
+                            onPressed: () => fav.toggleFavorite(p.id),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),

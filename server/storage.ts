@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, ilike, or, desc } from "drizzle-orm";
+import { eq, and, ilike, or, desc, count, sql } from "drizzle-orm";
 import {
   products, cartItems, orders, discountCodes, adminUsers, notifications,
   type Product, type CartItem, type CartItemWithProduct,
@@ -70,6 +70,7 @@ export class DatabaseStorage implements IStorage {
         ilike(products.nameEn, q),
         ilike(products.nameAr, q),
         ilike(products.descriptionEn, q),
+        ilike(products.descriptionAr, q),
         ilike(products.category, q)
       )
     );
@@ -202,10 +203,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {
-    const result = await db.select().from(notifications).where(
+    const [result] = await db.select({ count: count() }).from(notifications).where(
       and(eq(notifications.userId, userId), eq(notifications.read, false))
     );
-    return result.length;
+    return result?.count ?? 0;
   }
 
   async getAdminByUsername(username: string) {

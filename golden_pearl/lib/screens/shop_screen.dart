@@ -33,7 +33,9 @@ class _ShopScreenState extends State<ShopScreen> {
     setState(() => _loading = true);
     try {
       List<Product> products;
-      if (_searchQuery.isNotEmpty) {
+      if (_searchQuery.isNotEmpty && _selectedCategory != 'all') {
+        products = await apiService.getProducts(search: _searchQuery, category: _selectedCategory);
+      } else if (_searchQuery.isNotEmpty) {
         products = await apiService.getProducts(search: _searchQuery);
       } else if (_selectedCategory != 'all') {
         products = await apiService.getProducts(category: _selectedCategory);

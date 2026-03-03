@@ -29,6 +29,19 @@ class ApiService {
     }
   }
 
+  void _checkResponse(http.Response response) {
+    if (response.statusCode >= 400) {
+      String msg;
+      try {
+        final body = jsonDecode(response.body);
+        msg = body['message'] ?? 'Request failed';
+      } catch (_) {
+        msg = 'Request failed (${response.statusCode})';
+      }
+      throw Exception(msg);
+    }
+  }
+
   Future<List<Product>> getProducts({String? category, String? search, bool? featured}) async {
     final params = <String, String>{};
     if (category != null) params['category'] = category;
@@ -37,6 +50,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/api/products').replace(queryParameters: params.isNotEmpty ? params : null);
     final response = await _client.get(uri, headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => Product.fromJson(json)).toList();
   }
@@ -44,12 +58,14 @@ class ApiService {
   Future<Product> getProduct(int id) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/products/$id'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     return Product.fromJson(jsonDecode(response.body));
   }
 
   Future<List<CartItem>> getCart() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/cart'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => CartItem.fromJson(json)).toList();
   }
@@ -61,6 +77,7 @@ class ApiService {
       body: jsonEncode({'productId': productId, 'size': size, 'color': color, 'quantity': quantity}),
     );
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<void> updateCartItem(int id, int quantity) async {
@@ -70,16 +87,19 @@ class ApiService {
       body: jsonEncode({'quantity': quantity}),
     );
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<void> removeCartItem(int id) async {
     final response = await _client.delete(Uri.parse('$baseUrl/api/cart/$id'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<void> clearCart() async {
     final response = await _client.delete(Uri.parse('$baseUrl/api/cart'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<Order> createOrder(Map<String, dynamic> orderData) async {
@@ -89,12 +109,14 @@ class ApiService {
       body: jsonEncode(orderData),
     );
     _updateCookie(response);
+    _checkResponse(response);
     return Order.fromJson(jsonDecode(response.body));
   }
 
   Future<List<Order>> getOrders() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/orders'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => Order.fromJson(json)).toList();
   }

@@ -15,7 +15,10 @@ export async function registerRoutes(
     try {
       const { category, search, featured } = req.query;
       if (search && typeof search === "string") {
-        const products = await storage.searchProducts(search);
+        let products = await storage.searchProducts(search);
+        if (category && typeof category === "string") {
+          products = products.filter(p => p.category === category);
+        }
         return res.json(products);
       }
       if (featured === "true") {
@@ -105,6 +108,12 @@ export async function registerRoutes(
       if (!result.success) return res.status(400).json({ message: "Invalid order", errors: result.error.flatten() });
       const order = await storage.createOrder(result.data);
       await storage.clearCart(sessionId);
+      if (order.discountCode) {
+        const discount = await storage.getDiscountCode(order.discountCode);
+        if (discount) {
+          await storage.incrementDiscountUsage(discount.id);
+        }
+      }
       res.json(order);
     } catch (error) {
       res.status(500).json({ message: "Failed to create order" });

@@ -62,8 +62,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     try {
       List<Product> products;
       if (_searchQuery.isNotEmpty) {
-        final all = await apiService.getProducts(search: _searchQuery);
-        products = all.where((p) => p.category == widget.slug).toList();
+        products = await apiService.getProducts(search: _searchQuery, category: widget.slug);
       } else {
         products = await apiService.getProducts(category: widget.slug);
       }

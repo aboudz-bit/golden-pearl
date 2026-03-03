@@ -82,7 +82,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - **Store Pickup**: Free, shows hardcoded store info card (Golden Pearl - Saihat 32437, phone 055 501 2942, Google Maps link)
 
 ## API Endpoints
-- `GET /api/products` — List products (`?category=`, `?search=`, `?featured=true`)
+- `GET /api/products` — List products (`?category=`, `?search=`, `?featured=true`, supports combined `?search=X&category=Y`)
 - `GET /api/products/:id` — Single product
 - `GET/POST/PATCH/DELETE /api/cart` — Cart CRUD (session-based)
 - `POST /api/orders` — Create order (with deliveryMethod field)
@@ -115,7 +115,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - Workflow "Start application" runs `npm run dev` → Express server on port 5000
 - Express serves Flutter web build from `golden_pearl/build/web/`
 - To rebuild Flutter: `cd golden_pearl && flutter gen-l10n && flutter build web --release`
-- Images must be copied after build: `mkdir -p golden_pearl/build/web/images && cp golden_pearl/assets/images/*.png golden_pearl/build/web/images/`
+- Assets must be copied after build: `mkdir -p golden_pearl/build/web/images golden_pearl/build/web/videos && cp golden_pearl/assets/images/*.png golden_pearl/build/web/images/ && cp golden_pearl/assets/videos/*.mp4 golden_pearl/build/web/videos/`
 
 ## Pending (Deferred until credentials provided)
 - **Moyasar Apple Pay**: Backend stubs exist at `/api/payments/create` and `/api/webhooks/moyasar` — needs API keys to activate

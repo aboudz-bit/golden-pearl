@@ -16,6 +16,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   List<Order> _orders = [];
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -24,11 +25,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _loadOrders() async {
+    setState(() { _loading = true; _error = false; });
     try {
       final orders = await apiService.getOrders();
       if (mounted) setState(() { _orders = orders; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _error = true; });
     }
   }
 
@@ -71,6 +73,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
       appBar: AppBar(title: Text(l10n.orderHistory)),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: kGoldPrimary))
+          : _error
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 60, color: kDivider),
+                      const SizedBox(height: 16),
+                      Text(l10n.networkError, style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadOrders,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kGoldPrimary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(l10n.tryAgain),
+                      ),
+                    ],
+                  ),
+                )
           : _orders.isEmpty
               ? Center(
                   child: Column(
