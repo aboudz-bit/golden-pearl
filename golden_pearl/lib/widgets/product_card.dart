@@ -213,9 +213,11 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                                 alignment: Alignment.topCenter,
                                 frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                                   if (wasSynchronouslyLoaded || frame != null) {
-                                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                                      if (mounted && !_imageLoaded) setState(() => _imageLoaded = true);
-                                    });
+                                    if (!_imageLoaded) {
+                                      Future.microtask(() {
+                                        if (mounted && !_imageLoaded) setState(() => _imageLoaded = true);
+                                      });
+                                    }
                                     return child;
                                   }
                                   return const SizedBox();

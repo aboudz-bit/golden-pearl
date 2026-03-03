@@ -137,6 +137,7 @@ class ApiService {
   Future<List<AppNotification>> getNotifications() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/notifications'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => AppNotification.fromJson(json)).toList();
   }
@@ -144,6 +145,7 @@ class ApiService {
   Future<int> getUnreadNotificationCount() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/notifications/unread-count'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final data = jsonDecode(response.body);
     return (data['count'] as num?)?.toInt() ?? 0;
   }
@@ -154,5 +156,6 @@ class ApiService {
       headers: _headers,
     );
     _updateCookie(response);
+    _checkResponse(response);
   }
 }

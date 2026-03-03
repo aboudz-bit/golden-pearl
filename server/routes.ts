@@ -107,14 +107,18 @@ export async function registerRoutes(
       const result = insertOrderSchema.safeParse({ ...req.body, sessionId });
       if (!result.success) return res.status(400).json({ message: "Invalid order", errors: result.error.flatten() });
       const order = await storage.createOrder(result.data);
-      await storage.clearCart(sessionId);
-      if (order.discountCode) {
-        const discount = await storage.getDiscountCode(order.discountCode);
-        if (discount) {
-          await storage.incrementDiscountUsage(discount.id);
-        }
-      }
       res.json(order);
+      try {
+        await storage.clearCart(sessionId);
+        if (order.discountCode) {
+          const discount = await storage.getDiscountCode(order.discountCode);
+          if (discount) {
+            await storage.incrementDiscountUsage(discount.id);
+          }
+        }
+      } catch (postOrderError) {
+        console.error("Post-order cleanup error:", postOrderError);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to create order" });
     }
@@ -234,33 +238,37 @@ export async function registerRoutes(
       const order = await storage.updateOrderStatus(parseInt(req.params.id), status, trackingNumber);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      if (status === "ready_for_pickup" && order.deliveryMethod === "pickup") {
-        await storage.createNotification({
-          userId: order.sessionId,
-          orderId: order.id,
-          title: "طلبك جاهز للاستلام",
-          message: `الطلب رقم #${order.id} جاهز للاستلام من المتجر`,
-          read: false,
-        });
-      } else if (status === "shipped") {
-        await storage.createNotification({
-          userId: order.sessionId,
-          orderId: order.id,
-          title: "تم شحن طلبك",
-          message: `الطلب رقم #${order.id} في الطريق إليك${trackingNumber ? ` - رقم التتبع: ${trackingNumber}` : ''}`,
-          read: false,
-        });
-      } else if (status === "delivered") {
-        await storage.createNotification({
-          userId: order.sessionId,
-          orderId: order.id,
-          title: "تم توصيل طلبك",
-          message: `الطلب رقم #${order.id} تم توصيله بنجاح`,
-          read: false,
-        });
-      }
-
       res.json(order);
+
+      try {
+        if (status === "ready_for_pickup" && order.deliveryMethod === "pickup") {
+          await storage.createNotification({
+            userId: order.sessionId,
+            orderId: order.id,
+            title: "طلبك جاهز للاستلام",
+            message: `الطلب رقم #${order.id} جاهز للاستلام من المتجر`,
+            read: false,
+          });
+        } else if (status === "shipped") {
+          await storage.createNotification({
+            userId: order.sessionId,
+            orderId: order.id,
+            title: "تم شحن طلبك",
+            message: `الطلب رقم #${order.id} في الطريق إليك${trackingNumber ? ` - رقم التتبع: ${trackingNumber}` : ''}`,
+            read: false,
+          });
+        } else if (status === "delivered") {
+          await storage.createNotification({
+            userId: order.sessionId,
+            orderId: order.id,
+            title: "تم توصيل طلبك",
+            message: `الطلب رقم #${order.id} تم توصيله بنجاح`,
+            read: false,
+          });
+        }
+      } catch (notifError) {
+        console.error("Notification creation error:", notifError);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to update order status" });
     }

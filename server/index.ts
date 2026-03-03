@@ -113,8 +113,11 @@ app.use((req, res, next) => {
   app.use("/videos", express.static(path.resolve(flutterBuildPath, "videos")));
   app.use(express.static(flutterBuildPath));
 
-  app.use("/{*path}", (req, res, next) => {
-    if (req.path.startsWith("/api")) return next();
+  app.all("/api/{*path}", (_req, res) => {
+    res.status(404).json({ message: "Not found" });
+  });
+
+  app.use("/{*path}", (_req, res) => {
     res.sendFile(indexPath);
   });
 

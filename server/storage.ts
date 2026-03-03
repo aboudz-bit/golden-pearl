@@ -91,13 +91,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCartItems(sessionId: string): Promise<CartItemWithProduct[]> {
-    const items = await db.select().from(cartItems).where(eq(cartItems.sessionId, sessionId));
-    const result: CartItemWithProduct[] = [];
-    for (const item of items) {
-      const [product] = await db.select().from(products).where(eq(products.id, item.productId));
-      if (product) result.push({ ...item, product });
-    }
-    return result;
+    const rows = await db
+      .select({ cartItem: cartItems, product: products })
+      .from(cartItems)
+      .innerJoin(products, eq(cartItems.productId, products.id))
+      .where(eq(cartItems.sessionId, sessionId));
+    return rows.map(row => ({ ...row.cartItem, product: row.product }));
   }
 
   async addCartItem(item: InsertCartItem): Promise<CartItem> {
@@ -111,7 +110,7 @@ export class DatabaseStorage implements IStorage {
     );
     if (existing.length > 0) {
       const [updated] = await db.update(cartItems)
-        .set({ quantity: existing[0].quantity + (item.quantity ?? 1) })
+        .set({ quantity: sql`${cartItems.quantity} + ${item.quantity ?? 1}` })
         .where(eq(cartItems.id, existing[0].id))
         .returning();
       return updated;
@@ -182,10 +181,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async incrementDiscountUsage(id: number): Promise<void> {
-    const [discount] = await db.select().from(discountCodes).where(eq(discountCodes.id, id));
-    if (discount) {
-      await db.update(discountCodes).set({ usedCount: discount.usedCount + 1 }).where(eq(discountCodes.id, id));
-    }
+    await db.update(discountCodes).set({ usedCount: sql`${discountCodes.usedCount} + 1` }).where(eq(discountCodes.id, id));
   }
 
   async getNotifications(userId: string): Promise<Notification[]> {

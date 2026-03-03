@@ -45,7 +45,7 @@ class Order {
 
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
-      id: json['id'],
+      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
       sessionId: json['sessionId'] ?? '',
       items: json['items'],
       subtotal: (json['subtotal'] as num).toInt(),
@@ -89,9 +89,9 @@ class AppNotification {
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      id: json['id'],
+      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
       userId: json['userId'] ?? '',
-      orderId: json['orderId'],
+      orderId: json['orderId'] is int ? json['orderId'] : (json['orderId'] != null ? int.tryParse(json['orderId'].toString()) : null),
       title: json['title'] ?? '',
       message: json['message'] ?? '',
       read: json['read'] ?? false,
