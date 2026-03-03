@@ -109,8 +109,9 @@ app.use((req, res, next) => {
 </html>`);
   }
 
-  app.use("/images", express.static(path.resolve(flutterBuildPath, "images")));
-  app.use("/videos", express.static(path.resolve(flutterBuildPath, "videos")));
+  const cacheOptions = { maxAge: "7d", immutable: true };
+  app.use("/images", express.static(path.resolve(flutterBuildPath, "images"), cacheOptions));
+  app.use("/videos", express.static(path.resolve(flutterBuildPath, "videos"), cacheOptions));
   app.use(express.static(flutterBuildPath));
 
   app.all("/api/{*path}", (_req, res) => {
