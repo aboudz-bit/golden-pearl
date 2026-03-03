@@ -40,6 +40,8 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - `lib/l10n/generated/` — Auto-generated AppLocalizations (via `flutter gen-l10n`)
 - `l10n.yaml` — L10n config with `synthetic-package: false`, output to `lib/l10n/generated/`
 - `assets/images/` — Brand photos (hero1-3, logo, product images)
+- `assets/videos/` — Product videos (dresses_video.mp4, H.264 baseline + AAC, faststart)
+- `lib/widgets/luxury_video_player.dart` — Luxury video player with error handling and controls overlay
 - `fonts/` — PlayfairDisplay (Regular, SemiBold, Bold)
 
 ### Backend (`server/`)

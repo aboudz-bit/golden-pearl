@@ -446,13 +446,26 @@ class _VideoSlideWidgetState extends State<_VideoSlideWidget> {
 
   Future<void> _initVideo() async {
     try {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+        httpHeaders: const {'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.5'},
+      );
       await _controller!.initialize();
+      if (_controller!.value.hasError) {
+        if (mounted) setState(() => _error = true);
+        return;
+      }
       _controller!.addListener(() {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        if (_controller!.value.hasError) {
+          setState(() => _error = true);
+          return;
+        }
+        setState(() {});
       });
       if (mounted) setState(() => _initialized = true);
     } catch (e) {
+      debugPrint('Video init error: $e');
       if (mounted) setState(() => _error = true);
     }
   }
