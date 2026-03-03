@@ -141,5 +141,10 @@
   "pickedUp": "Picked Up",
   "cancelled": "Cancelled",
   "call": "Call",
-  "openInMaps": "Open in Maps"
+  "openInMaps": "Open in Maps",
+  "selectCountry": "Select Country",
+  "selectCity": "Select City",
+  "searchCountry": "Search country...",
+  "searchCity": "Search city...",
+  "selectCountryFirst": "Please select a country first"
 }

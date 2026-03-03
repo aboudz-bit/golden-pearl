@@ -141,5 +141,10 @@
   "pickedUp": "تم الاستلام",
   "cancelled": "ملغي",
   "call": "اتصال",
-  "openInMaps": "فتح في الخريطة"
+  "openInMaps": "فتح في الخريطة",
+  "selectCountry": "اختاري الدولة",
+  "selectCity": "اختاري المدينة",
+  "searchCountry": "ابحثي عن دولة...",
+  "searchCity": "ابحثي عن مدينة...",
+  "selectCountryFirst": "يرجى اختيار الدولة أولاً"
 }

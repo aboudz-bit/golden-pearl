@@ -7,6 +7,7 @@ import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
 import '../utils/money_formatter.dart';
 import '../models/store.dart';
+import '../data/locations.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -21,9 +22,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _countryController = TextEditingController();
   final _discountController = TextEditingController();
+  Country? _selectedCountry;
+  City? _selectedCity;
+  bool _showDropdownErrors = false;
   bool _submitting = false;
   int _discountAmount = 0;
   String? _discountError;
@@ -88,7 +90,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    final dropdownsValid = _fulfillmentType != 'delivery' || (_selectedCountry != null && _selectedCity != null);
+    if (!dropdownsValid) setState(() => _showDropdownErrors = true);
+    if (!formValid || !dropdownsValid) return;
     if (_fulfillmentType == 'pickup' && _selectedStore == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -132,8 +137,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (_fulfillmentType == 'delivery') {
         orderData['shippingAddress'] = _addressController.text;
-        orderData['shippingCity'] = _cityController.text;
-        orderData['shippingCountry'] = _countryController.text;
+        orderData['shippingCity'] = _selectedCity?.name(lang) ?? '';
+        orderData['shippingCountry'] = _selectedCountry?.name(lang) ?? '';
       } else {
         orderData['pickupStoreId'] = _selectedStore!.id;
         orderData['pickupStoreName'] = _selectedStore!.name(lang);
@@ -230,9 +235,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               _buildField(l10n.address, _addressController, l10n.required),
               Row(
                 children: [
-                  Expanded(child: _buildField(l10n.city, _cityController, l10n.required)),
+                  Expanded(child: _buildDropdownField(
+                    label: l10n.country,
+                    value: _selectedCountry?.name(lang),
+                    errorMsg: l10n.required,
+                    onTap: () => _showCountryPicker(lang, l10n),
+                  )),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildField(l10n.country, _countryController, l10n.required)),
+                  Expanded(child: _buildDropdownField(
+                    label: l10n.city,
+                    value: _selectedCity?.name(lang),
+                    errorMsg: l10n.required,
+                    onTap: () {
+                      if (_selectedCountry == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.selectCountryFirst),
+                            backgroundColor: kGoldPrimary,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                        return;
+                      }
+                      _showCityPicker(lang, l10n);
+                    },
+                  )),
                 ],
               ),
             ],
@@ -498,6 +526,95 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required String errorMsg,
+    required VoidCallback onTap,
+  }) {
+    final hasError = _showDropdownErrors && (value == null || value.isEmpty);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: onTap,
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: kDivider)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kGoldPrimary)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red)),
+            errorText: hasError ? errorMsg : null,
+            suffixIcon: const Icon(Icons.keyboard_arrow_down, color: kSecondaryText),
+          ),
+          child: Text(
+            value ?? '',
+            style: TextStyle(
+              fontSize: 16,
+              color: value != null ? kCharcoal : kSecondaryText,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCountryPicker(String lang, AppLocalizations l10n) {
+    _showSearchableBottomSheet<Country>(
+      title: l10n.selectCountry,
+      searchHint: l10n.searchCountry,
+      items: kCountries,
+      getName: (c) => c.name(lang),
+      onSelect: (country) {
+        setState(() {
+          _selectedCountry = country;
+          if (_selectedCity != null) {
+            final cityStillValid = country.cities.any((c) =>
+                c.nameEn == _selectedCity!.nameEn);
+            if (!cityStillValid) _selectedCity = null;
+          }
+        });
+      },
+    );
+  }
+
+  void _showCityPicker(String lang, AppLocalizations l10n) {
+    if (_selectedCountry == null) return;
+    _showSearchableBottomSheet<City>(
+      title: l10n.selectCity,
+      searchHint: l10n.searchCity,
+      items: _selectedCountry!.cities,
+      getName: (c) => c.name(lang),
+      onSelect: (city) => setState(() => _selectedCity = city),
+    );
+  }
+
+  void _showSearchableBottomSheet<T>({
+    required String title,
+    required String searchHint,
+    required List<T> items,
+    required String Function(T) getName,
+    required void Function(T) onSelect,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SearchableBottomSheet<T>(
+        title: title,
+        searchHint: searchHint,
+        items: items,
+        getName: getName,
+        onSelect: (item) {
+          Navigator.pop(ctx);
+          onSelect(item);
+        },
+      ),
+    );
+  }
+
   Widget _buildField(String label, TextEditingController controller, String errorMsg, {TextInputType? keyboard}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -524,6 +641,132 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Text(label, style: Theme.of(context).textTheme.bodyMedium),
         Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
       ],
+    );
+  }
+}
+
+class _SearchableBottomSheet<T> extends StatefulWidget {
+  final String title;
+  final String searchHint;
+  final List<T> items;
+  final String Function(T) getName;
+  final void Function(T) onSelect;
+
+  const _SearchableBottomSheet({
+    super.key,
+    required this.title,
+    required this.searchHint,
+    required this.items,
+    required this.getName,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SearchableBottomSheet<T>> createState() => _SearchableBottomSheetState<T>();
+}
+
+class _SearchableBottomSheetState<T> extends State<_SearchableBottomSheet<T>> {
+  final _searchController = TextEditingController();
+  List<T> _filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.items;
+  }
+
+  void _filter(String query) {
+    final q = query.toLowerCase();
+    setState(() {
+      _filtered = widget.items.where((item) => widget.getName(item).toLowerCase().contains(q)).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.65),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(color: kDivider, borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text(widget.title, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              onChanged: _filter,
+              decoration: InputDecoration(
+                hintText: widget.searchHint,
+                prefixIcon: const Icon(Icons.search, color: kGoldPrimary, size: 20),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filter('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: kCreamBg,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: _filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(
+                      AppLocalizations.of(context)!.noProducts,
+                      style: const TextStyle(color: kSecondaryText),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: _filtered.length,
+                    itemBuilder: (context, index) {
+                      final item = _filtered[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                        title: Text(
+                          widget.getName(item),
+                          style: const TextStyle(fontSize: 15, color: kCharcoal),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 18, color: kSecondaryText),
+                        onTap: () => widget.onSelect(item),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
