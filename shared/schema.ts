@@ -28,6 +28,7 @@ export const products = pgTable("products", {
   arAssetUrl: text("ar_asset_url"),
   arScaleHint: real("ar_scale_hint"),
   arPlacementHint: text("ar_placement_hint"),
+  videoUrl: text("video_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

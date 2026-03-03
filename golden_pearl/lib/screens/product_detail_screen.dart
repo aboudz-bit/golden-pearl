@@ -8,6 +8,7 @@ import '../models/product.dart';
 import '../services/api_service.dart';
 import '../utils/money_formatter.dart';
 import '../utils/arabic_digits.dart';
+import '../widgets/luxury_video_player.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -81,6 +82,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     final p = _product!;
     final hasDiscount = p.originalPrice != null && p.originalPrice! > p.price;
+    final hasVideo = p.videoUrl != null && p.videoUrl!.isNotEmpty;
+    final totalSlides = p.images.length + (hasVideo ? 1 : 0);
 
     return Scaffold(
       body: CustomScrollView(
@@ -95,31 +98,67 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   PageView.builder(
-                    itemCount: p.images.length,
+                    itemCount: totalSlides,
                     onPageChanged: (i) => setState(() => _currentImageIndex = i),
                     itemBuilder: (context, index) {
+                      // Video slide (last position)
+                      if (hasVideo && index == totalSlides - 1) {
+                        final videoSrc = p.videoUrl!.startsWith('http')
+                            ? p.videoUrl!
+                            : '${ApiService.baseUrl}${p.videoUrl!}';
+                        final thumbUrl = p.images.isNotEmpty
+                            ? (p.images[0].startsWith('http')
+                                ? p.images[0]
+                                : '${ApiService.baseUrl}${p.images[0]}')
+                            : null;
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          child: LuxuryVideoPlayer(
+                            key: ValueKey(videoSrc),
+                            videoUrl: videoSrc,
+                            thumbnailUrl: thumbUrl,
+                          ),
+                        );
+                      }
+                      // Image slides
                       final img = p.images[index];
                       final url = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
                       return Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: kCreamBg));
                     },
                   ),
-                  if (p.images.length > 1)
+                  if (totalSlides > 1)
                     Positioned(
                       bottom: 16,
                       left: 0,
                       right: 0,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(p.images.length, (i) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 280),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: _currentImageIndex == i ? 20 : 6,
-                          height: 3,
-                          decoration: BoxDecoration(
-                            color: _currentImageIndex == i ? kGoldPrimary : Colors.white54,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        )),
+                        children: List.generate(totalSlides, (i) {
+                          final isVideo = hasVideo && i == totalSlides - 1;
+                          final isActive = _currentImageIndex == i;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 280),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: isActive ? 20 : 6,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: isActive ? kGoldPrimary : Colors.white54,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: isVideo && !isActive
+                                ? Center(
+                                    child: Container(
+                                      width: 6,
+                                      height: 3,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white54,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          );
+                        }),
                       ),
                     ),
                   if (p.badge != null)

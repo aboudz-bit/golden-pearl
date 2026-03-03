@@ -23,6 +23,7 @@ class Product {
   final String? arAssetUrl;
   final double? arScaleHint;
   final String? arPlacementHint;
+  final String? videoUrl;
 
   Product({
     required this.id,
@@ -49,6 +50,7 @@ class Product {
     this.arAssetUrl,
     this.arScaleHint,
     this.arPlacementHint,
+    this.videoUrl,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,7 @@ class Product {
       arAssetUrl: json['arAssetUrl'],
       arScaleHint: json['arScaleHint'] != null ? (json['arScaleHint'] as num).toDouble() : null,
       arPlacementHint: json['arPlacementHint'],
+      videoUrl: json['videoUrl'],
     );
   }
 
