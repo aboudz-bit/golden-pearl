@@ -271,6 +271,20 @@ class ApiService {
     _checkResponse(response);
   }
 
+  Future<Map<String, dynamic>?> getHeroOverlay() async {
+    final value = await getSetting('heroOverlay');
+    if (value == null || value.isEmpty) return null;
+    try {
+      return jsonDecode(value) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveHeroOverlay(Map<String, dynamic> overlay) async {
+    await updateSetting('heroOverlay', jsonEncode(overlay));
+  }
+
   Future<Map<String, dynamic>> getAnalytics() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/admin/analytics'), headers: _headers);
     _updateCookie(response);

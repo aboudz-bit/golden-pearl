@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _categories = [];
   int _currentBanner = 0;
   final PageController _bannerController = PageController();
+  Map<String, dynamic>? _heroOverlay;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadFeatured();
     _loadBanners();
     _loadCategories();
+    _loadHeroOverlay();
   }
 
   @override
@@ -62,12 +64,20 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
+  Future<void> _loadHeroOverlay() async {
+    try {
+      final overlay = await apiService.getHeroOverlay();
+      if (mounted && overlay != null) setState(() => _heroOverlay = overlay);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
     final size = MediaQuery.of(context).size;
     final hasBanners = _banners.isNotEmpty;
+    final overlayLang = _heroOverlay?[lang] as Map<String, dynamic>?;
 
     final heroHeight = size.width > 800
         ? (size.height * 0.65).clamp(520.0, 650.0)
@@ -86,7 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
             actions: const [],
             flexibleSpace: FlexibleSpaceBar(
-              background: hasBanners ? _buildBannerCarousel(size, l10n, topPadding) : _buildDefaultHero(size, l10n, topPadding),
+              background: hasBanners
+                  ? _buildBannerCarousel(size, l10n, topPadding, overlayLang)
+                  : _buildDefaultHero(size, l10n, topPadding, overlayLang),
             ),
           ),
           SliverToBoxAdapter(
@@ -206,7 +218,116 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeroOverlay(AppLocalizations l10n, double topPadding, {bool showDots = false}) {
+  Color _hexToColor(String hex, {double opacity = 1.0}) {
+    hex = hex.replaceFirst('#', '');
+    if (hex.length == 6) hex = 'FF$hex';
+    final c = Color(int.parse(hex, radix: 16));
+    return c.withOpacity(opacity);
+  }
+
+  TextStyle _heroTextStyle(Map<String, dynamic>? style, double baseSize, {bool isHeadline = true}) {
+    if (style == null) {
+      return isHeadline
+          ? playfairDisplay(fontSize: baseSize, fontWeight: FontWeight.w700, color: Colors.white)
+          : TextStyle(fontSize: baseSize, color: Colors.white70, height: 1.4);
+    }
+
+    final screenW = MediaQuery.of(context).size.width;
+    final scaleFactor = (screenW / 400).clamp(0.7, 1.3);
+    final size = (baseSize * scaleFactor).clamp(isHeadline ? 22.0 : 12.0, isHeadline ? 44.0 : 22.0);
+    final color = _hexToColor(style['color'] as String? ?? '#FFFFFF');
+    final weight = FontWeight.values[((style['fontWeight'] as num? ?? 700) ~/ 100).clamp(1, 8)];
+    final spacing = (style['letterSpacing'] as num?)?.toDouble() ?? 0;
+    final fontFamily = style['fontFamily'] as String? ?? 'Playfair';
+
+    List<Shadow>? shadows;
+    final shadowMap = style['shadow'] as Map<String, dynamic>?;
+    if (shadowMap != null && shadowMap['enabled'] == true) {
+      final sColor = _hexToColor(
+        shadowMap['color'] as String? ?? '#000000',
+        opacity: (shadowMap['opacity'] as num?)?.toDouble() ?? 0.5,
+      );
+      shadows = [
+        Shadow(
+          color: sColor,
+          blurRadius: (shadowMap['blur'] as num?)?.toDouble() ?? 8,
+          offset: Offset(
+            (shadowMap['offsetX'] as num?)?.toDouble() ?? 0,
+            (shadowMap['offsetY'] as num?)?.toDouble() ?? 2,
+          ),
+        ),
+      ];
+    }
+
+    if (fontFamily == 'Playfair') {
+      return playfairDisplay(fontSize: size, fontWeight: weight, color: color).copyWith(
+        letterSpacing: spacing,
+        shadows: shadows,
+      );
+    }
+
+    return TextStyle(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      letterSpacing: spacing,
+      shadows: shadows,
+      height: isHeadline ? null : 1.4,
+    );
+  }
+
+  Alignment _presetToAlignment(String preset, double xOff, double yOff) {
+    double x = 0, y = 0;
+    switch (preset) {
+      case 'TopLeft':       x = -1; y = -1; break;
+      case 'TopCenter':     x = 0;  y = -1; break;
+      case 'TopRight':      x = 1;  y = -1; break;
+      case 'CenterLeft':    x = -1; y = 0;  break;
+      case 'Center':        x = 0;  y = 0;  break;
+      case 'CenterRight':   x = 1;  y = 0;  break;
+      case 'BottomLeft':    x = -1; y = 1;  break;
+      case 'BottomCenter':  x = 0;  y = 1;  break;
+      case 'BottomRight':   x = 1;  y = 1;  break;
+    }
+    return Alignment(
+      (x + xOff / 50).clamp(-1.0, 1.0),
+      (y + yOff / 50).clamp(-1.0, 1.0),
+    );
+  }
+
+  TextAlign _parseAlign(String? align) {
+    switch (align) {
+      case 'left': return TextAlign.left;
+      case 'right': return TextAlign.right;
+      default: return TextAlign.center;
+    }
+  }
+
+  CrossAxisAlignment _parseCross(String? align) {
+    switch (align) {
+      case 'left': return CrossAxisAlignment.start;
+      case 'right': return CrossAxisAlignment.end;
+      default: return CrossAxisAlignment.center;
+    }
+  }
+
+  Widget _buildHeroOverlay(AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang, {bool showDots = false}) {
+    final headline = overlayLang?['headline'] as String? ?? l10n.heroTitle;
+    final subheadline = overlayLang?['subheadline'] as String? ?? l10n.heroSubtitle;
+    final cta = overlayLang?['cta'] as String?;
+    final ctaText = (cta != null && cta.isNotEmpty) ? cta : l10n.shopNow;
+    final style = overlayLang?['style'] as Map<String, dynamic>?;
+    final textAlign = _parseAlign(style?['align'] as String?);
+    final crossAlign = _parseCross(style?['align'] as String?);
+
+    final preset = style?['positionPreset'] as String? ?? 'BottomCenter';
+    final xOff = (style?['offsetXPercent'] as num?)?.toDouble() ?? 0;
+    final yOff = (style?['offsetYPercent'] as num?)?.toDouble() ?? 0;
+    final alignment = _presetToAlignment(preset, xOff, yOff);
+
+    final headlineSize = (style?['headlineSize'] as num?)?.toDouble() ?? 30;
+    final subSize = (style?['subheadlineSize'] as num?)?.toDouble() ?? 14;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -220,24 +341,28 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        Positioned(
-          bottom: 90,
-          left: 24,
-          right: 24,
-          child: SafeArea(
-            top: true,
-            bottom: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  l10n.heroTitle,
-                  style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
-              ],
+        SafeArea(
+          child: Align(
+            alignment: alignment,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: crossAlign,
+                children: [
+                  Text(
+                    headline,
+                    style: _heroTextStyle(style, headlineSize, isHeadline: true),
+                    textAlign: textAlign,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subheadline,
+                    style: _heroTextStyle(style, subSize, isHeadline: false),
+                    textAlign: textAlign,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -273,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   transitionDuration: const Duration(milliseconds: 280),
                 ));
               },
-              child: Text(l10n.shopNow),
+              child: Text(ctaText),
             ),
           ),
         ),
@@ -281,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBannerCarousel(Size size, AppLocalizations l10n, double topPadding) {
+  Widget _buildBannerCarousel(Size size, AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang) {
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -302,17 +427,17 @@ class _HomeScreenState extends State<HomeScreen> {
             return _buildContainedNetworkImage(fullUrl);
           },
         ),
-        _buildHeroOverlay(l10n, topPadding, showDots: true),
+        _buildHeroOverlay(l10n, topPadding, overlayLang, showDots: true),
       ],
     );
   }
 
-  Widget _buildDefaultHero(Size size, AppLocalizations l10n, double topPadding) {
+  Widget _buildDefaultHero(Size size, AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang) {
     return Stack(
       fit: StackFit.expand,
       children: [
         const HeroVideoBackground(),
-        _buildHeroOverlay(l10n, topPadding),
+        _buildHeroOverlay(l10n, topPadding, overlayLang),
       ],
     );
   }

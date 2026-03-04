@@ -67,6 +67,7 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 - **Categories**: Upload category images, toggle visibility, drag-to-reorder (4 default: Dresses, Jalabiyas, Kids, Gifts)
 - **Promotions**: Discount code CRUD, percentage/fixed types, expiration dates, min order, usage tracking
 - **Notifications**: Compose and send notifications to all users, sent history
+- **Hero Text Editor**: Bilingual (AR/EN) hero overlay text editing with full style controls (font family, size, weight, letter spacing, color, shadow, alignment, position preset + fine-tune X/Y offsets), live preview card, draft/publish separation, reset to published state
 - **Settings**: Site settings management
 - **Analytics**: Total views, unique sessions, top viewed products
 
@@ -76,7 +77,7 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 
 ## Features
 - **Bilingual**: Arabic RTL (default) ↔ English LTR with persistent language toggle
-- **Home**: Dynamic banner carousel (from admin-uploaded banners, fallback to hero video), dynamic category circles (from admin, fallback to defaults), featured products grid
+- **Home**: Dynamic banner carousel (from admin-uploaded banners, fallback to hero video), dynamic hero overlay text (from admin heroOverlay settings, fallback to l10n defaults), dynamic category circles (from admin, fallback to defaults), featured products grid
 - **Shop**: Product listing with filters, search, sort
 - **Product Detail**: Multi-image + video slider, fullscreen zoom, size/color selectors
 - **Cart**: Cart + Wishlist tabs, swipe-to-delete, quantity management

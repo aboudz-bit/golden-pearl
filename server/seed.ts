@@ -278,6 +278,39 @@ export async function seedDatabase() {
       console.log("Seeded default site settings");
     }
 
+    const heroOverlaySetting = await db.select().from(siteSettings).where(eq(siteSettings.key, "heroOverlay"));
+    if (heroOverlaySetting.length === 0) {
+      const defaultStyle = {
+        fontFamily: "Playfair",
+        headlineSize: 30,
+        subheadlineSize: 14,
+        fontWeight: 700,
+        letterSpacing: 0,
+        color: "#FFFFFF",
+        shadow: { enabled: true, color: "#000000", blur: 8, offsetX: 0, offsetY: 2, opacity: 0.5 },
+        align: "center",
+        positionPreset: "BottomCenter",
+        offsetXPercent: 0,
+        offsetYPercent: 0,
+      };
+      const heroOverlay = {
+        ar: {
+          headline: "أناقة لا تُضاهى",
+          subheadline: "اكتشفي أحدث مجموعتنا من الأزياء الفاخرة المصنوعة يدوياً",
+          cta: "تسوقي الآن",
+          style: { ...defaultStyle, fontFamily: "Playfair" },
+        },
+        en: {
+          headline: "Elegance Redefined",
+          subheadline: "Discover our latest collection of handcrafted luxury fashion",
+          cta: "Shop Now",
+          style: { ...defaultStyle },
+        },
+      };
+      await db.insert(siteSettings).values({ key: "heroOverlay", value: JSON.stringify(heroOverlay) });
+      console.log("Seeded heroOverlay default");
+    }
+
     const existingCategories = await db.select().from(categories);
     if (existingCategories.length === 0) {
       await db.insert(categories).values([

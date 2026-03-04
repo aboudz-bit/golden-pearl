@@ -15,6 +15,7 @@ import 'admin_categories.dart';
 import 'admin_promotions.dart';
 import 'admin_notifications.dart';
 import 'admin_product_form.dart';
+import 'admin_hero_text.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -66,6 +67,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       const AdminCategoriesScreen(),
       const AdminPromotions(),
       const AdminNotificationsScreen(),
+      const AdminHeroTextScreen(),
       const AdminSettingsScreen(),
       const AdminAnalyticsScreen(),
     ];
@@ -78,6 +80,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       l10n.categories,
       'Promos',
       l10n.notifications,
+      'Hero Text',
       l10n.adminSettings,
       l10n.analytics,
     ];
@@ -90,6 +93,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       Icons.category_outlined,
       Icons.local_offer_outlined,
       Icons.notifications_outlined,
+      Icons.title_outlined,
       Icons.settings_outlined,
       Icons.analytics_outlined,
     ];
@@ -102,6 +106,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       Icons.category,
       Icons.local_offer,
       Icons.notifications,
+      Icons.title,
       Icons.settings,
       Icons.analytics,
     ];

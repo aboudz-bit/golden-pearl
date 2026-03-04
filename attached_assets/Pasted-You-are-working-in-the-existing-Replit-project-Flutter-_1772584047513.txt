@@ -1,0 +1,120 @@
+You are working in the existing Replit project (Flutter Web frontend inside /golden_pearl and Express backend). DO NOT add extra features beyond what is requested. Implement ONLY: Admin-controlled Home Hero text (Arabic + English) with full styling controls + live preview, and persist it.
+
+GOAL
+Add an “Hero Text Editor” section in the Admin Panel (Settings tab) that lets the admin control ALL text displayed on the Home hero banner (on top of the hero image/video), separately for Arabic and English:
+- Arabic: headline, subheadline, CTA label (optional), and style settings
+- English: headline, subheadline, CTA label (optional), and style settings
+The admin can:
+1) Edit the texts (AR + EN)
+2) Change font family (from a fixed list), font size, weight, letter spacing
+3) Change text color + optional shadow (opacity/blur)
+4) Change alignment (left/center/right)
+5) Change exact placement on the hero (x/y positioning) using:
+   - Presets (TopLeft, TopCenter, TopRight, CenterLeft, Center, CenterRight, BottomLeft, BottomCenter, BottomRight)
+   - PLUS fine-tuning sliders for X and Y offset (in % of hero container)
+6) Preview changes BEFORE publishing
+7) Click “Publish” to apply changes to customer Home
+
+IMPORTANT UX REQUIREMENTS
+- There must be a clear separation between:
+  - Draft (local edits / preview state)
+  - Published (live state used on customer Home)
+- Preview must show the hero image/video with text overlay exactly as the customer sees it.
+- “Publish” overwrites the published state.
+- “Reset” restores draft = published.
+- Must work on mobile + desktop.
+- Keep the design consistent with the luxury UI style already in the app.
+
+DATA MODEL
+We are single-store. Add fields to site settings (DB) for hero overlay content + style.
+
+Implement a SiteSetting object like:
+siteSettings.heroOverlay = {
+  ar: {
+    headline: string,
+    subheadline: string,
+    cta: string,
+    style: {
+      fontFamily: "Playfair" | "Inter" | "Cairo" | "Tajawal" (choose list that exists in app assets),
+      headlineSize: number,  // px
+      subheadlineSize: number,
+      fontWeight: 400|500|600|700,
+      letterSpacing: number, // px
+      color: string,         // hex
+      shadow: { enabled: boolean, color: string, blur: number, offsetX: number, offsetY: number, opacity: number },
+      align: "left"|"center"|"right",
+      positionPreset: one of 9 presets,
+      offsetXPercent: number, // -30..+30
+      offsetYPercent: number  // -30..+30
+    }
+  },
+  en: { same structure }
+}
+
+BACKEND
+1) Extend DB schema/site settings storage to include heroOverlay JSON.
+2) Add admin endpoints:
+   - GET  /api/admin/site-settings   -> returns current site settings (including heroOverlay)
+   - PUT  /api/admin/site-settings   -> updates heroOverlay (validate shape & bounds)
+3) Ensure only admin can call these endpoints (existing isAdmin middleware).
+4) Default seed: populate heroOverlay with current hardcoded texts and reasonable default styles so nothing breaks.
+
+FRONTEND (CUSTOMER HOME)
+1) Replace any hardcoded hero texts (Golden Pearl / Elegance Redefined / sub text / Shop Now) with values from site settings heroOverlay based on current locale (AR/EN).
+2) Apply style precisely:
+   - Use Positioned within a Stack over the hero media.
+   - Convert preset + offsets to Alignment/Positioned logic.
+   - Respect text alignment, font sizes, weight, color, and shadow.
+3) Must be responsive:
+   - Clamp font sizes on small screens (e.g., 22–44 for headline, 12–22 for sub) but still obey admin-selected size as the base.
+   - Keep overlay within safe padding (avoid clipping).
+
+ADMIN PANEL (SETTINGS TAB)
+Create a new section “Hero Text” with:
+- Language toggle tabs: AR | EN
+- Inputs:
+  - Headline text (multiline)
+  - Subheadline text (multiline)
+  - CTA label
+- Style controls:
+  - Font family dropdown (limited list)
+  - Headline size slider + numeric input
+  - Subheadline size slider + numeric input
+  - Font weight dropdown
+  - Letter spacing slider
+  - Color picker (simple hex input + small preview swatch)
+  - Shadow toggle + settings if enabled
+  - Alignment selector
+  - Preset grid (3x3 buttons)
+  - Offset sliders (X%, Y%)
+- Preview card:
+  - Live preview rendering the actual hero image/video currently used
+  - Overlay text updates instantly as admin edits
+- Buttons:
+  - Publish (saves to backend + refreshes app state)
+  - Reset (draft=published)
+  - Cancel (optional)
+
+ENGINEERING NOTES
+- Do NOT introduce new paid services.
+- If no color picker package is available, use a validated hex text field and show a color swatch.
+- Store draft state locally in the admin screen; published state comes from API.
+- Add basic validation and show errors in UI.
+- Keep changes minimal and localized.
+- Ensure caching or settings fetch doesn’t cause blank Home; use existing settings fetch patterns.
+- Add any needed localization strings for new labels.
+
+DELIVERABLES
+- Code changes in backend + Flutter UI
+- Seed defaults for heroOverlay
+- Confirm with a short checklist:
+  - Admin edits AR, previews, publishes -> customer Home shows AR overlay.
+  - Admin edits EN, previews, publishes -> customer Home shows EN overlay.
+  - Reset works.
+  - No regressions to other admin features.
+
+References you may use:
+- Express static files: https://expressjs.com/en/starter/static-files.html
+- Multer (if you need it later; NOT required here): https://github.com/expressjs/multer
+
+Now implement. Keep commits clean and do not add unrelated features.
