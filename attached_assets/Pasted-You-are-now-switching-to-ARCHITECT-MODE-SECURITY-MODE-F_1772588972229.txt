@@ -1,0 +1,246 @@
+You are now switching to ARCHITECT MODE + SECURITY MODE (FULL VERSION).
+
+ROLE
+Act as a Senior Software Architect + Security Engineer. This project is a Flutter Web frontend with a Node.js + Express backend.
+Your job is NOT to add new product features. Your job is to refactor, reorganize, harden, and optimize the existing codebase to be:
+- clean
+- scalable
+- maintainable
+- production-ready
+- secure
+Do NOT break existing functionality. Work incrementally and keep the app running after each phase.
+
+HARD RULES
+- No feature scope creep: do not add Apple Pay / shipping / AR / OTP functionality here.
+- Keep current behavior and UI outputs the same (only refactor, improve stability/performance/security).
+- Every change must be validated by running the project and verifying key flows still work.
+- Prefer small commits per phase with clear messages.
+
+========================================================
+PHASE 0 — BASELINE + INVENTORY (MANDATORY)
+========================================================
+1) Run and record baseline:
+- Ensure backend starts cleanly.
+- Ensure Flutter web builds and runs.
+- Record current routes list, main screens, and API endpoints.
+
+2) Generate a quick “system map”:
+- Frontend: main screens + state management + API service usage.
+- Backend: routes.ts, storage layer, db schema.
+- Identify duplicated modules/screens and dead code.
+
+Deliverable:
+- A short baseline note in replit.md: how to run backend + frontend, and major entry points.
+
+========================================================
+PHASE 1 — PROJECT STRUCTURE REFACTOR (CLEAN ARCHITECTURE)
+========================================================
+A) FRONTEND (Flutter)
+Restructure into a predictable layout:
+
+lib/
+  app/                 (app bootstrap, routes, localization wiring)
+  core/                (constants, helpers, shared base classes)
+  theme/               (colors, typography, spacing)
+  models/              (plain models)
+  services/            (ApiService, storage/cache, upload service)
+  state/               (providers, notifiers, stores)
+  features/
+    home/
+    products/
+    categories/
+    cart/
+    checkout/
+    orders/
+    admin/
+    settings/
+  widgets/             (shared reusable widgets)
+
+Rules:
+- Move API calls into services only.
+- Move stateful logic into state/ (Provider/ChangeNotifier/etc).
+- UI screens should be thin: call state/services, render widgets.
+- Remove duplicate widgets; create shared components.
+
+B) BACKEND (Node/Express)
+Restructure into:
+
+server/
+  index.ts             (app bootstrap)
+  config/              (env, constants)
+  routes/              (route registration only)
+  controllers/         (req/res handlers, minimal logic)
+  services/            (business logic)
+  middleware/          (auth, admin gate, validation, rate limit)
+  storage/             (db access layer)
+  utils/               (helpers)
+  types/               (shared types)
+
+Rules:
+- Routes must not contain business logic.
+- Controllers should be thin: validate -> call service -> respond.
+- Services call storage layer; storage talks to DB.
+- Remove duplicate functions; unify patterns.
+
+========================================================
+PHASE 2 — CODE CLEANUP (CONSISTENCY + DEAD CODE REMOVAL)
+========================================================
+Frontend:
+- Remove unused imports, unused variables, commented-out dead blocks.
+- Standardize naming and file names.
+- Extract repeated UI patterns into reusable widgets.
+- Add const constructors where safe.
+- Ensure list items have stable keys.
+
+Backend:
+- Remove unused imports and unused files.
+- Standardize naming:
+  - camelCase vars/functions
+  - PascalCase classes
+  - kebab-case REST endpoints (if any endpoints are inconsistent, alias old endpoints to new ones without breaking clients).
+- Consolidate repeated code patterns (response helpers, validation helpers).
+
+Tooling:
+- Add/ensure formatting:
+  - Dart format for Flutter
+  - Prettier/ESLint for TS/JS (if present) with minimal rules
+- Add lint fixes without changing behavior.
+
+========================================================
+PHASE 3 — ERROR HANDLING + RESPONSE STANDARDIZATION
+========================================================
+Backend:
+1) Implement centralized error middleware:
+- All controllers should throw typed errors (or call next(err)).
+- Standard JSON error format:
+  {
+    "success": false,
+    "message": "Human readable",
+    "code": "SOME_CODE",
+    "details": optional
+  }
+
+2) Standardize success responses:
+  {
+    "success": true,
+    "data": ...
+  }
+
+3) Make sure ALL async routes have try/catch or are wrapped in an asyncHandler helper.
+
+Frontend:
+- ApiService must:
+  - handle non-200 responses safely
+  - parse error JSON
+  - return typed exceptions
+- UI screens must show friendly error messages and never crash silently.
+
+========================================================
+PHASE 4 — PERFORMANCE IMPROVEMENTS (NO BEHAVIOR CHANGES)
+========================================================
+Frontend:
+- Reduce rebuilds: split widgets, memoize expensive sections.
+- Use const widgets where safe.
+- Optimize image rendering: set proper cacheWidth/cacheHeight where applicable.
+- Avoid loading all admin data at once; paginate or lazy load (only if it does NOT change UX; otherwise keep same and just optimize code).
+
+Backend:
+- Ensure DB queries are efficient; add indexes where appropriate:
+  - products(categoryId, sortOrder)
+  - categories(sortOrder)
+  - orders(createdAt, status)
+- Add lightweight caching for static settings (hero settings, categories list):
+  - In-memory cache with TTL (e.g., 30–60 seconds) that invalidates on admin update.
+- Ensure compression + correct headers:
+  - gzip/br if applicable
+  - caching headers for static uploads/assets
+
+========================================================
+PHASE 5 — VALIDATION LAYER (REQUEST SANITY)
+========================================================
+Backend:
+- Add validation middleware for:
+  - products create/update
+  - categories update/reorder
+  - hero slides / hero overlay settings
+  - uploads metadata
+- Reject invalid requests with 400 and clear error message.
+- Never trust client-provided sortOrder arrays without checking IDs exist and belong to expected table.
+
+Frontend:
+- Basic form validation before calling APIs.
+
+========================================================
+PHASE 6 — FILE UPLOAD SAFETY (CRITICAL)
+========================================================
+Backend uploads must be hardened:
+- Limit file size (images 5MB, videos 25MB)
+- Validate MIME type AND extension
+- Sanitize filenames (no ../, no special characters)
+- Generate unique filenames (uuid + safe extension)
+- Store in /uploads/(images|videos)
+- Serve via express.static with safe headers
+- For video: ensure Range requests supported (206) and correct Content-Type
+- Add simple anti-abuse:
+  - Rate-limit upload endpoints
+  - Require admin auth for admin uploads
+
+Frontend:
+- Show upload progress
+- Show clear failure reason if rejected
+
+========================================================
+PHASE 7 — SECURITY HARDENING (ADMIN + API)
+========================================================
+Backend:
+- Add rate limiting (especially for auth + uploads):
+  - login endpoint: e.g., 10/min per IP
+  - upload endpoint: e.g., 30/min per admin
+- Add helmet (secure headers) if not already.
+- Ensure sessions/cookies are secure:
+  - httpOnly cookies
+  - sameSite policy
+  - secure flag if HTTPS (leave config-based)
+- Ensure admin checks are enforced server-side for all admin endpoints.
+- Add audit log (lightweight) ONLY if it already exists; otherwise skip (no new feature). If it exists, make it reliable.
+
+Frontend:
+- Never rely on UI-only admin gating. UI can hide, but backend must enforce.
+
+========================================================
+PHASE 8 — TESTING & REGRESSION CHECKS (LIGHTWEIGHT)
+========================================================
+Add minimal automated checks without heavy frameworks:
+Backend:
+- Smoke tests for key endpoints (GET settings, list products, admin update settings, reorder categories).
+Frontend:
+- Basic widget/unit tests only if the project already has test structure; otherwise skip but ensure manual checklist is used.
+
+Manual regression checklist (must pass):
+- Guest browsing works
+- Login on checkout works
+- Cart merge still works
+- Admin panel loads
+- Banners/categories/products/orders still render as before
+
+========================================================
+PHASE 9 — FINAL REPORT (MANDATORY)
+========================================================
+Produce a final report in replit.md (or ARCHITECTURE.md) containing:
+1) New folder structure (tree)
+2) Files moved/removed
+3) Key refactor decisions (why)
+4) Performance improvements made
+5) Security improvements made
+6) Any known risks and recommended next steps
+7) How to run locally / in Replit
+
+DELIVERY INSTRUCTIONS
+- Work phase by phase.
+- Keep commits small and labeled:
+  - "refactor(frontend): restructure folders"
+  - "refactor(backend): move routes to controllers"
+  - "chore: lint/format"
+  - "security: harden uploads"
+  - "perf: add cache headers"
+- After each phase, rebuild and confirm app still runs.

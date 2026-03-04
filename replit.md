@@ -9,6 +9,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - **Localization**: flutter_localizations + intl + ARB files (Arabic default, English toggle)
 - **State Management**: Provider (ChangeNotifier)
 - **Auth**: bcrypt password hashing, express-session for session management
+- **Security**: helmet (secure headers), express-rate-limit (auth 10/min, upload 30/min, API 200/min), compression
 - **Styling**: Custom luxury soft neutral theme, PlayfairDisplay headings, Material Design 3
 
 ## Design System (Luxury Soft Neutral Spec)
@@ -40,15 +41,40 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - `assets/images/` — Brand photos, `assets/videos/` — Product videos
 - `fonts/` — PlayfairDisplay (Regular, SemiBold, Bold)
 
-### Backend (`server/`)
-- `server/index.ts` — Express server with CORS, session, serves Flutter web build
-- `server/routes.ts` — RESTful API (products, cart, orders, auth, admin, notifications, payments, shipping)
-- `server/storage.ts` — PostgreSQL storage layer with full CRUD including auth/settings/analytics
+### Backend (`server/`) — Clean Architecture
+- `server/index.ts` — Express server with helmet, compression, rate limiting, CORS, session, static file serving
+- `server/routes.ts` — Thin route registration (~98 lines), delegates to controllers
+- `server/storage.ts` — PostgreSQL storage layer with IStorage interface and DatabaseStorage class
 - `server/db.ts` — Drizzle + pg pool setup
 - `server/seed.ts` — Seeds products, discount codes, admin user, site settings
-- `server/payments.ts` — Payment session management (stub for Moyasar)
-- `server/shipping.ts` — Shipping quote and tracking (stub)
-- `shared/schema.ts` — Drizzle ORM schema (products, cartItems, orders, discountCodes, notifications, adminUsers, users, siteSettings, pageViews)
+- `server/payments.ts` — Payment abstraction layer (mock provider, ready for Moyasar)
+- `server/shipping.ts` — Shipping abstraction layer (flat-rate SA, ready for Aramex/SMSA)
+- `server/controllers/` — Business logic split into domain controllers:
+  - `auth.controller.ts` — Register, login, logout, me, merge cart
+  - `products.controller.ts` — List, get, create, update, delete, stock, reorder
+  - `cart.controller.ts` — Get, add, update, remove, clear
+  - `orders.controller.ts` — Create (with stock validation), list, get, admin list, status update (with notifications)
+  - `uploads.controller.ts` — Unified file upload (smart image/video detection), delete, multer config with dual MIME+extension validation
+  - `admin.controller.ts` — Banners CRUD, categories CRUD, discounts CRUD, notifications, settings, analytics
+  - `public.controller.ts` — Public banners (cached), categories (cached), discount validation, notifications, settings, page views
+  - `payments.controller.ts` — Payment stubs, session management
+  - `shipping.controller.ts` — Quote, create shipment, track
+- `server/middleware/` — Cross-cutting concerns:
+  - `asyncHandler.ts` — Wraps async handlers, forwards errors to error middleware
+  - `auth.ts` — isAdmin middleware (checks session + user role)
+  - `cache.ts` — In-memory cache with TTL (60s for banners/categories), invalidation on admin writes
+  - `errorHandler.ts` — Centralized error handler (AppError, MulterError, unknown errors)
+- `server/utils/` — Shared utilities:
+  - `AppError.ts` — Typed error class with factory methods (badRequest, unauthorized, forbidden, notFound, conflict, internal)
+  - `response.ts` — Standardized response helpers
+- `shared/schema.ts` — Drizzle ORM schema with indexes (products: category+orderIndex, orders: createdAt+userId, banners: active+sortOrder, categories: sortOrder)
+
+## Security
+- **Helmet**: Secure HTTP headers (X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, etc.)
+- **Rate Limiting**: Auth 10/min, upload 30/min, API 200/min
+- **Session Cookies**: httpOnly, sameSite: lax, secure in production
+- **Upload Hardening**: Dual MIME+extension validation, UUID filenames, path traversal prevention
+- **Error Handling**: Centralized via AppError class, no stack trace leaking to clients
 
 ## Authentication & Authorization
 - **Guest browsing**: Users can browse all products, add to cart, search — no login required
@@ -72,6 +98,13 @@ Accessible from Settings → Admin Panel (only visible to admin users). Admin na
 - All monetary values stored as **integer halalas** (1 SAR = 100 halalas)
 - Shipping threshold: 15000 halalas (150 SAR), fee: 1500 halalas (15 SAR)
 
+## Performance
+- **DB Indexes**: products(category, orderIndex), orders(createdAt, userId), banners(active+sortOrder), categories(sortOrder)
+- **In-Memory Cache**: Banners and categories cached for 60s, invalidated on admin writes
+- **Compression**: gzip/brotli via compression middleware
+- **Static Assets**: 7-day cache with immutable headers
+- **Video Streaming**: Range request support for MP4 files
+
 ## Features
 - **Bilingual**: Arabic RTL (default) ↔ English LTR with persistent language toggle
 - **Home**: Dynamic banner carousel with per-slide text overlays (from banner `overlay` JSON, fallback to l10n defaults), fallback to default hero video when no banners, dynamic category circles (from admin, fallback to defaults), featured products grid
@@ -81,15 +114,15 @@ Accessible from Settings → Admin Panel (only visible to admin users). Admin na
 - **Checkout**: Login guard, delivery/pickup toggle, discount codes
 - **Orders**: Full status tracking with notifications
 - **Admin Panel**: Full Shopify-like CMS (products, orders, banners, categories, promotions, notifications, settings, analytics)
-- **Media Upload**: Image compression via sharp (max 1200px, JPEG quality 80), video upload support, separate validated endpoints (image: jpg/png/webp max 5MB, video: mp4 max 25MB), Range request support for video streaming
+- **Media Upload**: Image compression via sharp (max 1200px, JPEG quality 80), video upload support, unified upload endpoint with smart detection
 
 ## Database Tables
 - **users**: id, email (unique), passwordHash, name, phone, role (default 'user'), createdAt
-- **products**: id, nameEn/Ar, descriptionEn/Ar, price, originalPrice, category, images[], videoUrl, sizes[], colors[], fabricEn/Ar, inStock, featured, badge, rating, reviewCount, stock (default 100), orderIndex (default 0)
-- **banners**: id, type ("image"|"video"), url (text), active (boolean default true), sortOrder (integer default 0), overlay (text, JSON with per-slide AR/EN text + style), createdAt
-- **categories**: id, slug (text unique), nameEn (text), nameAr (text), imageUrl (text nullable), visible (boolean default true), sortOrder (integer default 0)
+- **products**: id, nameEn/Ar, descriptionEn/Ar, price, originalPrice, category, images[], videoUrl, sizes[], colors[], fabricEn/Ar, inStock, featured, badge, rating, reviewCount, stock (default 100), orderIndex (default 0) — *indexes: category, orderIndex*
+- **banners**: id, type ("image"|"video"), url (text), active (boolean default true), sortOrder (integer default 0), overlay (text, JSON with per-slide AR/EN text + style), createdAt — *index: active+sortOrder*
+- **categories**: id, slug (text unique), nameEn (text), nameAr (text), imageUrl (text nullable), visible (boolean default true), sortOrder (integer default 0) — *index: sortOrder*
 - **cart_items**: id, sessionId, userId (nullable), productId, quantity, size, color
-- **orders**: id, sessionId, userId (nullable), items (JSONB), subtotal/shipping/discount/total, status, deliveryMethod, customer info, notes
+- **orders**: id, sessionId, userId (nullable), items (JSONB), subtotal/shipping/discount/total, status, deliveryMethod, customer info, notes — *indexes: createdAt, userId*
 - **discount_codes**: id, code, type, value, minOrder, maxUses, usedCount, active, expiresAt
 - **notifications**: id, userId, orderId, productId (nullable), title, message, read, createdAt
 - **admin_users**: id, username, passwordHash
@@ -105,22 +138,20 @@ Accessible from Settings → Admin Panel (only visible to admin users). Admin na
 - `GET /api/orders` — Order history
 - `POST /api/discounts/validate` — Validate discount code
 - `GET /api/notifications` — User notifications
-- `GET /api/banners` — Active banners (sorted by sortOrder)
-- `GET /api/categories` — Visible categories (sorted by sortOrder)
+- `GET /api/banners` — Active banners (sorted, cached 60s)
+- `GET /api/categories` — Visible categories (sorted, cached 60s)
 - `GET /api/settings/:key` — Public setting value
 - `POST /api/analytics/pageview` — Record page view
 
 ### Auth
-- `POST /api/auth/register` — Create account
-- `POST /api/auth/login` — Login
+- `POST /api/auth/register` — Create account (rate limited 10/min)
+- `POST /api/auth/login` — Login (rate limited 10/min)
 - `POST /api/auth/logout` — Logout
 - `GET /api/auth/me` — Current user
 - `POST /api/auth/merge` — Merge guest cart into user cart
 
 ### Admin (requires admin role)
-- `POST /api/admin/upload` — Upload media (multer + sharp compression for images)
-- `POST /api/admin/upload/image` — Upload image only (jpg/png/webp, max 5MB, auto-compressed)
-- `POST /api/admin/upload/video` — Upload video only (mp4, max 25MB)
+- `POST /api/admin/upload` — Upload media (unified endpoint, rate limited 30/min)
 - `DELETE /api/admin/upload` — Delete uploaded file
 - `POST/PATCH/DELETE /api/admin/products/:id` — Product CRUD
 - `PATCH /api/admin/products/:id/stock` — Update stock

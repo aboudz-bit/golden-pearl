@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, integer, boolean, real, timestamp, serial, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, real, timestamp, serial, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -37,7 +37,10 @@ export const products = pgTable("products", {
   orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   videoUrl: text("video_url"),
-});
+}, (table) => [
+  index("idx_products_category").on(table.category),
+  index("idx_products_order_index").on(table.orderIndex),
+]);
 
 export const cartItems = pgTable("cart_items", {
   id: serial("id").primaryKey(),
@@ -70,7 +73,10 @@ export const orders = pgTable("orders", {
   discountCode: text("discount_code"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_orders_created_at").on(table.createdAt),
+  index("idx_orders_user_id").on(table.userId),
+]);
 
 export const discountCodes = pgTable("discount_codes", {
   id: serial("id").primaryKey(),
@@ -124,7 +130,9 @@ export const banners = pgTable("banners", {
   sortOrder: integer("sort_order").notNull().default(0),
   overlay: text("overlay"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_banners_active_sort").on(table.active, table.sortOrder),
+]);
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -134,7 +142,9 @@ export const categories = pgTable("categories", {
   imageUrl: text("image_url"),
   visible: boolean("visible").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
-});
+}, (table) => [
+  index("idx_categories_sort_order").on(table.sortOrder),
+]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });

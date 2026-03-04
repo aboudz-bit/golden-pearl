@@ -2,28 +2,79 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
 import { registerRoutes } from "./routes";
 import { createServer } from "http";
 import { seedDatabase } from "./seed";
+import { errorHandler } from "./middleware/errorHandler";
 
 const SessionStore = MemoryStore(session);
 const app = express();
 const httpServer = createServer(app);
 
 const PORT = process.env.PORT || "5000";
+const isProd = process.env.NODE_ENV === "production";
 
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+app.use(compression());
+
+app.use(cors({
+  origin: isProd ? (process.env.CORS_ORIGIN || true) : true,
+  credentials: true,
+}));
+
+app.use(express.json({ limit: "10mb", verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: false }));
+
 app.use(session({
   secret: process.env.SESSION_SECRET || "golden-pearl-secret",
   resave: false,
   saveUninitialized: true,
   store: new SessionStore({ checkPeriod: 86400000 }),
-  cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 },
+  cookie: {
+    secure: isProd,
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  },
 }));
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many attempts, please try again later" },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Upload rate limit exceeded" },
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Rate limit exceeded" },
+});
+
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/admin/upload", uploadLimiter);
+app.use("/api/", apiLimiter);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -69,11 +120,7 @@ app.use((req, res, next) => {
 
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    if (!res.headersSent) res.status(status).json({ message });
-  });
+  app.use(errorHandler);
 
   const flutterBuildPath = path.resolve(process.cwd(), "golden_pearl", "build", "web");
   const indexPath = path.resolve(flutterBuildPath, "index.html");
