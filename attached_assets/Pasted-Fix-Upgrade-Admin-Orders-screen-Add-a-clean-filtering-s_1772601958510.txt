@@ -1,0 +1,99 @@
+Fix & Upgrade Admin → Orders screen: Add a clean filtering system + search per tab (All / Delivery / Store Pickup) with a smooth, premium UX.
+
+SCOPE (IMPORTANT)
+- Only modify Admin Orders UI + its API query usage if needed.
+- Do NOT add unrelated features.
+- Keep the same Admin Panel design system (spacing, typography, gold accents).
+- Must not break existing status update flow.
+
+GOAL
+The Orders page must have:
+1) A global search bar (soft, clean) that works with the currently selected tab.
+2) Quick filter chips (status + date range) that also apply to the selected tab.
+3) Sort dropdown (Newest, Oldest, Highest Amount, Lowest Amount).
+4) Everything feels smooth, consistent, and not crowded on mobile.
+
+UI REQUIREMENTS (Flutter Web Admin)
+A) Header area (above order list):
+- Search bar with placeholder:
+  "Search by order #, customer name, phone, email..."
+- Right side (or below on mobile): Sort dropdown.
+
+B) Filter chips row (below search):
+1) Status chips (single-select):
+- All Status
+- Pending
+- Confirmed
+- Ready for Pickup
+- Picked Up
+- Delivered
+- Cancelled
+
+2) Date chips (single-select):
+- All Time
+- Today
+- Last 7 Days
+- Last 30 Days
+- Custom (opens date picker range)
+
+C) Tab behavior:
+Tabs are: All | Delivery | Store Pickup
+- When switching tabs, KEEP the search text and filters applied, but results should be scoped to that tab type.
+- Each tab should remember its own scroll position.
+
+FUNCTIONAL REQUIREMENTS
+1) Search behavior:
+- Debounced search (300–500ms) to avoid spamming API.
+- Search should match:
+  - orderId (e.g. "#3" or "3")
+  - customer full name
+  - phone
+  - email
+
+2) Filters:
+- Status filter should work with backend data model status field.
+- Date filter uses order.createdAt within range.
+- Delivery tab: deliveryMethod == "delivery"
+- Store Pickup tab: deliveryMethod == "store_pickup" (or whatever enum exists in your code)
+
+3) Sorting:
+- Newest (default) = createdAt desc
+- Oldest = createdAt asc
+- Highest Amount = total desc
+- Lowest Amount = total asc
+
+IMPLEMENTATION (Preferred)
+- Add optional query params to the existing admin orders endpoint (do NOT create new endpoints if not needed):
+GET /api/admin/orders?deliveryMethod=&status=&q=&dateFrom=&dateTo=&sort=
+Where:
+- deliveryMethod: all | delivery | store_pickup
+- status: all | pending | confirmed | ready_for_pickup | picked_up | delivered | cancelled
+- q: search string
+- dateFrom/dateTo: ISO yyyy-mm-dd or ISO datetime
+- sort: newest | oldest | total_desc | total_asc
+
+Backend:
+- If the endpoint already supports some filters, use them.
+- If not, implement filtering safely with parameterized queries.
+- Ensure results are consistent with existing UI models.
+
+Frontend:
+- Add a small state model to store:
+  selectedTab, q, statusFilter, dateFilter, customRange, sortOption
+- Trigger fetchOrders() whenever any of those change (with debounce for q).
+- Show a subtle loading skeleton (do not flash the whole screen).
+- If no results: show a friendly empty state for that tab ("No orders found").
+
+DESIGN POLISH
+- Search bar: rounded, subtle border, icon on left, clear (X) button when text exists.
+- Chips: same style as other admin chips; selected chip in gold, unselected neutral.
+- Sort dropdown: compact.
+- Keep top padding/spacing elegant (avoid cramped layout).
+
+ACCEPTANCE TESTS
+- Searching "abdullah" in Store Pickup returns only pickup orders for that customer.
+- Searching "#3" or "3" returns Order #3.
+- Selecting Cancelled shows only cancelled orders.
+- Date filter Last 7 Days correctly reduces list.
+- Sorting Highest Amount orders correctly.
+- Status update still works and refreshes the affected order in-place without losing filters/search.

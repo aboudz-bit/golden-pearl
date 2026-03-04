@@ -525,6 +525,24 @@ class ApiService {
     _checkResponse(response);
   }
 
+  Future<List<Map<String, dynamic>>> getAdminNotifications() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/notifications'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> deleteNotificationGroup(String title, String message) async {
+    final request = http.Request('DELETE', Uri.parse('$baseUrl/api/admin/notifications'));
+    request.headers.addAll(_headers);
+    request.body = jsonEncode({'title': title, 'message': message});
+    final streamed = await _client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
   Future<Map<String, dynamic>> getCustomers({String? search, String? sort, String? hasOrders, String? hasCart, String? highSpenders, String? abandonedCart, int page = 1, int limit = 20}) async {
     final params = <String, String>{'page': '$page', 'limit': '$limit'};
     if (search != null && search.isNotEmpty) params['search'] = search;

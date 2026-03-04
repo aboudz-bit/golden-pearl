@@ -50,6 +50,8 @@ export interface IStorage {
   markNotificationRead(id: number): Promise<Notification | undefined>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   sendNotificationToAll(title: string, message: string, productId?: number): Promise<void>;
+  deleteNotification(id: number): Promise<void>;
+  getAllNotifications(): Promise<Notification[]>;
 
   createUser(user: InsertUser & { role?: string }): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -304,6 +306,14 @@ export class DatabaseStorage implements IStorage {
         read: false,
       });
     }
+  }
+
+  async deleteNotification(id: number): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, id));
+  }
+
+  async getAllNotifications(): Promise<Notification[]> {
+    return db.select().from(notifications).orderBy(desc(notifications.createdAt));
   }
 
   async createUser(user: InsertUser & { role?: string }): Promise<User> {

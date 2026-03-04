@@ -80,7 +80,9 @@ export async function registerRoutes(
   app.patch("/api/admin/discounts/:id", isAdmin, asyncHandler(admin.updateDiscount));
   app.delete("/api/admin/discounts/:id", isAdmin, asyncHandler(admin.deleteDiscount));
 
+  app.get("/api/admin/notifications", isAdmin, asyncHandler(admin.listNotifications));
   app.post("/api/admin/notifications/send", isAdmin, asyncHandler(admin.sendNotification));
+  app.delete("/api/admin/notifications", isAdmin, asyncHandler(admin.deleteNotificationGroup));
 
   app.get("/api/admin/customers/export", isAdmin, asyncHandler(customers.exportCustomers));
   app.get("/api/admin/customers/:id/export", isAdmin, asyncHandler(customers.exportCustomer));

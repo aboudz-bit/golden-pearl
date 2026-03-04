@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../main.dart';
-import '../../models/order.dart';
 
 class AdminNotificationsScreen extends StatefulWidget {
   const AdminNotificationsScreen({super.key});
@@ -16,7 +15,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   final _productIdController = TextEditingController();
   bool _sending = false;
   bool _loading = true;
-  List<AppNotification> _notifications = [];
+  List<Map<String, dynamic>> _notifications = [];
 
   @override
   void initState() {
@@ -35,7 +34,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   Future<void> _loadNotifications() async {
     setState(() => _loading = true);
     try {
-      final notifications = await apiService.getNotifications();
+      final notifications = await apiService.getAdminNotifications();
       if (mounted) {
         setState(() {
           _notifications = notifications;
@@ -110,6 +109,73 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _deleteNotification(Map<String, dynamic> notif) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kCardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red.shade600, size: 22),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Delete Notification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Delete "${notif['title']}" for all users?', style: const TextStyle(fontSize: 14, color: kCharcoal)),
+            const SizedBox(height: 6),
+            Text('${notif['count'] ?? 1} notification(s) will be removed.', style: const TextStyle(fontSize: 12, color: kSecondaryText)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: kSecondaryText)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await apiService.deleteNotificationGroup(notif['title'] ?? '', notif['message'] ?? '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Notification deleted'),
+            backgroundColor: kGoldPrimary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        _loadNotifications();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: ${e.toString().replaceFirst('Exception: ', '')}'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
@@ -290,6 +356,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
             else
               ...List.generate(_notifications.length, (index) {
                 final notif = _notifications[index];
+                final count = notif['count'] ?? 1;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
@@ -315,7 +382,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       child: const Icon(Icons.notifications_active_outlined, color: kGoldPrimary, size: 20),
                     ),
                     title: Text(
-                      notif.title,
+                      notif['title'] ?? '',
                       style: const TextStyle(
                         color: kCharcoal,
                         fontWeight: FontWeight.w600,
@@ -327,17 +394,38 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       children: [
                         const SizedBox(height: 4),
                         Text(
-                          notif.message,
+                          notif['message'] ?? '',
                           style: const TextStyle(color: kSecondaryText, fontSize: 13),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          _formatTimestamp(notif.createdAt),
-                          style: TextStyle(color: kSecondaryText.withOpacity(0.6), fontSize: 11),
+                        Row(
+                          children: [
+                            Text(
+                              _formatTimestamp(notif['createdAt']?.toString()),
+                              style: TextStyle(color: kSecondaryText.withOpacity(0.6), fontSize: 11),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: kGoldPrimary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '$count recipient${count > 1 ? 's' : ''}',
+                                style: const TextStyle(fontSize: 10, color: kGoldPrimary, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 20),
+                      onPressed: () => _deleteNotification(notif),
+                      tooltip: 'Delete notification',
                     ),
                   ),
                 );

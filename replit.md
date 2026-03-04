@@ -26,7 +26,7 @@ server/
 │   ├── products.controller.ts   # Product CRUD + reorder
 │   ├── cart.controller.ts       # Cart CRUD
 │   ├── orders.controller.ts     # Order create, list, admin status updates
-│   ├── admin.controller.ts      # Banners, categories, discounts, notifications, settings, analytics
+│   ├── admin.controller.ts      # Banners, categories, discounts, notifications (send/list/delete), settings, analytics
 │   ├── customers.controller.ts  # Customer list, detail, export (XLSX), cart notifications
 │   ├── uploads.controller.ts    # Unified file upload (images+videos) with sharp compression
 │   ├── public.controller.ts     # Public endpoints: banners, categories, notifications, settings, pageviews
@@ -61,7 +61,7 @@ lib/
 │   │   ├── admin_hero_page.dart        # Banners/hero management (unified)
 │   │   ├── admin_categories.dart       # Category management
 │   │   ├── admin_promotions.dart       # Discount code management
-│   │   ├── admin_notifications.dart    # Broadcast notification sending
+│   │   ├── admin_notifications.dart    # Broadcast notification sending + grouped list + delete
 │   │   ├── admin_customers.dart        # Customer list with search/filter/export
 │   │   └── admin_customer_detail.dart  # Customer detail + cart notification
 │   ├── home_screen.dart, shop_screen.dart, product_detail_screen.dart

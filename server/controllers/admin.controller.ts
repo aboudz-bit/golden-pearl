@@ -122,3 +122,27 @@ export async function sendNotification(req: Request, res: Response) {
   await storage.sendNotificationToAll(title, message, productId);
   res.json({ success: true });
 }
+
+export async function listNotifications(_req: Request, res: Response) {
+  const all = await storage.getAllNotifications();
+  const grouped = new Map<string, any>();
+  for (const n of all) {
+    const key = `${n.title}||${n.message}||${n.productId ?? ''}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, { id: n.id, title: n.title, message: n.message, productId: n.productId, createdAt: n.createdAt, count: 0 });
+    }
+    grouped.get(key)!.count++;
+  }
+  res.json(Array.from(grouped.values()));
+}
+
+export async function deleteNotificationGroup(req: Request, res: Response) {
+  const { title, message } = req.body;
+  if (!title) throw AppError.badRequest("Title is required to identify notification group");
+  const all = await storage.getAllNotifications();
+  const toDelete = all.filter(n => n.title === title && n.message === message);
+  for (const n of toDelete) {
+    await storage.deleteNotification(n.id);
+  }
+  res.json({ success: true, deleted: toDelete.length });
+}

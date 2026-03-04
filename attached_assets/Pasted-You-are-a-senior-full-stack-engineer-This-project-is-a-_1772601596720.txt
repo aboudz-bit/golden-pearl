@@ -1,0 +1,205 @@
+You are a senior full-stack engineer. This project is a Flutter Web frontend + Node.js/Express backend.
+
+IMPORTANT RULES
+- Focus ONLY on the issues & tasks listed below. Do NOT re-implement or “redo” features that are already working.
+- Keep UI style consistent with the existing Admin Panel design (same typography, spacing, gold accents).
+- Do not break existing functionality.
+- After each change: run/build, verify manually in the browser.
+- Provide a short “what changed + files touched” report at the end.
+
+========================================================
+A) CRITICAL BUG — FILE UPLOAD FAILS (Banners, Categories, Add Product)
+========================================================
+Problem symptoms (current):
+1) Admin → Manage Banners / Hero / Slides: when I upload, it spins (“Uploading…”) but never adds the slide.
+2) Admin → Categories image upload: upload spinner but no image saved / applied.
+3) Admin → Add Product image upload: fails with snackbar:
+   “Upload failed: Exception: Only jpg, png, webp images and mp4 videos are allowed”
+   (even when selecting an image that should work)
+
+Task A1 — Diagnose end-to-end upload pipeline:
+- Confirm what file picker returns on Flutter Web (bytes vs path; mime type; extension).
+- Confirm frontend upload request (headers, form-data field name, filename).
+- Confirm backend multer (or upload handler) fileFilter + mimetype + extension checks.
+- Confirm static hosting of uploaded files (URL returned, accessible in browser).
+- Add clear logs (server) and clear UI error messages (client) so failures are obvious.
+
+Task A2 — Fix upload acceptance & consistency:
+- Ensure jpg/jpeg, png, webp work everywhere (banners/categories/products).
+- Ensure mp4 works where intended (product video upload if supported).
+- Ensure the same upload endpoint/handler is used consistently across:
+  - banner slide image upload
+  - category image upload
+  - product image upload
+  - product video upload (if present)
+- Ensure returned URL is immediately reflected in UI state and persisted in DB.
+
+Acceptance:
+- Uploading an image for banner slide adds the slide and shows it in list immediately.
+- Uploading a category image updates the category card thumbnail immediately.
+- Uploading product images works without the “Only jpg…” error for valid files.
+
+========================================================
+B) ADMIN NAV / PAGE NAMING — Replace Hero with Manage Banners
+========================================================
+Requirement:
+- Remove “Hero” tab in Admin bottom nav.
+- Replace it with “Manage Banners”.
+- “Manage Banners” controls the HOME PAGE banners (add/edit/reorder/activate).
+- Keep the current unified banners+text concept if it exists, but the label/navigation must be “Manage Banners” (not Hero).
+- Make sure any route names, drawer items, icons, and titles align.
+
+Acceptance:
+- Admin bottom nav shows: Dashboard, Products, Orders, Manage Banners, Categories.
+- Clicking Manage Banners opens the banners management page.
+
+========================================================
+C) ADMIN — ORDERS: Product images not showing + improve Update Status + better invoice layout
+========================================================
+Problems:
+1) In Admin Orders list and/or Order Details, product images are missing (show placeholders).
+2) Update Status UI is basic; improve it visually (still simple, but more premium).
+3) Invoice/order detail screen layout needs to look better (spacing, hierarchy, sections).
+
+Tasks:
+C1) Fix product image rendering in admin order cards + order details:
+- Ensure order items include valid image URL(s).
+- If API returns relative paths, convert to absolute base URL.
+- Add robust fallback: if image missing, show a consistent placeholder but do not break layout.
+- Confirm images appear in:
+  - Orders list cards
+  - Order detail/invoice screen
+  - Any admin customer order history previews
+
+C2) Improve Update Status dialog:
+- Keep same statuses, but refine UI:
+  - better spacing
+  - clearer selected state
+  - confirm/cancel actions
+  - optional short helper text
+- Ensure status update triggers backend call and refreshes UI immediately.
+
+C3) Improve Invoice (Order Details) layout:
+- Make it more premium:
+  - clear header (Order #, status badge)
+  - customer block (name/email/phone/address)
+  - items block (image, name, variant, qty, line total)
+  - totals block (subtotal, delivery, discount, total)
+  - dates (createdAt, updatedAt)
+- Maintain RTL/LTR support.
+
+Acceptance:
+- Product images appear correctly in admin order UI.
+- Status updates are smooth and instantly reflected.
+- Invoice screen looks cleaner and more professional.
+
+========================================================
+D) ADMIN — DISCOUNT CODE: “Create Code” button does nothing + add back button
+========================================================
+Problem:
+- Admin → Add Discount Code screen: “Create Code” button doesn’t trigger any action.
+
+Tasks:
+D1) Wire the button to a submit handler.
+D2) Implement _createDiscountCode() with:
+- Validate required fields:
+  Code, Type, Value, Min Order Amount, Max Uses, Expires At
+- Show snackbar if missing/invalid.
+- On valid:
+  POST /admin/discount-codes
+  Payload example:
+  {
+    "code":"AZ",
+    "type":"fixed",
+    "value":50,
+    "minOrderAmount":2500,
+    "maxUses":2,
+    "expiresAt":"2026-04-04"
+  }
+- Show loading state on button while submitting.
+- On success:
+  - show success snackbar/toast
+  - close modal/screen
+  - refresh discount codes list
+- On failure:
+  - show backend error message.
+D3) Add a visible Back button at top of Create Code screen (consistent with admin style).
+
+Acceptance:
+- Pressing Create Code validates, calls backend, creates code, shows success, returns and refreshes list.
+- Back button works.
+
+========================================================
+E) ADMIN — CUSTOMERS: Segmentation tabs update + Cart-related filters
+========================================================
+Current chips shown:
+- All Customers
+- Has Orders
+- No Orders
+
+Update requirement:
+Replace/extend chips to be exactly:
+- All Customers
+- Has Orders
+- No Orders
+- Cart
+- High Spenders
+- Abandoned Cart
+
+Behavior notes (do not add extra):
+- “Cart” = customers who currently have items in cart.
+- Show for Cart customers: when the cart was last updated / item added date (timestamp).
+- Add sorting options: “Highest cart” to “Lowest cart” (by cart total or item count—choose the more useful one and be consistent).
+- Keep existing search bar: search by name OR email OR phone.
+- Keep export to Excel for customer list.
+
+Acceptance:
+- Chips show the 6 categories above.
+- Cart chip filters correctly and shows cart date and supports sorting.
+
+========================================================
+F) ADMIN — CUSTOMER DETAILS: Cart notification + save notifications + delete capability
+========================================================
+Requirement:
+1) In Customer Details screen, admin can send a notification to THIS customer only (not all users) related to their cart.
+2) All notifications sent (global and cart-specific) must be saved in Notifications page list.
+3) Admin can delete notifications from Notifications page (including cart ones).
+4) Add an option inside “Send cart notification” to include a discount preset for the cart (e.g., attach a discount code or discount offer reference).
+   - Keep it simple: select an existing discount code or generate one, then include it in the message payload and save record.
+
+Acceptance:
+- Admin can send cart notification to a single customer.
+- Notification appears in Notifications page history.
+- Admin can delete any sent notification.
+- Discount preset option works and is persisted.
+
+========================================================
+G) ADMIN — (Already existing) Customers page: must show customers, orders, carts, export
+========================================================
+Ensure the Customers feature includes:
+- List customers with: name, email, phone, ID, registered date, last order, total spent, orders count.
+- Search by name/email/phone.
+- Export list to Excel.
+- Customer detail page includes:
+  - Order history
+  - Current cart (items, qty, price, images)
+  - “Notify Customer” action (single-customer)
+  - Cart timestamp
+
+(If any of the above already exists, do NOT rebuild—only fix gaps/bugs.)
+
+========================================================
+DELIVERABLES
+========================================================
+1) Fixes implemented per sections A–F (and only those).
+2) Short report:
+- What changed
+- Files touched
+- How to test each fix (exact admin navigation steps)
+
+REFERENCE LINKS (for correct implementation patterns)
+- Flutter Buttons & onPressed: https://api.flutter.dev/flutter/material/ElevatedButton-class.html
+- Flutter SnackBar: https://api.flutter.dev/flutter/material/SnackBar-class.html
+- Flutter Web file upload basics (XFile/bytes): https://pub.dev/packages/file_picker
+- Express routing order (specific before params): https://expressjs.com/en/guide/routing.html
+- Multer fileFilter & limits: https://github.com/expressjs/multer#filefilter
