@@ -1219,6 +1219,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Items'**
   String get itemsCount;
+
+  /// No description provided for @notifyCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify Customer'**
+  String get notifyCustomer;
+
+  /// No description provided for @sendCartNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Send cart notification'**
+  String get sendCartNotification;
+
+  /// No description provided for @arabicMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic message'**
+  String get arabicMessage;
+
+  /// No description provided for @englishMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'English message (optional)'**
+  String get englishMessage;
+
+  /// No description provided for @send.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get send;
+
+  /// No description provided for @cartWaitingTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart is waiting — complete your order'**
+  String get cartWaitingTemplate;
+
+  /// No description provided for @itemsMaySellOutTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Items in your cart may sell out'**
+  String get itemsMaySellOutTemplate;
+
+  /// No description provided for @notificationSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification sent successfully'**
+  String get notificationSent;
+
+  /// No description provided for @notificationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send notification'**
+  String get notificationFailed;
+
+  /// No description provided for @quickTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick templates'**
+  String get quickTemplates;
 }
 
 class _AppLocalizationsDelegate

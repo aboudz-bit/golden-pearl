@@ -555,4 +555,17 @@ class ApiService {
   String getCustomerExportUrl(int id) {
     return '$baseUrl/api/admin/customers/$id/export';
   }
+
+  Future<Map<String, dynamic>> sendCartNotification(int customerId, {required String messageAr, String? messageEn}) async {
+    final body = <String, dynamic>{'messageAr': messageAr, 'channel': 'in_app'};
+    if (messageEn != null && messageEn.isNotEmpty) body['messageEn'] = messageEn;
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/customers/$customerId/notify-cart'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
 }

@@ -217,5 +217,16 @@
   "exportCustomer": "تصدير التقرير",
   "customerInfo": "معلومات العميل",
   "itemsCount": "المنتجات",
-  "sortBy": "ترتيب"
+  "sortBy": "ترتيب",
+  "notifyCustomer": "إرسال تنبيه",
+  "sendCartNotification": "إرسال تنبيه للسلة",
+  "arabicMessage": "الرسالة بالعربي",
+  "englishMessage": "الرسالة بالإنجليزي (اختياري)",
+  "send": "إرسال",
+  "cancel": "إلغاء",
+  "cartWaitingTemplate": "سلتك جاهزة — كمّل طلبك",
+  "itemsMaySellOutTemplate": "بعض المنتجات في السلة ممكن تخلص",
+  "notificationSent": "تم إرسال التنبيه بنجاح",
+  "notificationFailed": "فشل إرسال التنبيه",
+  "quickTemplates": "قوالب سريعة"
 }

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { db } from "../db";
-import { users, orders, cartItems, products } from "@shared/schema";
+import { users, orders, cartItems, products, notifications } from "@shared/schema";
 import { eq, ilike, or, sql, desc, asc, and, gte, lte, count } from "drizzle-orm";
 import { AppError } from "../utils/AppError";
 import ExcelJS from "exceljs";
@@ -308,4 +308,42 @@ export async function exportCustomer(req: Request, res: Response) {
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename=customer_${safeName}_${id}.xlsx`);
   res.send(buffer);
+}
+
+export async function notifyCart(req: Request, res: Response) {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) throw AppError.badRequest("Invalid customer ID");
+
+  const { messageAr, messageEn } = req.body;
+  if (!messageAr || typeof messageAr !== "string" || messageAr.trim().length < 3) {
+    throw AppError.badRequest("Arabic message is required (min 3 characters)");
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.id, id));
+  if (!user) throw AppError.notFound("Customer not found");
+
+  const cartRows = await db
+    .select({
+      quantity: cartItems.quantity,
+      productPrice: products.price,
+    })
+    .from(cartItems)
+    .leftJoin(products, eq(cartItems.productId, products.id))
+    .where(eq(cartItems.userId, id));
+
+  const itemsCount = cartRows.reduce((sum, r) => sum + r.quantity, 0);
+  const cartTotal = cartRows.reduce((sum, r) => sum + (r.productPrice ?? 0) * r.quantity, 0);
+
+  const title = messageEn && typeof messageEn === "string" && messageEn.trim()
+    ? messageEn.trim()
+    : messageAr.trim();
+
+  const [notif] = await db.insert(notifications).values({
+    userId: String(user.id),
+    title: title,
+    message: messageAr.trim(),
+    read: false,
+  }).returning();
+
+  res.json({ success: true });
 }

@@ -586,4 +586,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get itemsCount => 'Items';
+
+  @override
+  String get notifyCustomer => 'Notify Customer';
+
+  @override
+  String get sendCartNotification => 'Send cart notification';
+
+  @override
+  String get arabicMessage => 'Arabic message';
+
+  @override
+  String get englishMessage => 'English message (optional)';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get cartWaitingTemplate =>
+      'Your cart is waiting — complete your order';
+
+  @override
+  String get itemsMaySellOutTemplate => 'Items in your cart may sell out';
+
+  @override
+  String get notificationSent => 'Notification sent successfully';
+
+  @override
+  String get notificationFailed => 'Failed to send notification';
+
+  @override
+  String get quickTemplates => 'Quick templates';
 }

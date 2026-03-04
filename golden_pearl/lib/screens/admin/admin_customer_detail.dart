@@ -252,6 +252,175 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
     );
   }
 
+  void _showNotifyDialog(AppLocalizations l10n) {
+    final arController = TextEditingController();
+    final enController = TextEditingController();
+    bool sending = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setDialogState) {
+          final c = _customer!;
+          return AlertDialog(
+            backgroundColor: kCardBg,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.send_outlined, color: kGoldPrimary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(l10n.sendCartNotification, style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal))),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: kCreamBg, borderRadius: BorderRadius.circular(10)),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(color: kGoldPrimary.withOpacity(0.1), shape: BoxShape.circle),
+                          child: Center(child: Text((c['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kGoldPrimary))),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kCharcoal), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text(c['email'] ?? '', style: const TextStyle(fontSize: 11, color: kSecondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(l10n.quickTemplates, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kSecondaryText)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _templateChip(l10n.cartWaitingTemplate, 'Your cart is waiting — complete your order', arController, enController, setDialogState),
+                      _templateChip(l10n.itemsMaySellOutTemplate, 'Items in your cart may sell out', arController, enController, setDialogState),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(l10n.arabicMessage, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kCharcoal)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: arController,
+                    textDirection: TextDirection.rtl,
+                    maxLines: 3,
+                    minLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'سلتك جاهزة...',
+                      hintTextDirection: TextDirection.rtl,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kDivider)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kGoldPrimary)),
+                      contentPadding: const EdgeInsets.all(10),
+                      filled: true,
+                      fillColor: kCreamBg,
+                    ),
+                    style: const TextStyle(fontSize: 13, color: kCharcoal),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(l10n.englishMessage, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kCharcoal)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: enController,
+                    maxLines: 3,
+                    minLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Your cart is waiting...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kDivider)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kGoldPrimary)),
+                      contentPadding: const EdgeInsets.all(10),
+                      filled: true,
+                      fillColor: kCreamBg,
+                    ),
+                    style: const TextStyle(fontSize: 13, color: kCharcoal),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: sending ? null : () => Navigator.pop(ctx),
+                child: Text(l10n.cancel, style: const TextStyle(color: kSecondaryText)),
+              ),
+              ElevatedButton.icon(
+                onPressed: sending ? null : () async {
+                  final arMsg = arController.text.trim();
+                  if (arMsg.length < 3) return;
+                  setDialogState(() => sending = true);
+                  try {
+                    await apiService.sendCartNotification(
+                      widget.customerId,
+                      messageAr: arMsg,
+                      messageEn: enController.text.trim().isNotEmpty ? enController.text.trim() : null,
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(l10n.notificationSent),
+                        backgroundColor: Colors.green,
+                      ));
+                    }
+                  } catch (e) {
+                    setDialogState(() => sending = false);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(l10n.notificationFailed),
+                        backgroundColor: Colors.red,
+                      ));
+                    }
+                  }
+                },
+                icon: sending
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send, size: 16),
+                label: Text(l10n.send),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kGoldPrimary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  Widget _templateChip(String arText, String enText, TextEditingController arCtrl, TextEditingController enCtrl, StateSetter setDialogState) {
+    return InkWell(
+      onTap: () {
+        setDialogState(() {
+          arCtrl.text = arText;
+          enCtrl.text = enText;
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: kGoldPrimary.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(8),
+          color: kGoldPrimary.withOpacity(0.05),
+        ),
+        child: Text(arText, style: const TextStyle(fontSize: 11, color: kGoldPrimary), maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.rtl),
+      ),
+    );
+  }
+
   Widget _buildCartSection(AppLocalizations l10n, String lang) {
     final cartList = (_customer!['cart'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
@@ -265,8 +434,27 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
             children: [
               const Icon(Icons.shopping_cart_outlined, color: kGoldPrimary, size: 20),
               const SizedBox(width: 8),
-              Text(l10n.currentCart, style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal)),
-              const Spacer(),
+              Expanded(child: Text(l10n.currentCart, style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal))),
+              InkWell(
+                onTap: () => _showNotifyDialog(l10n),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: kGoldPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.send_outlined, size: 14, color: kGoldPrimary),
+                      const SizedBox(width: 4),
+                      Text(l10n.notifyCustomer, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: kGoldPrimary)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               Text('${cartList.length} ${l10n.itemsCount}', style: const TextStyle(fontSize: 13, color: kSecondaryText)),
             ],
           ),

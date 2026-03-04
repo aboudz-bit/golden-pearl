@@ -584,4 +584,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get itemsCount => 'المنتجات';
+
+  @override
+  String get notifyCustomer => 'إرسال تنبيه';
+
+  @override
+  String get sendCartNotification => 'إرسال تنبيه للسلة';
+
+  @override
+  String get arabicMessage => 'الرسالة بالعربي';
+
+  @override
+  String get englishMessage => 'الرسالة بالإنجليزي (اختياري)';
+
+  @override
+  String get send => 'إرسال';
+
+  @override
+  String get cartWaitingTemplate => 'سلتك جاهزة — كمّل طلبك';
+
+  @override
+  String get itemsMaySellOutTemplate => 'بعض المنتجات في السلة ممكن تخلص';
+
+  @override
+  String get notificationSent => 'تم إرسال التنبيه بنجاح';
+
+  @override
+  String get notificationFailed => 'فشل إرسال التنبيه';
+
+  @override
+  String get quickTemplates => 'قوالب سريعة';
 }

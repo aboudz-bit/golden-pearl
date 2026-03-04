@@ -217,5 +217,16 @@
   "exportCustomer": "Export Report",
   "customerInfo": "Customer Info",
   "itemsCount": "Items",
-  "sortBy": "Sort"
+  "sortBy": "Sort",
+  "notifyCustomer": "Notify Customer",
+  "sendCartNotification": "Send cart notification",
+  "arabicMessage": "Arabic message",
+  "englishMessage": "English message (optional)",
+  "send": "Send",
+  "cancel": "Cancel",
+  "cartWaitingTemplate": "Your cart is waiting — complete your order",
+  "itemsMaySellOutTemplate": "Items in your cart may sell out",
+  "notificationSent": "Notification sent successfully",
+  "notificationFailed": "Failed to send notification",
+  "quickTemplates": "Quick templates"
 }

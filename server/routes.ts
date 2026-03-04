@@ -84,6 +84,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/customers/export", isAdmin, asyncHandler(customers.exportCustomers));
   app.get("/api/admin/customers/:id/export", isAdmin, asyncHandler(customers.exportCustomer));
+  app.post("/api/admin/customers/:id/notify-cart", isAdmin, asyncHandler(customers.notifyCart));
   app.get("/api/admin/customers/:id", isAdmin, asyncHandler(customers.getCustomer));
   app.get("/api/admin/customers", isAdmin, asyncHandler(customers.listCustomers));
 

@@ -1,0 +1,99 @@
+You are Replit AI working inside my existing Flutter Web + Node.js/Express app.
+
+Implement ONE feature only:
+✅ Admin can send a targeted notification to a single customer from the Customer Details screen, specifically about that customer's current cart (not broadcast, not all users).
+
+DO NOT add any unrelated features. Do NOT change existing flows unless required.
+
+----------------------------
+FEATURE — CUSTOMER CART NOTIFICATION
+----------------------------
+
+UI (Flutter Admin)
+1) In Customer Details screen, inside the "Current Cart" section header (where I circled), add a button:
+   - Label EN: "Notify Customer"
+   - Label AR: "إرسال تنبيه"
+   - Icon: bell or paper-plane
+2) When admin taps it, open a modal/dialog:
+   - Title: "Send cart notification" / "إرسال تنبيه للسلة"
+   - Customer name + email/phone displayed (read-only)
+   - Message fields:
+     A) Arabic message textarea (required)
+     B) English message textarea (optional, but recommended)
+   - Optional quick templates (one-tap fill) based on cart:
+     - "Your cart is waiting — complete your order" / "سلتك جاهزة — كمّل طلبك"
+     - "Items in your cart may sell out" / "بعض المنتجات في السلة ممكن تخلص"
+   - Buttons:
+     - Cancel / إلغاء
+     - Send / إرسال
+   - Show loading state, success toast, error toast.
+
+Backend (Node/Express)
+Add an admin-only endpoint to send a targeted notification:
+POST /api/admin/customers/:id/notify-cart
+Body:
+{
+  "messageAr": "string",
+  "messageEn": "string | optional",
+  "channel": "in_app"  // default in_app for now
+}
+
+Rules:
+- Must be protected by isAdmin middleware.
+- Validate:
+  - messageAr required, min length 3
+  - messageEn optional
+- Response format:
+  Success:
+  { "success": true }
+  Failure:
+  { "success": false, "message": "..." }
+
+Storage / Delivery (IMPORTANT)
+We currently do NOT have real push notifications set up. So implement it as **in-app notifications**:
+
+1) Create a table (or collection) called notifications with fields:
+   - id (auto)
+   - userId (customer id)
+   - titleAr (optional)
+   - titleEn (optional)
+   - messageAr (required)
+   - messageEn (optional)
+   - type: "cart"
+   - metaJson (optional): include cart snapshot summary (items count, total) if available
+   - isRead boolean default false
+   - createdAt
+
+2) When admin calls notify-cart:
+   - Confirm customer exists
+   - Fetch current cart summary (itemsCount + total) if cart exists
+   - Insert a notifications row for that customer (type="cart")
+   - Return success
+
+Customer App (Flutter customer side)
+- If there is already a Notifications page/route in the customer app, ensure it can read and show notifications for the logged-in user.
+- If the customer notifications UI already exists, just ensure the new "cart" notifications appear.
+- If it does NOT exist, do NOT build a full notification center now — just add minimal support:
+  - A small bell badge in Settings or Home (where existing pattern is easiest)
+  - A simple list screen showing notifications (message + created date + read/unread)
+  - Mark as read on tap (PATCH /api/notifications/:id/read)
+
+API endpoints for customer side (if not existing)
+- GET /api/notifications (for current logged-in user) -> returns list
+- PATCH /api/notifications/:id/read -> marks read
+Use existing auth/session mechanism.
+
+Edge cases
+- Customer has empty cart: still allow notification, but metaJson itemsCount=0 and total=0
+- Network errors: show clear toast
+- Ensure this is strictly per-user; NEVER broadcast.
+
+Testing
+- From admin: open Customer Details -> Current Cart -> Notify Customer -> send
+- Verify notification row saved for that user
+- Login as that customer -> see notification
+- Confirm other customers do NOT see it
+
+Deliverable
+- Code changes only for this feature.
+- Keep existing UI style, spacing, typography, and localization approach.
