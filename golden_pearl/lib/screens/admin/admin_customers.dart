@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
 import 'admin_customer_detail.dart';
 
+enum CustomerSegment { all, hasOrders, noOrders, cart, highSpenders, abandonedCart }
+
 class AdminCustomersScreen extends StatefulWidget {
   const AdminCustomersScreen({super.key});
 
@@ -22,8 +24,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
   bool _loading = true;
   String _search = '';
   String _sort = 'newest';
-  String? _hasOrders;
-  String? _hasCart;
+  CustomerSegment _segment = CustomerSegment.all;
   final _searchCtrl = TextEditingController();
 
   @override
@@ -38,14 +39,42 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     super.dispose();
   }
 
+  String? get _hasOrders {
+    if (_segment == CustomerSegment.hasOrders) return 'true';
+    if (_segment == CustomerSegment.noOrders) return 'false';
+    return null;
+  }
+
+  String? get _hasCart {
+    if (_segment == CustomerSegment.cart) return 'true';
+    return null;
+  }
+
+  String? get _highSpenders {
+    if (_segment == CustomerSegment.highSpenders) return 'true';
+    return null;
+  }
+
+  String? get _abandonedCart {
+    if (_segment == CustomerSegment.abandonedCart) return 'true';
+    return null;
+  }
+
+  String get _effectiveSort {
+    if (_segment == CustomerSegment.highSpenders) return 'highest_spent';
+    return _sort;
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
       final result = await apiService.getCustomers(
         search: _search.isNotEmpty ? _search : null,
-        sort: _sort,
+        sort: _effectiveSort,
         hasOrders: _hasOrders,
         hasCart: _hasCart,
+        highSpenders: _highSpenders,
+        abandonedCart: _abandonedCart,
         page: _page,
         limit: 20,
       );
@@ -67,12 +96,22 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     _load();
   }
 
+  void _selectSegment(CustomerSegment seg) {
+    setState(() {
+      _segment = seg;
+      _page = 1;
+    });
+    _load();
+  }
+
   void _exportList() {
     final url = apiService.getCustomersExportUrl(
       search: _search.isNotEmpty ? _search : null,
-      sort: _sort,
+      sort: _effectiveSort,
       hasOrders: _hasOrders,
       hasCart: _hasCart,
+      highSpenders: _highSpenders,
+      abandonedCart: _abandonedCart,
     );
     html.window.open(url, '_blank');
   }
@@ -108,35 +147,49 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Row(
-            children: [
-              _filterChip(l10n.allCustomers, _hasOrders == null, () { setState(() { _hasOrders = null; _page = 1; }); _load(); }),
-              const SizedBox(width: 6),
-              _filterChip(l10n.hasOrders, _hasOrders == 'true', () { setState(() { _hasOrders = 'true'; _page = 1; }); _load(); }),
-              const SizedBox(width: 6),
-              _filterChip(l10n.noOrders, _hasOrders == 'false', () { setState(() { _hasOrders = 'false'; _hasCart = null; _page = 1; }); _load(); }),
-              const SizedBox(width: 6),
-              _filterChip('Cart', _hasCart == 'true', () { setState(() { _hasCart = 'true'; _hasOrders = null; _page = 1; }); _load(); }),
-              const Spacer(),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.sort, color: kSecondaryText, size: 20),
-                tooltip: l10n.sortBy,
-                onSelected: (v) { setState(() { _sort = v; _page = 1; }); _load(); },
-                itemBuilder: (_) => [
-                  PopupMenuItem(value: 'newest', child: Text(l10n.newestFirst)),
-                  PopupMenuItem(value: 'highest_spent', child: Text(l10n.highestSpent)),
-                  PopupMenuItem(value: 'most_orders', child: Text(l10n.mostOrders)),
-                  PopupMenuItem(value: 'last_order', child: Text(l10n.lastOrderDate)),
-                  PopupMenuItem(value: 'highest_cart', child: Text('Highest Cart')),
-                  PopupMenuItem(value: 'lowest_cart', child: Text('Lowest Cart')),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.download_outlined, color: kGoldPrimary, size: 20),
-                tooltip: l10n.exportList,
-                onPressed: _exportList,
-              ),
-            ],
+          child: SizedBox(
+            height: 32,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _filterChip(l10n.allCustomers, _segment == CustomerSegment.all, () => _selectSegment(CustomerSegment.all)),
+                      const SizedBox(width: 6),
+                      _filterChip(l10n.hasOrders, _segment == CustomerSegment.hasOrders, () => _selectSegment(CustomerSegment.hasOrders)),
+                      const SizedBox(width: 6),
+                      _filterChip(l10n.noOrders, _segment == CustomerSegment.noOrders, () => _selectSegment(CustomerSegment.noOrders)),
+                      const SizedBox(width: 6),
+                      _filterChip('Cart', _segment == CustomerSegment.cart, () => _selectSegment(CustomerSegment.cart)),
+                      const SizedBox(width: 6),
+                      _filterChip('High Spenders', _segment == CustomerSegment.highSpenders, () => _selectSegment(CustomerSegment.highSpenders)),
+                      const SizedBox(width: 6),
+                      _filterChip('Abandoned Cart', _segment == CustomerSegment.abandonedCart, () => _selectSegment(CustomerSegment.abandonedCart)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.sort, color: kSecondaryText, size: 20),
+                  tooltip: l10n.sortBy,
+                  onSelected: (v) { setState(() { _sort = v; _page = 1; }); _load(); },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'newest', child: Text(l10n.newestFirst)),
+                    PopupMenuItem(value: 'highest_spent', child: Text(l10n.highestSpent)),
+                    PopupMenuItem(value: 'most_orders', child: Text(l10n.mostOrders)),
+                    PopupMenuItem(value: 'last_order', child: Text(l10n.lastOrderDate)),
+                    PopupMenuItem(value: 'highest_cart', child: Text('Highest Cart')),
+                    PopupMenuItem(value: 'lowest_cart', child: Text('Lowest Cart')),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download_outlined, color: kGoldPrimary, size: 20),
+                  tooltip: l10n.exportList,
+                  onPressed: _exportList,
+                ),
+              ],
+            ),
           ),
         ),
         Padding(
@@ -154,7 +207,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator(color: kGoldPrimary))
               : _customers.isEmpty
-                  ? Center(child: Text(l10n.noOrdersYet, style: const TextStyle(color: kSecondaryText)))
+                  ? Center(child: Text(_emptyMessage(l10n), style: const TextStyle(color: kSecondaryText)))
                   : RefreshIndicator(
                       onRefresh: _load,
                       color: kGoldPrimary,
@@ -187,8 +240,27 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     );
   }
 
+  String _emptyMessage(AppLocalizations l10n) {
+    switch (_segment) {
+      case CustomerSegment.hasOrders:
+        return 'No customers with orders';
+      case CustomerSegment.noOrders:
+        return 'No customers without orders';
+      case CustomerSegment.cart:
+        return 'No customers with items in cart';
+      case CustomerSegment.highSpenders:
+        return 'No high spenders found';
+      case CustomerSegment.abandonedCart:
+        return 'No abandoned carts found';
+      case CustomerSegment.all:
+      default:
+        return l10n.noOrdersYet;
+    }
+  }
+
   String _sortLabel(AppLocalizations l10n) {
-    switch (_sort) {
+    final s = _effectiveSort;
+    switch (s) {
       case 'highest_spent': return l10n.highestSpent;
       case 'most_orders': return l10n.mostOrders;
       case 'last_order': return l10n.lastOrderDate;

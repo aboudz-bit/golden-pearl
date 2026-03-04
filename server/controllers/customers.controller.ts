@@ -105,6 +105,19 @@ async function buildCustomerQuery(query: Request["query"]) {
     result = result.filter(c => c.cartItemCount > 0);
   }
 
+  const { highSpenders, abandonedCart } = query;
+  if (highSpenders === "true") {
+    result = result.filter(c => c.totalSpent > 0);
+  }
+  if (abandonedCart === "true") {
+    const threshold = Date.now() - 24 * 60 * 60 * 1000;
+    result = result.filter(c => {
+      if (c.cartItemCount <= 0 || !c.cartUpdatedAt) return false;
+      const cartTime = new Date(c.cartUpdatedAt).getTime();
+      return cartTime < threshold;
+    });
+  }
+
   const sortBy = typeof sort === "string" ? sort : "newest";
   switch (sortBy) {
     case "highest_spent":

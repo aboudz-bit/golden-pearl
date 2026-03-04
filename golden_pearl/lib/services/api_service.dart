@@ -525,12 +525,14 @@ class ApiService {
     _checkResponse(response);
   }
 
-  Future<Map<String, dynamic>> getCustomers({String? search, String? sort, String? hasOrders, String? hasCart, int page = 1, int limit = 20}) async {
+  Future<Map<String, dynamic>> getCustomers({String? search, String? sort, String? hasOrders, String? hasCart, String? highSpenders, String? abandonedCart, int page = 1, int limit = 20}) async {
     final params = <String, String>{'page': '$page', 'limit': '$limit'};
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (sort != null) params['sort'] = sort;
     if (hasOrders != null) params['hasOrders'] = hasOrders;
     if (hasCart != null) params['hasCart'] = hasCart;
+    if (highSpenders != null) params['highSpenders'] = highSpenders;
+    if (abandonedCart != null) params['abandonedCart'] = abandonedCart;
     final uri = Uri.parse('$baseUrl/api/admin/customers').replace(queryParameters: params);
     final response = await _client.get(uri, headers: _headers);
     _updateCookie(response);
@@ -545,12 +547,14 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
-  String getCustomersExportUrl({String? search, String? sort, String? hasOrders, String? hasCart}) {
+  String getCustomersExportUrl({String? search, String? sort, String? hasOrders, String? hasCart, String? highSpenders, String? abandonedCart}) {
     final params = <String, String>{};
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (sort != null) params['sort'] = sort;
     if (hasOrders != null) params['hasOrders'] = hasOrders;
     if (hasCart != null) params['hasCart'] = hasCart;
+    if (highSpenders != null) params['highSpenders'] = highSpenders;
+    if (abandonedCart != null) params['abandonedCart'] = abandonedCart;
     final uri = Uri.parse('$baseUrl/api/admin/customers/export').replace(queryParameters: params);
     return uri.toString();
   }
