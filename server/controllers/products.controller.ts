@@ -1,7 +1,15 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import { storage } from "../storage";
 import { insertProductSchema } from "@shared/schema";
 import { AppError } from "../utils/AppError";
+
+const updateProductSchema = insertProductSchema.partial();
+
+const reorderItemSchema = z.object({
+  id: z.number().int().positive(),
+  orderIndex: z.number().int().min(0),
+});
 
 export async function listProducts(req: Request, res: Response) {
   const { category, search, featured } = req.query;
@@ -34,7 +42,9 @@ export async function createProduct(req: Request, res: Response) {
 }
 
 export async function updateProduct(req: Request, res: Response) {
-  const product = await storage.updateProduct(parseInt(req.params.id), req.body);
+  const result = updateProductSchema.safeParse(req.body);
+  if (!result.success) throw AppError.badRequest("Invalid product data");
+  const product = await storage.updateProduct(parseInt(req.params.id), result.data);
   if (!product) throw AppError.notFound("Product not found");
   res.json(product);
 }
@@ -55,6 +65,8 @@ export async function updateStock(req: Request, res: Response) {
 export async function reorderProducts(req: Request, res: Response) {
   const { items } = req.body;
   if (!Array.isArray(items)) throw AppError.badRequest("items array required");
-  await storage.reorderProducts(items);
+  const parsed = z.array(reorderItemSchema).safeParse(items);
+  if (!parsed.success) throw AppError.badRequest("Invalid reorder data");
+  await storage.reorderProducts(parsed.data);
   res.json({ success: true });
 }

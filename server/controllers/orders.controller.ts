@@ -1,7 +1,14 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import { storage } from "../storage";
 import { insertOrderSchema } from "@shared/schema";
 import { AppError } from "../utils/AppError";
+
+const validStatuses = ["pending", "confirmed", "processing", "shipped", "delivered", "ready_for_pickup", "cancelled"] as const;
+const updateStatusSchema = z.object({
+  status: z.enum(validStatuses),
+  trackingNumber: z.string().optional(),
+});
 
 export async function createOrder(req: Request, res: Response) {
   const sessionId = req.session?.id || "anonymous";
@@ -153,8 +160,9 @@ export async function adminListOrders(req: Request, res: Response) {
 }
 
 export async function updateOrderStatus(req: Request, res: Response) {
-  const { status, trackingNumber } = req.body;
-  if (!status) throw AppError.badRequest("Status is required");
+  const result = updateStatusSchema.safeParse(req.body);
+  if (!result.success) throw AppError.badRequest("Invalid status. Must be one of: " + validStatuses.join(", "));
+  const { status, trackingNumber } = result.data;
   const order = await storage.updateOrderStatus(parseInt(req.params.id), status, trackingNumber);
   if (!order) throw AppError.notFound("Order not found");
 

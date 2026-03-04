@@ -109,6 +109,12 @@ Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for 
 - **Disabled accounts**: Login returns 403 "Account disabled"
 - **Staff endpoints**: `POST/GET /api/admin/staff`, `PATCH /api/admin/staff/:id`, `PATCH /api/admin/staff/:id/permissions`, `DELETE /api/admin/staff/:id`
 
+## Validation
+- **Zod schemas** used in all mutating controllers: createProduct, updateProduct, createBanner, updateBanner, createDiscount, createOrder, updateOrderStatus, updateCategory
+- **Reorder endpoints** validate item shapes (id + sortOrder/orderIndex)
+- **Order status** validated against enum: pending, confirmed, processing, shipped, delivered, ready_for_pickup, cancelled
+- **Partial schemas** (`insertSchema.partial()`) used for update operations
+
 ## Security
 - **Helmet**: Secure HTTP headers (HSTS, X-Content-Type-Options, X-Frame-Options)
 - **Rate limiting**: Auth 10/min, Upload 30/min, General API 200/min

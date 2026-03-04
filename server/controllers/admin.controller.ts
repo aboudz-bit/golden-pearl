@@ -1,8 +1,17 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import { storage } from "../storage";
-import { insertBannerSchema, insertDiscountCodeSchema } from "@shared/schema";
+import { insertBannerSchema, insertDiscountCodeSchema, insertCategorySchema } from "@shared/schema";
 import { AppError } from "../utils/AppError";
 import { invalidateCache } from "../middleware/cache";
+
+const updateBannerSchema = insertBannerSchema.partial();
+const updateCategorySchema = insertCategorySchema.partial();
+const reorderItemSchema = z.object({
+  id: z.number().int().positive(),
+  sortOrder: z.number().int().min(0),
+});
+const validStatuses = new Set(["pending", "confirmed", "processing", "shipped", "delivered", "ready_for_pickup", "cancelled"]);
 
 export async function getSettings(_req: Request, res: Response) {
   res.json(await storage.getAllSettings());
@@ -31,7 +40,9 @@ export async function createBanner(req: Request, res: Response) {
 }
 
 export async function updateBanner(req: Request, res: Response) {
-  const banner = await storage.updateBanner(parseInt(req.params.id), req.body);
+  const result = updateBannerSchema.safeParse(req.body);
+  if (!result.success) throw AppError.badRequest("Invalid banner data");
+  const banner = await storage.updateBanner(parseInt(req.params.id), result.data);
   if (!banner) throw AppError.notFound("Banner not found");
   invalidateCache("banners");
   res.json(banner);
@@ -46,7 +57,9 @@ export async function deleteBanner(req: Request, res: Response) {
 export async function reorderBanners(req: Request, res: Response) {
   const { items } = req.body;
   if (!Array.isArray(items)) throw AppError.badRequest("items array required");
-  await storage.reorderBanners(items);
+  const parsed = z.array(reorderItemSchema).safeParse(items);
+  if (!parsed.success) throw AppError.badRequest("Invalid reorder data");
+  await storage.reorderBanners(parsed.data);
   invalidateCache("banners");
   res.json({ success: true });
 }
@@ -58,19 +71,25 @@ export async function listCategories(_req: Request, res: Response) {
 export async function reorderCategories(req: Request, res: Response) {
   const { items, orderedIds } = req.body;
   if (orderedIds && Array.isArray(orderedIds)) {
-    const mapped = orderedIds.map((id: number, idx: number) => ({ id, sortOrder: idx }));
+    const idsResult = z.array(z.number().int().positive()).safeParse(orderedIds);
+    if (!idsResult.success) throw AppError.badRequest("Invalid orderedIds");
+    const mapped = idsResult.data.map((id, idx) => ({ id, sortOrder: idx }));
     await storage.reorderCategories(mapped);
     invalidateCache("categories");
     return res.json({ success: true });
   }
   if (!Array.isArray(items)) throw AppError.badRequest("items array or orderedIds required");
-  await storage.reorderCategories(items);
+  const parsed = z.array(reorderItemSchema).safeParse(items);
+  if (!parsed.success) throw AppError.badRequest("Invalid reorder data");
+  await storage.reorderCategories(parsed.data);
   invalidateCache("categories");
   res.json({ success: true });
 }
 
 export async function updateCategory(req: Request, res: Response) {
-  const cat = await storage.updateCategory(parseInt(req.params.id), req.body);
+  const result = updateCategorySchema.safeParse(req.body);
+  if (!result.success) throw AppError.badRequest("Invalid category data");
+  const cat = await storage.updateCategory(parseInt(req.params.id), result.data);
   if (!cat) throw AppError.notFound("Category not found");
   invalidateCache("categories");
   res.json(cat);
