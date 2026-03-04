@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/browser_client.dart';
 import '../models/product.dart';
@@ -364,13 +365,40 @@ class ApiService {
     _checkResponse(response);
   }
 
+  String _mimeFromFilename(String filename) {
+    final ext = filename.toLowerCase().split('.').last;
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'heic':
+      case 'heif':
+        return 'image/heic';
+      case 'mp4':
+        return 'video/mp4';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   Future<Map<String, dynamic>> uploadFile(List<int> bytes, String filename) async {
     final uri = Uri.parse('$baseUrl/api/admin/upload');
     final request = http.MultipartRequest('POST', uri);
     if (!kIsWeb && _cookie != null) {
       request.headers['Cookie'] = _cookie!;
     }
-    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final mime = _mimeFromFilename(filename);
+    final mediaParts = mime.split('/');
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: filename,
+      contentType: http_parser.MediaType(mediaParts[0], mediaParts.length > 1 ? mediaParts[1] : 'octet-stream'),
+    ));
     final streamedResponse = await _client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
     _updateCookie(response);

@@ -77,7 +77,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    final input = html.FileUploadInputElement()..accept = 'image/*';
+    final input = html.FileUploadInputElement()..accept = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
     input.click();
     input.onChange.listen((event) async {
       final files = input.files;

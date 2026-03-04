@@ -1,0 +1,65 @@
+You are Replit AI working inside my existing Flutter Web + Node.js/Express project (single store).
+
+TASK: Fix ONLY the image/video upload problems (do NOT change anything else, do NOT add features).
+
+Scope (ONLY these 3 places):
+1) Admin → Hero (banner/hero slides upload)
+2) Admin → Categories (category image upload)
+3) Admin → Products → Add Product (product images upload, and the “Add Video” if present)
+
+Current symptoms:
+- Uploads “spin” / show “Uploading…” but never complete (no new slide/image appears).
+- On Add Product page, I get this error toast:
+  “Upload failed: Exception: Only jpg, png, webp images and mp4 videos are allowed”
+  even when selecting common images from my phone.
+
+What you must do:
+A) Identify the root cause(s) across Flutter Web + Express:
+   - MIME/type detection issues on iOS/Safari uploads (HEIC, JPEG variants, missing/empty content-type)
+   - file extension checks vs MIME checks mismatching
+   - multer configuration or route handler not receiving the file
+   - request not reaching the backend (wrong URL, CORS/credentials, missing headers)
+   - server returning 4xx/5xx but frontend not surfacing it (silent failure)
+   - size limits causing server rejection
+   - wrong field name in multipart form (e.g., “file” vs “image” vs “banner”)
+   - wrong endpoint path used by frontend
+
+B) Fix backend upload handling to be robust:
+   - Use multer to accept uploads properly.
+   - Validate file types safely, but also support iPhone images:
+     * Allow: jpg/jpeg/png/webp for images
+     * Allow: mp4 for videos
+     * ALSO handle iPhone HEIC: either (1) accept heic for now, OR (2) detect heic and return a clear error message that tells the user to convert (choose best approach so uploads work).
+   - Validate using BOTH mime and extension with sensible fallbacks (don’t reject valid JPEGs).
+   - Sanitize filenames and store safely.
+   - Return a clear JSON response with the uploaded public URL:
+     { success: true, url: "/uploads/..." }
+   - Ensure Express serves the uploaded files statically so the URL works:
+     app.use("/uploads", express.static(...))
+
+C) Fix frontend upload code (Flutter Web):
+   - Ensure file picking provides bytes for web and you send them via MultipartRequest correctly.
+   - Ensure you set the correct multipart field name expected by the backend.
+   - Ensure the response is parsed and the UI updates (adds slide/category/product image).
+   - If backend rejects, show the exact server error message (not a generic spinner forever).
+   - Make sure this works on mobile Safari (iPhone) since I’m testing from phone.
+
+D) Verification checklist (must do all):
+   1) Upload hero/banner image → slide appears immediately.
+   2) Upload category image → category shows the new image immediately.
+   3) Upload product image in Add Product → image thumbnail appears and saving works.
+   4) If a file is truly unsupported, show a helpful message (e.g., “HEIC not supported, please choose JPG/PNG” OR implement acceptance).
+
+Rules:
+- Do NOT modify admin navigation, hero text editor, category reorder, analytics, or any other features.
+- Touch only the minimal files needed for uploads and their APIs.
+- After changes: run build + restart, then test the 3 flows above and confirm with notes:
+  - endpoints hit
+  - example response payload
+  - any limits (max size)
+
+Helpful references you may use:
+- Multer multipart uploads (Express): https://github.com/expressjs/multer
+- Express static files: https://expressjs.com/en/starter/static-files.html
+- Flutter HTTP multipart upload: https://pub.dev/packages/http
+- Flutter Web file picking: https://pub.dev/packages/file_picker

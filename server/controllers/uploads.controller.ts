@@ -9,20 +9,30 @@ import { AppError } from "../utils/AppError";
 const uploadsDir = path.resolve(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const ALLOWED_VIDEO_MIMES = ["video/mp4"];
-const ALLOWED_IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp"];
-const ALLOWED_VIDEO_EXTS = [".mp4"];
+const IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+const VIDEO_MIMES = new Set(["video/mp4"]);
+const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const VIDEO_EXTS = new Set([".mp4"]);
+const HEIC_MIMES = new Set(["image/heic", "image/heif"]);
+const HEIC_EXTS = new Set([".heic", ".heif"]);
+
+function classifyFile(mime: string, ext: string): "image" | "video" | "heic" | null {
+  if (HEIC_MIMES.has(mime) || HEIC_EXTS.has(ext)) return "heic";
+  if (IMAGE_MIMES.has(mime) || IMAGE_EXTS.has(ext)) return "image";
+  if (VIDEO_MIMES.has(mime) || VIDEO_EXTS.has(ext)) return "video";
+  return null;
+}
 
 export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const isImage = ALLOWED_IMAGE_MIMES.includes(file.mimetype) && ALLOWED_IMAGE_EXTS.includes(ext);
-    const isVideo = ALLOWED_VIDEO_MIMES.includes(file.mimetype) && ALLOWED_VIDEO_EXTS.includes(ext);
-    if (isImage || isVideo) {
+    const kind = classifyFile(file.mimetype, ext);
+    if (kind === "image" || kind === "video") {
       cb(null, true);
+    } else if (kind === "heic") {
+      cb(new Error("HEIC/HEIF images are not supported. Please convert to JPG or PNG before uploading."));
     } else {
       cb(new Error("Only jpg, png, webp images and mp4 videos are allowed"));
     }
@@ -32,10 +42,12 @@ export const upload = multer({
 export async function uploadFile(req: Request, res: Response) {
   if (!req.file) throw AppError.badRequest("No file uploaded");
 
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  const kind = classifyFile(req.file.mimetype, ext);
+  const isImage = kind === "image";
   const sanitizedName = randomUUID();
-  const isImage = req.file.mimetype.startsWith("image/");
-  const ext = isImage ? ".jpg" : ".mp4";
-  const filename = `${sanitizedName}${ext}`;
+  const outExt = isImage ? ".jpg" : ".mp4";
+  const filename = `${sanitizedName}${outExt}`;
   const filepath = path.join(uploadsDir, filename);
 
   if (isImage) {
@@ -47,7 +59,7 @@ export async function uploadFile(req: Request, res: Response) {
     fs.writeFileSync(filepath, req.file.buffer);
   }
 
-  res.json({ url: `/uploads/${filename}`, type: isImage ? "image" : "video" });
+  res.json({ success: true, url: `/uploads/${filename}`, type: isImage ? "image" : "video" });
 }
 
 export async function deleteFile(req: Request, res: Response) {

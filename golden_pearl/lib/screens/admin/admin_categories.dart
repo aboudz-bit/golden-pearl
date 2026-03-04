@@ -140,7 +140,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   Future<void> _pickAndUploadImage(Map<String, dynamic> category) async {
     final id = category['id'] as int;
-    final input = html.FileUploadInputElement()..accept = 'image/*';
+    final input = html.FileUploadInputElement()..accept = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
     input.click();
 
     input.onChange.listen((event) async {
