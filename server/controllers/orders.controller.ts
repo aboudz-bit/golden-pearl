@@ -79,8 +79,61 @@ export async function getOrder(req: Request, res: Response) {
   res.json(order);
 }
 
-export async function adminListOrders(_req: Request, res: Response) {
-  const allOrders = await storage.getAllOrders();
+export async function adminListOrders(req: Request, res: Response) {
+  const { deliveryMethod, status, q, dateFrom, dateTo, sort } = req.query as Record<string, string | undefined>;
+
+  let allOrders = await storage.getAllOrders();
+
+  if (deliveryMethod && deliveryMethod !== "all") {
+    const method = deliveryMethod === "store_pickup" ? "pickup" : deliveryMethod;
+    allOrders = allOrders.filter(o => o.deliveryMethod === method);
+  }
+
+  if (status && status !== "all") {
+    allOrders = allOrders.filter(o => o.status === status);
+  }
+
+  if (q && q.trim()) {
+    const search = q.trim().toLowerCase().replace(/^#/, "");
+    allOrders = allOrders.filter(o => {
+      if (String(o.id) === search) return true;
+      if (o.customerName?.toLowerCase().includes(search)) return true;
+      if (o.customerPhone?.toLowerCase().includes(search)) return true;
+      if (o.customerEmail?.toLowerCase().includes(search)) return true;
+      return false;
+    });
+  }
+
+  if (dateFrom) {
+    const from = new Date(dateFrom);
+    if (!isNaN(from.getTime())) {
+      allOrders = allOrders.filter(o => o.createdAt && new Date(o.createdAt) >= from);
+    }
+  }
+  if (dateTo) {
+    const to = new Date(dateTo);
+    if (!isNaN(to.getTime())) {
+      to.setHours(23, 59, 59, 999);
+      allOrders = allOrders.filter(o => o.createdAt && new Date(o.createdAt) <= to);
+    }
+  }
+
+  if (sort) {
+    switch (sort) {
+      case "oldest":
+        allOrders.sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
+        break;
+      case "total_desc":
+        allOrders.sort((a, b) => b.total - a.total);
+        break;
+      case "total_asc":
+        allOrders.sort((a, b) => a.total - b.total);
+        break;
+      default:
+        break;
+    }
+  }
+
   const enriched = await Promise.all(allOrders.map(async (order) => {
     const items = order.items as any[];
     if (!Array.isArray(items)) return order;

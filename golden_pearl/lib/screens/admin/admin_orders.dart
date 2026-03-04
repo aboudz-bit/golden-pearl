@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../main.dart';
@@ -19,33 +20,138 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
   bool _loading = true;
   late TabController _tabController;
 
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  String _statusFilter = 'all';
+  String _dateFilter = 'all';
+  String _sortOption = 'newest';
+  DateTimeRange? _customRange;
+
+  static const _statusOptions = [
+    ('all', 'All Status', Icons.filter_list),
+    ('pending', 'Pending', Icons.schedule),
+    ('confirmed', 'Confirmed', Icons.check_circle_outline),
+    ('ready_for_pickup', 'Ready', Icons.store_outlined),
+    ('picked_up', 'Picked Up', Icons.check_circle),
+    ('delivered', 'Delivered', Icons.done_all),
+    ('cancelled', 'Cancelled', Icons.cancel_outlined),
+  ];
+
+  static const _dateOptions = [
+    ('all', 'All Time'),
+    ('today', 'Today'),
+    ('7days', 'Last 7 Days'),
+    ('30days', 'Last 30 Days'),
+    ('custom', 'Custom'),
+  ];
+
+  static const _sortOptions = [
+    ('newest', 'Newest First'),
+    ('oldest', 'Oldest First'),
+    ('total_desc', 'Highest Amount'),
+    ('total_asc', 'Lowest Amount'),
+  ];
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadOrders();
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _fetchOrders();
+      }
+    });
+    _fetchOrders();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadOrders() async {
+  String? get _deliveryMethod {
+    switch (_tabController.index) {
+      case 1: return 'delivery';
+      case 2: return 'store_pickup';
+      default: return null;
+    }
+  }
+
+  String? get _dateFrom {
+    final now = DateTime.now();
+    switch (_dateFilter) {
+      case 'today':
+        return DateTime(now.year, now.month, now.day).toIso8601String().split('T')[0];
+      case '7days':
+        return now.subtract(const Duration(days: 7)).toIso8601String().split('T')[0];
+      case '30days':
+        return now.subtract(const Duration(days: 30)).toIso8601String().split('T')[0];
+      case 'custom':
+        return _customRange?.start.toIso8601String().split('T')[0];
+      default:
+        return null;
+    }
+  }
+
+  String? get _dateTo {
+    if (_dateFilter == 'today') {
+      return DateTime.now().toIso8601String().split('T')[0];
+    }
+    if (_dateFilter == 'custom' && _customRange != null) {
+      return _customRange!.end.toIso8601String().split('T')[0];
+    }
+    return null;
+  }
+
+  Future<void> _fetchOrders() async {
+    if (mounted) setState(() => _loading = true);
     try {
-      final orders = await apiService.getAllOrders();
+      final orders = await apiService.getAllOrders(
+        deliveryMethod: _deliveryMethod,
+        status: _statusFilter,
+        q: _searchController.text.trim(),
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
+        sort: _sortOption,
+      );
       if (mounted) setState(() { _orders = orders; _loading = false; });
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  List<Order> _filterOrders(int tabIndex) {
-    switch (tabIndex) {
-      case 1: return _orders.where((o) => o.deliveryMethod == 'delivery').toList();
-      case 2: return _orders.where((o) => o.deliveryMethod == 'pickup').toList();
-      default: return _orders;
+  void _onSearchChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _fetchOrders();
+    });
+  }
+
+  Future<void> _pickCustomRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
+      initialDateRange: _customRange,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(primary: kGoldPrimary, onPrimary: Colors.white, surface: kCardBg),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _customRange = picked;
+        _dateFilter = 'custom';
+      });
+      _fetchOrders();
     }
   }
 
@@ -135,7 +241,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
 
   Future<void> _showUpdateStatusDialog(Order order) async {
     final l10n = AppLocalizations.of(context)!;
-    final lang = Provider.of<LanguageProvider>(context, listen: false).languageCode;
     final statuses = order.deliveryMethod == 'pickup'
         ? ['pending', 'confirmed', 'ready_for_pickup', 'picked_up', 'cancelled']
         : ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -301,7 +406,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-      await _loadOrders();
+      await _fetchOrders();
     }
   }
 
@@ -587,18 +692,191 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
     }
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: kCardBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: kDivider),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                style: const TextStyle(fontSize: 13, color: kCharcoal),
+                decoration: InputDecoration(
+                  hintText: 'Search by order #, name, phone, email...',
+                  hintStyle: TextStyle(fontSize: 13, color: kSecondaryText.withOpacity(0.6)),
+                  prefixIcon: const Icon(Icons.search, color: kSecondaryText, size: 20),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: kSecondaryText),
+                          onPressed: () {
+                            _searchController.clear();
+                            _fetchOrders();
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: kCardBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: kDivider),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _sortOption,
+                icon: const Icon(Icons.swap_vert, size: 18, color: kGoldPrimary),
+                isDense: true,
+                style: const TextStyle(fontSize: 12, color: kCharcoal),
+                items: _sortOptions.map((e) => DropdownMenuItem(
+                  value: e.$1,
+                  child: Text(e.$2, style: const TextStyle(fontSize: 12)),
+                )).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _sortOption = val);
+                    _fetchOrders();
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChips() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 40,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: _statusOptions.map((opt) {
+              final isSelected = _statusFilter == opt.$1;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(opt.$3, size: 14, color: isSelected ? Colors.white : kSecondaryText),
+                      const SizedBox(width: 4),
+                      Text(opt.$2),
+                    ],
+                  ),
+                  selected: isSelected,
+                  selectedColor: kGoldPrimary,
+                  backgroundColor: kCardBg,
+                  checkmarkColor: Colors.white,
+                  showCheckmark: false,
+                  labelStyle: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? Colors.white : kCharcoal,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: isSelected ? kGoldPrimary : kDivider),
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                  onSelected: (_) {
+                    setState(() => _statusFilter = opt.$1);
+                    _fetchOrders();
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 36,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: _dateOptions.map((opt) {
+              final isSelected = _dateFilter == opt.$1;
+              final isCustomWithRange = opt.$1 == 'custom' && _dateFilter == 'custom' && _customRange != null;
+              final label = isCustomWithRange
+                  ? '${_customRange!.start.day}/${_customRange!.start.month} – ${_customRange!.end.day}/${_customRange!.end.month}'
+                  : opt.$2;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(opt.$1 == 'custom' ? Icons.date_range : Icons.calendar_today, size: 12, color: isSelected ? Colors.white : kSecondaryText),
+                      const SizedBox(width: 4),
+                      Text(label),
+                    ],
+                  ),
+                  selected: isSelected,
+                  selectedColor: kGoldPrimary,
+                  backgroundColor: kCardBg,
+                  showCheckmark: false,
+                  labelStyle: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? Colors.white : kCharcoal,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: isSelected ? kGoldPrimary : kDivider),
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                  onSelected: (_) {
+                    if (opt.$1 == 'custom') {
+                      _pickCustomRange();
+                    } else {
+                      setState(() {
+                        _dateFilter = opt.$1;
+                        if (opt.$1 != 'custom') _customRange = null;
+                      });
+                      _fetchOrders();
+                    }
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool get _hasActiveFilters {
+    return _statusFilter != 'all' || _dateFilter != 'all' || _searchController.text.isNotEmpty || _sortOption != 'newest';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
 
-    if (_loading) return const Center(child: CircularProgressIndicator(color: kGoldPrimary));
-
     return Column(
       children: [
         TabBar(
           controller: _tabController,
-          onTap: (_) => setState(() {}),
           labelColor: kGoldPrimary,
           unselectedLabelColor: kSecondaryText,
           indicatorColor: kGoldPrimary,
@@ -608,28 +886,110 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
             Tab(text: l10n.storePickup),
           ],
         ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: List.generate(3, (tabIndex) {
-              final filtered = _filterOrders(tabIndex);
-              if (filtered.isEmpty) {
-                return Center(child: Text(l10n.noOrders, style: const TextStyle(color: kSecondaryText)));
-              }
-              return RefreshIndicator(
-                onRefresh: _loadOrders,
-                color: kGoldPrimary,
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) => _buildOrderCard(filtered[index], l10n, lang),
+        _buildSearchBar(),
+        const SizedBox(height: 8),
+        _buildFilterChips(),
+        if (_hasActiveFilters)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+            child: Row(
+              children: [
+                Text(
+                  '${_orders.length} order${_orders.length != 1 ? 's' : ''} found',
+                  style: const TextStyle(fontSize: 11, color: kSecondaryText),
                 ),
-              );
-            }),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _statusFilter = 'all';
+                      _dateFilter = 'all';
+                      _sortOption = 'newest';
+                      _customRange = null;
+                      _searchController.clear();
+                    });
+                    _fetchOrders();
+                  },
+                  child: const Row(
+                    children: [
+                      Icon(Icons.clear_all, size: 14, color: kGoldPrimary),
+                      SizedBox(width: 2),
+                      Text('Clear All', style: TextStyle(fontSize: 11, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+        const SizedBox(height: 6),
+        Expanded(
+          child: _loading
+              ? _buildLoadingSkeleton()
+              : _orders.isEmpty
+                  ? _buildEmptyState(l10n)
+                  : RefreshIndicator(
+                      onRefresh: _fetchOrders,
+                      color: kGoldPrimary,
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        itemCount: _orders.length,
+                        itemBuilder: (context, index) => _buildOrderCard(_orders[index], l10n, lang),
+                      ),
+                    ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLoadingSkeleton() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      itemBuilder: (_, __) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        height: 110,
+        decoration: BoxDecoration(
+          color: kCardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kDivider),
+        ),
+        child: const Center(child: CircularProgressIndicator(color: kGoldPrimary, strokeWidth: 2)),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(AppLocalizations l10n) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long_outlined, size: 56, color: kSecondaryText.withOpacity(0.3)),
+          const SizedBox(height: 16),
+          Text(
+            _hasActiveFilters ? 'No orders match your filters' : l10n.noOrders,
+            style: TextStyle(fontSize: 15, color: kSecondaryText.withOpacity(0.7)),
+          ),
+          if (_hasActiveFilters) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _statusFilter = 'all';
+                  _dateFilter = 'all';
+                  _sortOption = 'newest';
+                  _customRange = null;
+                  _searchController.clear();
+                });
+                _fetchOrders();
+              },
+              icon: const Icon(Icons.clear_all, size: 16),
+              label: const Text('Clear Filters'),
+              style: TextButton.styleFrom(foregroundColor: kGoldPrimary),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

@@ -234,8 +234,23 @@ class ApiService {
     } catch (_) {}
   }
 
-  Future<List<Order>> getAllOrders() async {
-    final response = await _client.get(Uri.parse('$baseUrl/api/admin/orders'), headers: _headers);
+  Future<List<Order>> getAllOrders({
+    String? deliveryMethod,
+    String? status,
+    String? q,
+    String? dateFrom,
+    String? dateTo,
+    String? sort,
+  }) async {
+    final params = <String, String>{};
+    if (deliveryMethod != null && deliveryMethod != 'all') params['deliveryMethod'] = deliveryMethod;
+    if (status != null && status != 'all') params['status'] = status;
+    if (q != null && q.isNotEmpty) params['q'] = q;
+    if (dateFrom != null) params['dateFrom'] = dateFrom;
+    if (dateTo != null) params['dateTo'] = dateTo;
+    if (sort != null && sort != 'newest') params['sort'] = sort;
+    final uri = Uri.parse('$baseUrl/api/admin/orders').replace(queryParameters: params.isNotEmpty ? params : null);
+    final response = await _client.get(uri, headers: _headers);
     _updateCookie(response);
     _checkResponse(response);
     final List data = jsonDecode(response.body);
