@@ -1,0 +1,38 @@
+You are Replit AI working inside my existing Flutter Web app (single-store). Do NOT add new features. Do NOT touch backend logic unless strictly needed. This change is ONLY about admin navigation labels + routing + clarifying what the page controls.
+
+GOAL
+Remove the “Hero” tab from the Admin bottom navigation and replace it with “Manage Banners” (same tab position). “Manage Banners” must control the HOME PAGE banners (add/edit/remove/reorder the homepage hero slides) and open the exact unified banners+text page shown in my screenshot (AR/EN tabs + slide preview + Text Content editor per slide).
+
+WHAT TO CHANGE (Flutter only)
+1) Admin bottom nav:
+   - Replace the tab label “Hero” -> “Manage Banners”
+   - Replace the icon to match banners (image/photo icon).
+   - Keep the tab order as:
+     Dashboard, Products, Orders, Manage Banners, Categories
+
+2) Routing / page mapping:
+   - The “Manage Banners” tab must navigate to the current unified hero/banner editor screen (the one with slide preview + text overlay editor).
+   - If the code currently routes “Hero” to admin_hero_page.dart, keep using that same screen; ONLY rename the nav item + titles/labels so it shows “Manage Banners” everywhere (AppBar title + bottom tab label + drawer label if present).
+   - This page is the control center for HOME PAGE banners (homepage hero carousel/slides).
+
+3) Remove/disable any old separate banners screen references:
+   - If there is any leftover “Manage Banners” page that is NOT the unified editor, do not use it.
+   - Ensure there is only ONE entry point: the unified editor page that edits homepage banners.
+
+4) UX polish (still no new features):
+   - Update screen title to “Manage Banners” (and Arabic translation if exists).
+   - Make sure the selected tab highlight works correctly and doesn’t fall back to another tab.
+
+DELIVERABLE
+- Implement the changes, rebuild Flutter Web, restart, and confirm:
+  - Admin bottom nav shows “Manage Banners” instead of “Hero”
+  - Tapping it opens the unified banner + text editor page shown in the screenshot
+  - It clearly controls HOME PAGE banners
+  - No other behavior changes
+
+FILES LIKELY TO TOUCH
+- lib/screens/admin/admin_dashboard.dart (bottom nav items + pages array)
+- localization ARB strings if “Hero” is localized (rename to “Manage Banners”)
+- AppBar title string in the unified editor screen (admin_hero_page.dart or equivalent)
+
+Do not modify anything else.
