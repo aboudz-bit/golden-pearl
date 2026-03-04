@@ -1,0 +1,152 @@
+You are Replit Agent working inside my existing Replit project (Flutter Web + Express backend) for “Golden Pearl”. DO NOT add extra features beyond what I request. Implement ONLY the items below, end-to-end, and verify in Preview that everything works.
+
+CONTEXT (current pain points)
+- Admin Panel exists, but:
+  - Category names (AR/EN) are not editable by admin.
+  - Banner upload often doesn’t upload (stuck / no result).
+  - Customer home hero media is cropped; I want the hero image to be fully visible (no crop).
+  - Orders in admin should show product thumbnails.
+  - Products list in admin should be grouped/filtered by category like the customer app (Dresses / Jalabiyas / Kids / Gifts).
+  - “Add Product” button currently routes incorrectly back to Products list instead of opening the Add Product flow (bug).
+- We are ONE store only (single-tenant). Keep everything simple.
+
+NON-NEGOTIABLES
+- Keep current design language (luxury / gold theme).
+- Must work on Flutter Web (Replit Preview) reliably.
+- No breaking changes to existing flows.
+- After changes: run the app and confirm behavior in Preview.
+
+========================================
+TASK A — Fix Banner Upload (Admin)
+========================================
+Goal: Admin can upload banner images (and later videos) from the Admin Panel reliably.
+
+1) Backend (Express):
+- Add/verify Multer-based upload endpoints:
+  - POST /api/admin/upload/image  (multipart/form-data, field name: "file")
+  - POST /api/admin/upload/video  (multipart/form-data, field name: "file")
+- Save files under a predictable public folder that is already served statically, e.g.:
+  - golden_pearl/public/uploads/images/
+  - golden_pearl/public/uploads/videos/
+- Return JSON: { "url": "/uploads/images/<filename>" } or "/uploads/videos/<filename>"
+- Ensure express.static serves /uploads with correct headers:
+  - For images: cache-control (ok)
+  - For videos: MUST support Range requests (206) and Content-Type video/mp4
+- Add file validation:
+  - Images: jpg/jpeg/png/webp, max 5MB
+  - Videos: mp4, max 25MB
+- If upload fails, return clear 4xx error JSON.
+
+2) Flutter Admin (Banner Management screen):
+- Replace “Enter image URL…” only flow with:
+  - Button: “Upload Image” -> file picker -> multipart upload -> gets returned URL -> save to banner record
+  - Button: “Upload Video” (optional UI now, but backend must exist)
+- Show progress indicator during upload + success toast.
+- After upload, immediately show preview thumbnail (image) or video icon.
+- Ensure this works on Flutter Web. Use http.MultipartRequest.
+- IMPORTANT: If file_picker has limitations on web, implement a fallback using an <input type="file"> via universal_html or similar—but prefer file_picker first.
+
+========================================
+TASK B — Multi-Banner Support (Images + Videos)
+========================================
+Goal: Admin can add multiple hero banners (e.g., 3+) and optionally set a banner type (image/video).
+
+- Update data model/storage for banners to be a LIST, not a single hero URL.
+- Each banner item:
+  - id
+  - type: "image" | "video"
+  - url
+  - active (bool)
+  - sortOrder (int)
+- Admin UI:
+  - “Add Banner” creates a new banner item
+  - Reorder banners (drag & drop) and persists sortOrder
+  - Toggle active
+  - Delete banner
+- Customer Home:
+  - Hero carousel uses only active banners, ordered by sortOrder
+  - If banner is image: show FULL image (no crop) using BoxFit.contain-like behavior (no zoom/crop)
+  - If banner is video: play muted, loop, playsInline; must not block the UI if video fails (fallback poster).
+
+========================================
+TASK C — Hero Image Must Be Fully Visible (Customer Home)
+========================================
+Goal: the hero banner must display the entire image (no cropping).
+
+- Update hero banner widget:
+  - Use a layout that preserves full image:
+    - Fit: contain (NOT cover)
+    - Center aligned
+  - Add subtle background behind it (e.g., blurred / solid neutral) to avoid ugly empty space.
+  - Keep overlay text + CTA readable (add gradient overlay if needed).
+- Confirm on mobile viewport in Replit Preview: you can see full banner image.
+
+========================================
+TASK D — Categories Admin Enhancements
+========================================
+Goal: Admin can edit category names in Arabic and English.
+
+- Data:
+  - Categories must store:
+    - key/slug (dresses, jalabiyas, kids, gifts)
+    - nameAr
+    - nameEn
+    - imageUrl (already exists)
+    - visible (bool)
+    - sortOrder (int)
+- Admin UI (Categories screen):
+  - Each row should allow editing AR/EN names (inline edit or edit dialog).
+  - Save persists to backend.
+  - Keep drag reorder and visible toggle working.
+
+- Customer App:
+  - Categories shown on Home must reflect updated AR/EN names based on selected language.
+
+========================================
+TASK E — Orders Screen Shows Product Images
+========================================
+Goal: Admin Orders list shows product thumbnails.
+
+- Backend:
+  - Ensure order items returned include product imageUrl(s).
+  - If only productId exists, join on products and include name + imageUrl.
+
+- Admin UI:
+  - In each order card:
+    - Show a row of small thumbnails for items (max 3 + “+N” badge)
+  - Inside order detail view:
+    - Show each item with thumbnail, name, qty, price.
+
+========================================
+TASK F — Products Screen Grouping + Add Product Bug Fix
+========================================
+1) Products grouping:
+- Admin Products screen must have tabs or filter chips:
+  - Dresses / Jalabiyas / Kids / Gifts / All
+- Default to All; switching filters list accordingly.
+
+2) Fix “Add Product”:
+- The Add Product button currently navigates wrong.
+- Make it open a proper Add Product form screen/modal:
+  - fields: category, title, price, description, image upload (use same upload flow), stock
+  - Save -> returns to Products list and shows the new product under correct category.
+
+========================================
+DELIVERABLES / ACCEPTANCE CHECKLIST
+========================================
+When done, verify in Preview (web):
+- Banner upload works (image uploads return URL, preview shows, banner appears on home).
+- Multiple banners work (add 3, reorder, deactivate one; home updates accordingly).
+- Hero banner shows FULL image (no crop).
+- Admin can edit category AR/EN names and customer Home reflects it.
+- Orders list shows product thumbnails.
+- Products page filtering works; Add Product opens the form and successfully creates product.
+
+Work in small commits. If something is unclear, inspect the existing codebase first (routes, storage, admin screens) and implement with minimal changes.
+
+Useful references:
+- Flutter Web file picking (file_picker): https://pub.dev/packages/file_picker
+- Flutter HTTP multipart upload: https://pub.dev/packages/http
+- Express static files: https://expressjs.com/en/starter/static-files.html
+- Multer multipart uploads for Express: https://github.com/expressjs/multer
+- HTTP Range requests (video streaming): https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests

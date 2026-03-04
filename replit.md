@@ -64,7 +64,7 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 - **Product Form**: Create/edit with multi-image upload (sharp compression), name En/Ar, price, category, description, stock, sizes, colors
 - **Orders**: Filtered tabs (All/Delivery/Pickup), product thumbnails in order cards, status update dialog, order detail bottom sheet
 - **Banners**: Upload image/video banners, toggle active, drag-to-reorder, delete with confirmation
-- **Categories**: Upload category images, toggle visibility, drag-to-reorder (4 default: Dresses, Jalabiyas, Kids, Gifts)
+- **Categories**: Upload category images, edit AR/EN names (tap name to open edit dialog), toggle visibility, drag-to-reorder (4 default: Dresses, Jalabiyas, Kids, Gifts)
 - **Promotions**: Discount code CRUD, percentage/fixed types, expiration dates, min order, usage tracking
 - **Notifications**: Compose and send notifications to all users, sent history
 - **Hero Text Editor**: Bilingual (AR/EN) hero overlay text editing with full style controls (font family, size, weight, letter spacing, color, shadow, alignment, position preset + fine-tune X/Y offsets), live preview card, draft/publish separation, reset to published state
@@ -84,7 +84,7 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 - **Checkout**: Login guard, delivery/pickup toggle, discount codes
 - **Orders**: Full status tracking with notifications
 - **Admin Panel**: Full Shopify-like CMS (products, orders, banners, categories, promotions, notifications, settings, analytics)
-- **Media Upload**: Image compression via sharp (max 1200px, JPEG quality 80), video upload support
+- **Media Upload**: Image compression via sharp (max 1200px, JPEG quality 80), video upload support, separate validated endpoints (image: jpg/png/webp max 5MB, video: mp4 max 25MB), Range request support for video streaming
 
 ## Database Tables
 - **users**: id, email (unique), passwordHash, name, phone, role (default 'user'), createdAt
@@ -121,7 +121,9 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 - `POST /api/auth/merge` — Merge guest cart into user cart
 
 ### Admin (requires admin role)
-- `POST /api/admin/upload` — Upload media (multer + sharp compression)
+- `POST /api/admin/upload` — Upload media (multer + sharp compression for images)
+- `POST /api/admin/upload/image` — Upload image only (jpg/png/webp, max 5MB, auto-compressed)
+- `POST /api/admin/upload/video` — Upload video only (mp4, max 25MB)
 - `DELETE /api/admin/upload` — Delete uploaded file
 - `POST/PATCH/DELETE /api/admin/products/:id` — Product CRUD
 - `PATCH /api/admin/products/:id/stock` — Update stock
