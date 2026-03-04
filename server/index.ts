@@ -19,6 +19,8 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || "5000";
 const isProd = process.env.NODE_ENV === "production";
 
+app.set("trust proxy", 1);
+
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,

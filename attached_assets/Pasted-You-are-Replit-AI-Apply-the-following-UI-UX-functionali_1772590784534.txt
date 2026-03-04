@@ -1,0 +1,187 @@
+You are Replit AI. Apply the following UI/UX + functionality changes to the existing Flutter Web + Node/Express project. Do NOT add unrelated features. Keep everything working.
+
+GOAL
+Make the Admin “Hero” page a single, professional, Shopify-like editor that manages:
+- Hero slides (multiple images/videos)
+- Text overlay per slide (AR + EN)
+- Ordering, visibility, and preview
+No separate “Hero Text” page.
+
+============================================================
+A) ADMIN HERO PAGE — SINGLE UNIFIED “HERO SLIDES” EDITOR
+============================================================
+
+1) Remove / retire any separate “Hero Text” screen/page.
+- If there is an existing hero text page (e.g. admin_hero_text.dart), remove it from navigation and code paths.
+- The ONLY place to manage hero text is inside the Hero page.
+
+2) Hero page should have 2 states:
+
+STATE 1: Empty
+- Title: “Hero Slides”
+- Empty message: “No hero slides yet”
+- CTA button: “Add Slide”
+
+STATE 2: List of slides
+Show a reorderable list (drag handle) of slides. Each slide card must show:
+- Thumbnail preview (image or video badge)
+- Slide type badge: Image / Video
+- Visible toggle (Active/Hidden)
+- Sort order index
+- Quick actions: Edit, Delete, Duplicate
+- A small “Preview” button that opens a modal preview.
+
+3) Slide creation / editing flow (Add Slide / Edit Slide)
+Open a full-screen modal or dedicated editor view with:
+
+3.1 Media section
+- Choose Type: Image or Video
+- Upload button (NOT URL input) for the media file
+- Show upload progress
+- When upload succeeds, store returned URL in slide record
+- Validate: images (jpg/png/webp), videos (mp4 web-safe)
+- Size limits enforced
+
+3.2 Text overlay per slide (MANDATORY)
+Each slide stores its own overlay JSON:
+overlay: {
+  "ar": { "headline": "", "subheadline": "", "cta": "" },
+  "en": { "headline": "", "subheadline": "", "cta": "" },
+  "style": {
+    "alignment": "center|left|right",
+    "positionPreset": "TopLeft|TopCenter|TopRight|CenterLeft|Center|CenterRight|BottomLeft|BottomCenter|BottomRight",
+    "xOffset": -30..+30,
+    "yOffset": -30..+30,
+    "headlineSize": 18..60,
+    "subheadlineSize": 12..34,
+    "ctaSize": 12..24,
+    "fontFamily": "Playfair|Inter|Cairo|Tajawal",
+    "headlineWeight": 400|500|600|700,
+    "subheadlineWeight": 300|400|500|600,
+    "textColor": "#FFFFFF",
+    "shadow": { "enabled": true, "blur": 10, "opacity": 0.35, "dx": 0, "dy": 2 }
+  }
+}
+
+UI requirements:
+- Tabs: العربية (AR) + English (EN)
+- For each language: Headline / Subheadline / CTA fields
+- Style controls section (sliders + dropdowns) for the style object
+- Position preset grid (3x3)
+- Live preview panel that renders the CURRENT slide media with overlay text exactly like customer home
+- Buttons:
+  - Cancel
+  - Save Draft (local only)
+  - Publish (saves to backend)
+
+IMPORTANT:
+- Do NOT store a separate global heroOverlay anymore.
+- Overlay belongs to each slide.
+
+4) Multi-slide support
+- Admin can add unlimited slides (at least 10)
+- Admin can reorder slides via drag & drop
+- Reorder must persist to backend immediately (optimistic UI with rollback on failure)
+- Fix any route ordering issues on backend that could block reorder (e.g. /reorder must not be captured by /:id)
+
+5) Duplicate slide
+- Creates a new slide with same media + overlay + inactive by default
+
+6) Delete slide
+- Confirmation dialog
+- Backend delete
+- Remove from UI
+
+============================================================
+B) BACKEND — HERO SLIDES DATA MODEL + ENDPOINTS
+============================================================
+
+Use the existing “banners” (hero slides) table if present, but evolve it to support:
+- type: "image" | "video"
+- mediaUrl (imageUrl/videoUrl) (choose one field naming, be consistent)
+- overlay JSON (TEXT column storing JSON string)
+- active boolean
+- sortOrder integer
+
+Endpoints (admin protected):
+- GET  /api/admin/banners
+- POST /api/admin/banners  (create)
+- PATCH /api/admin/banners/:id (update slide fields + overlay)
+- DELETE /api/admin/banners/:id
+- PATCH (or POST) /api/admin/banners/reorder  body: { orderedIds: number[] }
+
+Public endpoints:
+- GET /api/banners (returns only active banners sorted by sortOrder)
+
+Uploads:
+- POST /api/admin/uploads (multipart)
+  - field: file
+  - returns: { url: "/uploads/...." , type: "image|video" }
+- Use multer with:
+  - file size limits
+  - file type validation (mime + extension)
+  - safe filenames (uuid)
+  - store in /uploads
+- Serve /uploads via express.static with caching headers
+- Ensure video supports range requests for Safari/iOS (Accept-Ranges bytes + 206 partials)
+
+============================================================
+C) CUSTOMER HOME — RENDER PER-SLIDE OVERLAY
+============================================================
+
+Update Home hero carousel to:
+- Load banners from /api/banners
+- For each slide:
+  - render media (image or video background)
+  - render that slide’s overlay text (AR or EN depending on current locale)
+  - use overlay.style for position/alignment/fonts/sizes
+- Ensure hero media displays FULL (no cropping):
+  - For images: BoxFit.contain (or equivalent) so the whole image is visible
+  - For videos: use a web-safe player; on web, prefer HtmlElementView <video> for reliability
+- If no banners, show default hero fallback.
+
+============================================================
+D) ADMIN NAV CLEANUP (NO EXTRA PAGES)
+============================================================
+
+Admin bottom nav should be exactly:
+1) Dashboard
+2) Products
+3) Orders
+4) Hero
+5) Categories
+
+- Remove “Manage Banners” / separate banner pages.
+- Remove “Analytics” tab from bottom nav; show analytics cards inside Dashboard.
+- Remove any old admin “Settings” page if it only duplicates hero/banners.
+
+============================================================
+E) BUG FIXES & QUALITY
+============================================================
+
+1) Banner upload not working
+- Fix file picker / multipart upload end-to-end on Flutter web:
+  - Use file_picker
+  - Use http MultipartRequest
+  - Ensure server accepts multipart
+  - Show progress + success toast
+  - After upload, immediately create/update the slide.
+
+2) Category reorder failure (if still present)
+- Ensure reorder route is declared BEFORE /:id route in Express.
+- Ensure request body matches expected shape.
+- Provide clear error messages.
+
+3) Make sure Admin display name is “Zainab Hussain”
+- Update seed + any existing DB row for admin user.
+
+============================================================
+DELIVERABLE
+============================================================
+
+Implement the changes with minimal disruption:
+- Do NOT add payments/shipping/AR/OTP features.
+- Keep app running after changes.
+- Provide a short summary of files changed and how to test:
+  - Admin: Settings -> Admin Panel -> Hero -> Add Slide -> Upload -> Edit overlay -> Publish
+  - Customer: Home page shows slide with correct overlay text.

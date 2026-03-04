@@ -64,7 +64,7 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
 
   Future<void> _pickAndUploadSlide() async {
     final input = html.FileUploadInputElement();
-    input.accept = 'image/jpeg,image/png,image/webp';
+    input.accept = 'image/jpeg,image/png,image/webp,video/mp4';
     input.click();
 
     input.onChange.listen((event) async {
@@ -89,11 +89,12 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
           final bytes = uint8list.toList();
           final uploadResult = await apiService.uploadFile(bytes, file.name);
           final url = uploadResult['url'] as String;
+          final uploadType = uploadResult['type'] as String? ?? 'image';
 
           final overlay = _defaultOverlay();
           await apiService.createBanner({
             'url': url,
-            'type': 'image',
+            'type': uploadType,
             'active': true,
             'overlay': jsonEncode(overlay),
           });
@@ -114,6 +115,30 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
         }
       });
     });
+  }
+
+  Future<void> _duplicateSlide(Map<String, dynamic> slide) async {
+    try {
+      final overlay = slide['overlay'] ?? jsonEncode(_defaultOverlay());
+      await apiService.createBanner({
+        'url': slide['url'] ?? '',
+        'type': slide['type'] ?? 'image',
+        'active': false,
+        'overlay': overlay is String ? overlay : jsonEncode(overlay),
+      });
+      await _loadSlides();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Slide duplicated (inactive)'), backgroundColor: kGoldPrimary, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Duplicate failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
   }
 
   Future<void> _toggleActive(Map<String, dynamic> slide) async {
@@ -296,9 +321,91 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
     );
   }
 
+  void _showPreview(Map<String, dynamic> slide) {
+    final url = slide['url'] as String? ?? '';
+    final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
+    final isVideo = (slide['type'] as String?) == 'video';
+
+    Map<String, dynamic>? overlay;
+    try {
+      final raw = slide['overlay'];
+      if (raw is String && raw.isNotEmpty) overlay = Map<String, dynamic>.from(jsonDecode(raw));
+      else if (raw is Map) overlay = Map<String, dynamic>.from(raw);
+    } catch (_) {}
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 9 / 16,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (isVideo)
+                  Container(color: kCharcoal, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.play_circle_outline, color: Colors.white54, size: 64), const SizedBox(height: 8), const Text('Video Preview', style: TextStyle(color: Colors.white54))])))
+                else
+                  Image.network(fullUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: kCharcoal, child: const Center(child: Icon(Icons.broken_image, color: Colors.white54, size: 48)))),
+                Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, stops: const [0.0, 0.5], colors: [Colors.black.withOpacity(0.6), Colors.transparent]))),
+                if (overlay != null) _buildPreviewOverlayText(overlay),
+                Positioned(top: 8, right: 8, child: IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: const Icon(Icons.close, color: Colors.white, size: 20)),
+                )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewOverlayText(Map<String, dynamic> overlay) {
+    final lang = 'en';
+    final langData = overlay[lang] as Map<String, dynamic>? ?? {};
+    final headline = langData['headline'] as String? ?? '';
+    final sub = langData['subheadline'] as String? ?? '';
+    final cta = langData['cta'] as String? ?? '';
+    final style = langData['style'] as Map<String, dynamic>? ?? {};
+    final preset = style['positionPreset'] ?? 'BottomCenter';
+    final xOff = (style['offsetXPercent'] as num?)?.toDouble() ?? 0;
+    final yOff = (style['offsetYPercent'] as num?)?.toDouble() ?? 0;
+    final alignment = _presetToAlignment(preset, xOff, yOff);
+
+    return Align(
+      alignment: alignment,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (headline.isNotEmpty) Text(headline, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700, shadows: [Shadow(blurRadius: 6, color: Colors.black54)]), textAlign: TextAlign.center),
+            if (sub.isNotEmpty) ...[const SizedBox(height: 4), Text(sub, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14), textAlign: TextAlign.center)],
+            if (cta.isNotEmpty) ...[const SizedBox(height: 10), Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: kGoldPrimary, borderRadius: BorderRadius.circular(8)), child: Text(cta, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)))],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Alignment _presetToAlignment(String preset, double xOff, double yOff) {
+    double x = 0, y = 0;
+    switch (preset) {
+      case 'TopLeft': x = -1; y = -1; break; case 'TopCenter': x = 0; y = -1; break; case 'TopRight': x = 1; y = -1; break;
+      case 'CenterLeft': x = -1; y = 0; break; case 'Center': x = 0; y = 0; break; case 'CenterRight': x = 1; y = 0; break;
+      case 'BottomLeft': x = -1; y = 1; break; case 'BottomCenter': x = 0; y = 1; break; case 'BottomRight': x = 1; y = 1; break;
+    }
+    return Alignment((x + xOff / 50).clamp(-1.0, 1.0), (y + yOff / 50).clamp(-1.0, 1.0));
+  }
+
   Widget _buildSlideCard(Map<String, dynamic> slide, int index) {
     final url = slide['url'] as String? ?? '';
     final isActive = slide['active'] == true || slide['active'] == 1;
+    final slideType = (slide['type'] as String?) ?? 'image';
+    final isVideo = slideType == 'video';
     final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
 
     Map<String, dynamic>? overlay;
@@ -336,10 +443,13 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
             child: Stack(
               children: [
-                url.isNotEmpty
-                    ? Image.network(fullUrl, height: 160, width: double.infinity, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(height: 160, color: kCreamBg, child: Center(child: Icon(Icons.broken_image_outlined, size: 48, color: kSecondaryText.withOpacity(0.4)))))
-                    : Container(height: 160, color: kCreamBg, child: Center(child: Icon(Icons.image_outlined, size: 48, color: kSecondaryText.withOpacity(0.4)))),
+                if (isVideo)
+                  Container(height: 160, color: kCharcoal.withOpacity(0.8), child: Center(child: Icon(Icons.videocam_outlined, size: 48, color: Colors.white.withOpacity(0.5))))
+                else if (url.isNotEmpty)
+                  Image.network(fullUrl, height: 160, width: double.infinity, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(height: 160, color: kCreamBg, child: Center(child: Icon(Icons.broken_image_outlined, size: 48, color: kSecondaryText.withOpacity(0.4)))))
+                else
+                  Container(height: 160, color: kCreamBg, child: Center(child: Icon(Icons.image_outlined, size: 48, color: kSecondaryText.withOpacity(0.4)))),
                 Container(
                   height: 160,
                   decoration: BoxDecoration(
@@ -356,10 +466,27 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
                 Positioned(
                   top: 8,
                   left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: kGoldPrimary, borderRadius: BorderRadius.circular(20)),
-                    child: Text('#${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: kGoldPrimary, borderRadius: BorderRadius.circular(20)),
+                        child: Text('#${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: isVideo ? Colors.deepPurple : Colors.blue.shade600, borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(isVideo ? Icons.videocam : Icons.image, color: Colors.white, size: 12),
+                            const SizedBox(width: 4),
+                            Text(isVideo ? 'Video' : 'Image', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Positioned(
@@ -390,32 +517,33 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
                     ],
                   ),
                 ),
-                InkWell(
-                  onTap: () => _editSlideOverlay(slide),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: kGoldPrimary.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.edit_note, color: kGoldPrimary, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 8),
+                _actionButton(Icons.visibility_outlined, kSecondaryText, () => _showPreview(slide), tooltip: 'Preview'),
+                const SizedBox(width: 4),
+                _actionButton(Icons.edit_note, kGoldPrimary, () => _editSlideOverlay(slide), tooltip: 'Edit'),
+                const SizedBox(width: 4),
+                _actionButton(Icons.copy_outlined, Colors.blue, () => _duplicateSlide(slide), tooltip: 'Duplicate'),
+                const SizedBox(width: 4),
                 Switch(value: isActive, onChanged: (_) => _toggleActive(slide), activeColor: kGoldPrimary, activeTrackColor: kGoldPrimary.withOpacity(0.3)),
-                InkWell(
-                  onTap: () => _deleteSlide(slide),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.red.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                  ),
-                ),
+                _actionButton(Icons.delete_outline, Colors.red, () => _deleteSlide(slide), tooltip: 'Delete'),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _actionButton(IconData icon, Color color, VoidCallback onTap, {String? tooltip}) {
+    final child = InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+    return tooltip != null ? Tooltip(message: tooltip, child: child) : child;
   }
 }
 
@@ -535,9 +663,11 @@ class _SlideOverlayEditorState extends State<_SlideOverlayEditor> with SingleTic
         const Divider(height: 32),
         _sectionTitle('Typography'),
         _dropdownRow('Font Family', style['fontFamily'] ?? 'Playfair', _fonts, (v) => _updateStyle('fontFamily', v)),
-        _sliderRow('Headline Size', (style['headlineSize'] as num?)?.toDouble() ?? 30, 16, 60, (v) => _updateStyle('headlineSize', v.round())),
-        _sliderRow('Sub Size', (style['subheadlineSize'] as num?)?.toDouble() ?? 14, 10, 30, (v) => _updateStyle('subheadlineSize', v.round())),
-        _dropdownRow('Weight', (style['fontWeight'] as num?)?.toInt() ?? 700, _weights, (v) => _updateStyle('fontWeight', v)),
+        _sliderRow('Headline Size', (style['headlineSize'] as num?)?.toDouble() ?? 30, 18, 60, (v) => _updateStyle('headlineSize', v.round())),
+        _sliderRow('Sub Size', (style['subheadlineSize'] as num?)?.toDouble() ?? 14, 12, 34, (v) => _updateStyle('subheadlineSize', v.round())),
+        _sliderRow('CTA Size', (style['ctaSize'] as num?)?.toDouble() ?? 14, 12, 24, (v) => _updateStyle('ctaSize', v.round())),
+        _dropdownRow('H. Weight', (style['headlineWeight'] as num?)?.toInt() ?? (style['fontWeight'] as num?)?.toInt() ?? 700, _weights, (v) => _updateStyle('headlineWeight', v)),
+        _dropdownRow('Sub Weight', (style['subheadlineWeight'] as num?)?.toInt() ?? 400, _weights, (v) => _updateStyle('subheadlineWeight', v)),
         _sliderRow('Spacing', (style['letterSpacing'] as num?)?.toDouble() ?? 0, -3, 10, (v) => _updateStyle('letterSpacing', double.parse(v.toStringAsFixed(1)))),
         const Divider(height: 32),
         _sectionTitle('Color & Shadow'),
@@ -552,6 +682,8 @@ class _SlideOverlayEditorState extends State<_SlideOverlayEditor> with SingleTic
         _alignmentSelector(style['align'] ?? 'center', (v) => _updateStyle('align', v)),
         const SizedBox(height: 12),
         _presetGrid(style['positionPreset'] ?? 'BottomCenter', (v) => _updateStyle('positionPreset', v)),
+        _sliderRow('X Offset', (style['offsetXPercent'] as num?)?.toDouble() ?? 0, -30, 30, (v) => _updateStyle('offsetXPercent', v.round())),
+        _sliderRow('Y Offset', (style['offsetYPercent'] as num?)?.toDouble() ?? 0, -30, 30, (v) => _updateStyle('offsetYPercent', v.round())),
         const SizedBox(height: 32),
       ],
     );
@@ -562,9 +694,11 @@ class _SlideOverlayEditorState extends State<_SlideOverlayEditor> with SingleTic
     final sub = draft['subheadline'] ?? '';
     final cta = draft['cta'] ?? '';
     final color = _hexToColor(style['color'] ?? '#FFFFFF');
-    final weight = FontWeight.values[((style['fontWeight'] as num? ?? 700) ~/ 100).clamp(1, 8)];
+    final hWeight = FontWeight.values[((style['headlineWeight'] as num? ?? style['fontWeight'] as num? ?? 700) ~/ 100).clamp(1, 8)];
+    final sWeight = FontWeight.values[((style['subheadlineWeight'] as num? ?? 400) ~/ 100).clamp(1, 8)];
     final hSize = (style['headlineSize'] as num?)?.toDouble() ?? 30;
     final sSize = (style['subheadlineSize'] as num?)?.toDouble() ?? 14;
+    final ctaSize = (style['ctaSize'] as num?)?.toDouble() ?? 14;
     final spacing = (style['letterSpacing'] as num?)?.toDouble() ?? 0;
     final fontFamily = style['fontFamily'] ?? 'Playfair';
     final textAlign = _parseAlign(style['align']);
@@ -582,11 +716,11 @@ class _SlideOverlayEditorState extends State<_SlideOverlayEditor> with SingleTic
 
     TextStyle headlineStyle;
     if (fontFamily == 'Playfair') {
-      headlineStyle = playfairDisplay(fontSize: hSize.clamp(16, 36).toDouble(), fontWeight: weight, color: color).copyWith(letterSpacing: spacing, shadows: shadows);
+      headlineStyle = playfairDisplay(fontSize: hSize.clamp(16, 36).toDouble(), fontWeight: hWeight, color: color).copyWith(letterSpacing: spacing, shadows: shadows);
     } else {
-      headlineStyle = TextStyle(fontSize: hSize.clamp(16, 36).toDouble(), fontWeight: weight, color: color, letterSpacing: spacing, shadows: shadows);
+      headlineStyle = TextStyle(fontSize: hSize.clamp(16, 36).toDouble(), fontWeight: hWeight, color: color, letterSpacing: spacing, shadows: shadows);
     }
-    final subStyle = TextStyle(fontSize: sSize.clamp(10, 20).toDouble(), color: color.withOpacity(0.7), height: 1.4, letterSpacing: spacing, shadows: shadows);
+    final subStyle = TextStyle(fontSize: sSize.clamp(10, 20).toDouble(), fontWeight: sWeight, color: color.withOpacity(0.7), height: 1.4, letterSpacing: spacing, shadows: shadows);
 
     return Container(
       height: 220,
@@ -613,7 +747,7 @@ class _SlideOverlayEditorState extends State<_SlideOverlayEditor> with SingleTic
                     if (sub.isNotEmpty) ...[const SizedBox(height: 4), Text(sub, style: subStyle, textAlign: textAlign, maxLines: 2, overflow: TextOverflow.ellipsis)],
                     if (cta.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: kGoldPrimary, borderRadius: BorderRadius.circular(8)), child: Text(cta, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600))),
+                      Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: kGoldPrimary, borderRadius: BorderRadius.circular(8)), child: Text(cta, style: TextStyle(color: Colors.white, fontSize: ctaSize.clamp(10, 18).toDouble(), fontWeight: FontWeight.w600))),
                     ],
                   ],
                 ),
