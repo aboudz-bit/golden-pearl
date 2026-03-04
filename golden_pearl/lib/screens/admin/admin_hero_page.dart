@@ -166,7 +166,7 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
         backgroundColor: kCardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Delete Slide', style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
-        content: const Text('Are you sure you want to delete this hero slide?', style: TextStyle(color: kSecondaryText)),
+        content: const Text('Are you sure you want to delete this banner?', style: TextStyle(color: kSecondaryText)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: kSecondaryText))),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
@@ -296,11 +296,11 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.slideshow_outlined, size: 64, color: kSecondaryText.withOpacity(0.4)),
+          Icon(Icons.photo_library_outlined, size: 64, color: kSecondaryText.withOpacity(0.4)),
           const SizedBox(height: 16),
-          Text('No hero slides yet', style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w600, color: kCharcoal)),
+          Text('No banners yet', style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w600, color: kCharcoal)),
           const SizedBox(height: 8),
-          const Text('Add hero slides with images and text overlays', style: TextStyle(color: kSecondaryText, fontSize: 14)),
+          const Text('Add homepage banners with images and text overlays', style: TextStyle(color: kSecondaryText, fontSize: 14)),
         ],
       ),
     );
