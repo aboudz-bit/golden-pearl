@@ -62,11 +62,41 @@ export async function listOrders(req: Request, res: Response) {
 export async function getOrder(req: Request, res: Response) {
   const order = await storage.getOrder(parseInt(req.params.id));
   if (!order) throw AppError.notFound("Order not found");
+  const items = order.items as any[];
+  if (Array.isArray(items)) {
+    const enrichedItems = await Promise.all(items.map(async (item: any) => {
+      if (item.image || (item.images && item.images.length > 0)) return item;
+      if (item.productId) {
+        const product = await storage.getProduct(item.productId);
+        if (product && product.images && product.images.length > 0) {
+          return { ...item, image: product.images[0] };
+        }
+      }
+      return item;
+    }));
+    return res.json({ ...order, items: enrichedItems });
+  }
   res.json(order);
 }
 
 export async function adminListOrders(_req: Request, res: Response) {
-  res.json(await storage.getAllOrders());
+  const allOrders = await storage.getAllOrders();
+  const enriched = await Promise.all(allOrders.map(async (order) => {
+    const items = order.items as any[];
+    if (!Array.isArray(items)) return order;
+    const enrichedItems = await Promise.all(items.map(async (item: any) => {
+      if (item.image || (item.images && item.images.length > 0)) return item;
+      if (item.productId) {
+        const product = await storage.getProduct(item.productId);
+        if (product && product.images && product.images.length > 0) {
+          return { ...item, image: product.images[0] };
+        }
+      }
+      return item;
+    }));
+    return { ...order, items: enrichedItems };
+  }));
+  res.json(enriched);
 }
 
 export async function updateOrderStatus(req: Request, res: Response) {

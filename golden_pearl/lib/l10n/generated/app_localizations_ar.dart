@@ -614,4 +614,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get quickTemplates => 'قوالب سريعة';
+
+  @override
+  String get currentStatus => 'الحالة الحالية';
+
+  @override
+  String get items => 'العناصر';
+
+  @override
+  String get deliveryFee => 'رسوم التوصيل';
+
+  @override
+  String get trackingNumber => 'رقم التتبع';
+
+  @override
+  String get confirm => 'تأكيد';
 }

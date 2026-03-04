@@ -123,6 +123,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'color': item.color,
         'price': item.product?.price ?? 0,
         'name': item.product?.nameEn ?? '',
+        'image': (item.product?.images != null && item.product!.images.isNotEmpty) ? item.product!.images.first : null,
       }).toList();
 
       final orderData = <String, dynamic>{

@@ -617,4 +617,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quickTemplates => 'Quick templates';
+
+  @override
+  String get currentStatus => 'Current status';
+
+  @override
+  String get items => 'Items';
+
+  @override
+  String get deliveryFee => 'Delivery fee';
+
+  @override
+  String get trackingNumber => 'Tracking number';
+
+  @override
+  String get confirm => 'Confirm';
 }

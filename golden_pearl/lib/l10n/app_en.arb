@@ -228,5 +228,10 @@
   "itemsMaySellOutTemplate": "Items in your cart may sell out",
   "notificationSent": "Notification sent successfully",
   "notificationFailed": "Failed to send notification",
-  "quickTemplates": "Quick templates"
+  "quickTemplates": "Quick templates",
+  "currentStatus": "Current status",
+  "items": "Items",
+  "deliveryFee": "Delivery fee",
+  "trackingNumber": "Tracking number",
+  "confirm": "Confirm"
 }
