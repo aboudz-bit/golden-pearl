@@ -194,5 +194,6 @@
   "views": "views",
   "notes": "Notes",
   "account": "Account",
-  "welcomeBack": "Welcome"
+  "welcomeBack": "Welcome",
+  "edit": "Edit"
 }

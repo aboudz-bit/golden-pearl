@@ -526,4 +526,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeBack => 'Welcome';
+
+  @override
+  String get edit => 'Edit';
 }

@@ -19,14 +19,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featured = [];
   bool _loading = true;
-
-  Map<String, String> _categoryImages = {};
+  List<Map<String, dynamic>> _banners = [];
+  List<Map<String, dynamic>> _categories = [];
+  int _currentBanner = 0;
+  final PageController _bannerController = PageController();
 
   @override
   void initState() {
     super.initState();
     _loadFeatured();
-    _loadCategoryImages();
+    _loadBanners();
+    _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    _bannerController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFeatured() async {
@@ -38,24 +47,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadCategoryImages() async {
+  Future<void> _loadBanners() async {
     try {
-      final allProducts = await apiService.getProducts();
-      final images = <String, String>{};
-      for (final cat in ['dresses', 'jalabiyas', 'kids', 'gifts']) {
-        final match = allProducts.where((p) => p.category == cat && p.images.isNotEmpty).toList();
-        if (match.isNotEmpty) {
-          final img = match.first.images.first;
-          images[cat] = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
-        }
-      }
-      if (mounted) setState(() => _categoryImages = images);
+      final banners = await apiService.getPublicBanners();
+      if (mounted) setState(() => _banners = banners);
     } catch (_) {}
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await apiService.getPublicCategories();
+      if (mounted) setState(() => _categories = categories);
+    } catch (_) {}
   }
 
   @override
@@ -63,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
     final size = MediaQuery.of(context).size;
+    final hasBanners = _banners.isNotEmpty;
 
     return Scaffold(
       body: CustomScrollView(
@@ -76,55 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
             actions: const [],
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const HeroVideoBackground(),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 90,
-                    left: 24,
-                    right: 24,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          l10n.heroTitle,
-                          style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(context, PageRouteBuilder(
-                            pageBuilder: (_, __, ___) => const ShopScreen(),
-                            transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
-                            transitionDuration: const Duration(milliseconds: 280),
-                          ));
-                        },
-                        child: Text(l10n.shopNow),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              background: hasBanners ? _buildBannerCarousel(size, l10n) : _buildDefaultHero(size, l10n),
             ),
           ),
           SliverToBoxAdapter(
@@ -136,17 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverToBoxAdapter(
             child: SizedBox(
               height: 140,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                children: [
-                  _CategoryCircle(label: l10n.dresses, imageUrl: _categoryImages['dresses'], category: 'dresses'),
-                  _CategoryCircle(label: l10n.jalabiyas, imageUrl: _categoryImages['jalabiyas'], category: 'jalabiyas'),
-                  _CategoryCircle(label: l10n.kids, imageUrl: _categoryImages['kids'], category: 'kids'),
-                  _CategoryCircle(label: l10n.gifts, imageUrl: _categoryImages['gifts'], category: 'gifts'),
-                ],
-              ),
+              child: _buildCategoryList(l10n, lang),
             ),
           ),
           SliverToBoxAdapter(
@@ -223,9 +169,186 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildBannerCarousel(Size size, AppLocalizations l10n) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _bannerController,
+          itemCount: _banners.length,
+          onPageChanged: (i) => setState(() => _currentBanner = i),
+          itemBuilder: (context, index) {
+            final banner = _banners[index];
+            final url = banner['url'] as String? ?? '';
+            final type = banner['type'] as String? ?? 'image';
+            final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
+
+            if (type == 'video') {
+              return const HeroVideoBackground();
+            }
+
+            return Image.network(
+              fullUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: kCharcoal,
+                child: const Center(child: Icon(Icons.image, color: Colors.white30, size: 48)),
+              ),
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 90,
+          left: 24,
+          right: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                l10n.heroTitle,
+                style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+        if (_banners.length > 1)
+          Positioned(
+            bottom: 66,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_banners.length, (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: i == _currentBanner ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: i == _currentBanner ? kGoldPrimary : Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              )),
+            ),
+          ),
+        Positioned(
+          bottom: 20,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const ShopScreen(),
+                  transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+                  transitionDuration: const Duration(milliseconds: 280),
+                ));
+              },
+              child: Text(l10n.shopNow),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultHero(Size size, AppLocalizations l10n) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const HeroVideoBackground(),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 90,
+          left: 24,
+          right: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                l10n.heroTitle,
+                style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+        Positioned(
+          bottom: 20,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const ShopScreen(),
+                  transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+                  transitionDuration: const Duration(milliseconds: 280),
+                ));
+              },
+              child: Text(l10n.shopNow),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryList(AppLocalizations l10n, String lang) {
+    if (_categories.isNotEmpty) {
+      return ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        children: _categories.map((cat) {
+          final slug = cat['slug'] as String? ?? '';
+          final name = lang == 'ar' ? (cat['nameAr'] ?? slug) : (cat['nameEn'] ?? slug);
+          final imageUrl = cat['imageUrl'] as String?;
+          String? fullImgUrl;
+          if (imageUrl != null && imageUrl.isNotEmpty) {
+            fullImgUrl = imageUrl.startsWith('http') ? imageUrl : '${ApiService.baseUrl}$imageUrl';
+          }
+          return _CategoryCircle(label: name.toString(), imageUrl: fullImgUrl, category: slug);
+        }).toList(),
+      );
+    }
+
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      children: [
+        _CategoryCircle(label: l10n.dresses, category: 'dresses'),
+        _CategoryCircle(label: l10n.jalabiyas, category: 'jalabiyas'),
+        _CategoryCircle(label: l10n.kids, category: 'kids'),
+        _CategoryCircle(label: l10n.gifts, category: 'gifts'),
+      ],
+    );
+  }
 }
 
-/// Large circular category with real product image (96-110px).
 class _CategoryCircle extends StatefulWidget {
   final String label;
   final String? imageUrl;

@@ -29,7 +29,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 ### Flutter App (`golden_pearl/`)
 - `lib/main.dart` — App entry, luxury theme, navigation (4 tabs: Home, Shop, Cart, Settings), route handling (/login, /admin)
 - `lib/screens/` — HomeScreen, ShopScreen, CategoryScreen, ProductDetailScreen, CartScreen, CheckoutScreen (with login guard + store pickup), OrdersScreen, NotificationsScreen, SettingsScreen, OrderConfirmationScreen, LoginScreen
-- `lib/screens/admin/` — AdminDashboard (5-tab: Overview, Products, Orders, Settings, Analytics), AdminProductsScreen, AdminOrdersScreen, AdminSettingsScreen, AdminAnalyticsScreen
+- `lib/screens/admin/` — AdminDashboard (9 pages: Overview, Products, Orders, Banners, Categories, Promotions, Notifications, Settings, Analytics + bottom nav + drawer), AdminProductsScreen (category tabs), AdminProductFormScreen (create/edit with image upload), AdminOrdersScreen (with item thumbnails), AdminBannersScreen (CRUD + reorder + upload), AdminCategoriesScreen (image upload + visibility + reorder), AdminPromotions (discount code management), AdminNotificationsScreen (send to all users), AdminSettingsScreen, AdminAnalyticsScreen
 - `lib/providers/` — LanguageProvider, CartProvider, FavoritesProvider, AuthProvider (login/register/logout/checkAuth)
 - `lib/services/api_service.dart` — HTTP client with auth endpoints, admin CRUD, analytics tracking
 - `lib/models/` — Product (with stock field), CartItem, Order, AppNotification
@@ -58,11 +58,16 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - **Session-based**: express-session with userId stored in session
 
 ## Admin Panel
-Accessible from Settings → Admin Panel (only visible to admin users)
-- **Dashboard**: Overview cards (products, orders, visits, sessions), quick action links
-- **Products**: List all with stock color coding (green >10, yellow 1-10, red 0), stock update, delete
-- **Orders**: Filtered tabs (All/Delivery/Pickup), status update dialog, order detail bottom sheet
-- **Settings**: Banner and category image URL management with live preview
+Accessible from Settings → Admin Panel (only visible to admin users). Navigation: 5-tab bottom nav (Dashboard, Products, Orders, Banners, Categories) + drawer for Promotions, Notifications, Settings, Analytics.
+- **Dashboard**: Overview cards (products, orders, visits, sessions), quick action links, Add Product FAB
+- **Products**: Category tabs (All/Dresses/Jalabiyas/Kids/Gifts), stock color coding, edit/duplicate/delete actions, stock update dialog
+- **Product Form**: Create/edit with multi-image upload (sharp compression), name En/Ar, price, category, description, stock, sizes, colors
+- **Orders**: Filtered tabs (All/Delivery/Pickup), product thumbnails in order cards, status update dialog, order detail bottom sheet
+- **Banners**: Upload image/video banners, toggle active, drag-to-reorder, delete with confirmation
+- **Categories**: Upload category images, toggle visibility, drag-to-reorder (4 default: Dresses, Jalabiyas, Kids, Gifts)
+- **Promotions**: Discount code CRUD, percentage/fixed types, expiration dates, min order, usage tracking
+- **Notifications**: Compose and send notifications to all users, sent history
+- **Settings**: Site settings management
 - **Analytics**: Total views, unique sessions, top viewed products
 
 ## Currency & Pricing
@@ -71,17 +76,20 @@ Accessible from Settings → Admin Panel (only visible to admin users)
 
 ## Features
 - **Bilingual**: Arabic RTL (default) ↔ English LTR with persistent language toggle
-- **Home**: Hero video background, category circles, featured products grid
+- **Home**: Dynamic banner carousel (from admin-uploaded banners, fallback to hero video), dynamic category circles (from admin, fallback to defaults), featured products grid
 - **Shop**: Product listing with filters, search, sort
 - **Product Detail**: Multi-image + video slider, fullscreen zoom, size/color selectors
 - **Cart**: Cart + Wishlist tabs, swipe-to-delete, quantity management
 - **Checkout**: Login guard, delivery/pickup toggle, discount codes
 - **Orders**: Full status tracking with notifications
-- **Admin Panel**: Complete store management (products, orders, settings, analytics)
+- **Admin Panel**: Full Shopify-like CMS (products, orders, banners, categories, promotions, notifications, settings, analytics)
+- **Media Upload**: Image compression via sharp (max 1200px, JPEG quality 80), video upload support
 
 ## Database Tables
 - **users**: id, email (unique), passwordHash, name, phone, role (default 'user'), createdAt
-- **products**: id, nameEn/Ar, descriptionEn/Ar, price, originalPrice, category, images[], videoUrl, sizes[], colors[], fabricEn/Ar, inStock, featured, badge, rating, reviewCount, stock (default 100)
+- **products**: id, nameEn/Ar, descriptionEn/Ar, price, originalPrice, category, images[], videoUrl, sizes[], colors[], fabricEn/Ar, inStock, featured, badge, rating, reviewCount, stock (default 100), orderIndex (default 0)
+- **banners**: id, type ("image"|"video"), url (text), active (boolean default true), sortOrder (integer default 0)
+- **categories**: id, slug (text unique), nameEn (text), nameAr (text), imageUrl (text nullable), visible (boolean default true), sortOrder (integer default 0)
 - **cart_items**: id, sessionId, userId (nullable), productId, quantity, size, color
 - **orders**: id, sessionId, userId (nullable), items (JSONB), subtotal/shipping/discount/total, status, deliveryMethod, customer info, notes
 - **discount_codes**: id, code, type, value, minOrder, maxUses, usedCount, active, expiresAt
@@ -99,6 +107,8 @@ Accessible from Settings → Admin Panel (only visible to admin users)
 - `GET /api/orders` — Order history
 - `POST /api/discounts/validate` — Validate discount code
 - `GET /api/notifications` — User notifications
+- `GET /api/banners` — Active banners (sorted by sortOrder)
+- `GET /api/categories` — Visible categories (sorted by sortOrder)
 - `GET /api/settings/:key` — Public setting value
 - `POST /api/analytics/pageview` — Record page view
 
@@ -110,13 +120,19 @@ Accessible from Settings → Admin Panel (only visible to admin users)
 - `POST /api/auth/merge` — Merge guest cart into user cart
 
 ### Admin (requires admin role)
+- `POST /api/admin/upload` — Upload media (multer + sharp compression)
+- `DELETE /api/admin/upload` — Delete uploaded file
 - `POST/PATCH/DELETE /api/admin/products/:id` — Product CRUD
 - `PATCH /api/admin/products/:id/stock` — Update stock
+- `PATCH /api/admin/products/reorder` — Reorder products by orderIndex
 - `GET /api/admin/orders` — All orders
 - `PATCH /api/admin/orders/:id/status` — Update status (triggers notifications)
+- `CRUD /api/admin/banners` — Banner management (create, list, update, delete, reorder)
+- `CRUD /api/admin/categories` — Category management (update image, toggle visibility, reorder)
+- `POST /api/admin/notifications/send` — Send notification to all users
 - `GET/PUT /api/admin/settings/:key` — Site settings
 - `GET /api/admin/analytics` — Visit analytics
-- `POST/GET/DELETE /api/admin/discounts` — Discount code management
+- `POST/GET/PATCH/DELETE /api/admin/discounts` — Discount code management
 
 ## Running
 - Workflow "Start application" runs `npm run dev` → Express server on port 5000

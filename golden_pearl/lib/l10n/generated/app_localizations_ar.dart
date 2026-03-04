@@ -524,4 +524,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get welcomeBack => 'مرحباً';
+
+  @override
+  String get edit => 'تعديل';
 }
