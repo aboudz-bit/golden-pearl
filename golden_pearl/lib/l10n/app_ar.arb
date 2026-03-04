@@ -235,5 +235,6 @@
   "trackingNumber": "رقم التتبع",
   "confirm": "تأكيد",
   "rememberMe": "حفظ الحساب",
-  "useAnotherAccount": "تسجيل بحساب آخر"
+  "useAnotherAccount": "تسجيل بحساب آخر",
+  "confirmLogout": "تأكيد تسجيل الخروج"
 }

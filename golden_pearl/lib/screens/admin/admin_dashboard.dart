@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
@@ -230,6 +231,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   }),
                 ),
               ),
+              const Divider(height: 1, color: kDivider),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red, size: 22),
+                  title: Text(l10n.logout, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.red)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onTap: () => _confirmLogout(context, auth, l10n),
+                ),
+              ),
             ],
           ),
         ),
@@ -250,6 +261,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
         )).toList(),
       ) : null,
     );
+  }
+
+  Future<void> _confirmLogout(BuildContext context, AuthProvider auth, AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kCardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(l10n.confirmLogout, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel, style: const TextStyle(color: kSecondaryText)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.logout),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    Navigator.pop(context);
+    await auth.logout();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('currentUserId');
+    await prefs.remove('currentRole');
+    await prefs.remove('authToken');
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.logoutSuccess),
+          backgroundColor: kGoldPrimary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
   }
 
   Widget _buildOverview(AppLocalizations l10n, String lang, AuthProvider auth) {

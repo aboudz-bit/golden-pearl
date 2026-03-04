@@ -235,5 +235,6 @@
   "trackingNumber": "Tracking number",
   "confirm": "Confirm",
   "rememberMe": "Remember me",
-  "useAnotherAccount": "Use another account"
+  "useAnotherAccount": "Use another account",
+  "confirmLogout": "Confirm Logout"
 }

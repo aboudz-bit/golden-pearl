@@ -635,4 +635,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get useAnotherAccount => 'تسجيل بحساب آخر';
+
+  @override
+  String get confirmLogout => 'تأكيد تسجيل الخروج';
 }

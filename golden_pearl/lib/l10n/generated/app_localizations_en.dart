@@ -638,4 +638,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get useAnotherAccount => 'Use another account';
+
+  @override
+  String get confirmLogout => 'Confirm Logout';
 }
