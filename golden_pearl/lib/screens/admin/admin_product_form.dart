@@ -89,7 +89,16 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
         if (!mounted) return;
         setState(() => _uploading = true);
         try {
-          final bytes = (reader.result as Uint8List).toList();
+          final rawData = reader.result;
+          final Uint8List uint8list;
+          if (rawData is Uint8List) {
+            uint8list = rawData;
+          } else if (rawData is ByteBuffer) {
+            uint8list = rawData.asUint8List();
+          } else {
+            throw Exception('Unexpected file data type');
+          }
+          final bytes = uint8list.toList();
           final uploaded = await apiService.uploadFile(bytes, file.name);
           if (mounted) setState(() => _images.add(uploaded['url'] as String));
         } catch (e) {
@@ -105,7 +114,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   }
 
   Future<void> _pickAndUploadVideo() async {
-    final input = html.FileUploadInputElement()..accept = 'video/*';
+    final input = html.FileUploadInputElement()..accept = 'video/mp4';
     input.click();
     input.onChange.listen((event) async {
       final files = input.files;
@@ -117,7 +126,16 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
         if (!mounted) return;
         setState(() => _uploading = true);
         try {
-          final bytes = (reader.result as Uint8List).toList();
+          final rawData = reader.result;
+          final Uint8List uint8list;
+          if (rawData is Uint8List) {
+            uint8list = rawData;
+          } else if (rawData is ByteBuffer) {
+            uint8list = rawData.asUint8List();
+          } else {
+            throw Exception('Unexpected file data type');
+          }
+          final bytes = uint8list.toList();
           final uploaded = await apiService.uploadFile(bytes, file.name);
           if (mounted) setState(() => _videoUrl = uploaded['url'] as String);
         } catch (e) {

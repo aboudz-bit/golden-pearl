@@ -42,7 +42,7 @@ class _AdminBannersScreenState extends State<AdminBannersScreen> {
 
   Future<void> _pickAndUploadFile() async {
     final input = html.FileUploadInputElement();
-    input.accept = 'image/*,video/*';
+    input.accept = 'image/jpeg,image/png,image/webp,video/mp4';
     input.click();
 
     input.onChange.listen((event) async {
@@ -55,14 +55,23 @@ class _AdminBannersScreenState extends State<AdminBannersScreen> {
         if (!mounted) return;
         setState(() => _uploading = true);
         try {
-          final bytes = (reader.result as Uint8List).toList();
+          final result = reader.result;
+          final Uint8List uint8list;
+          if (result is Uint8List) {
+            uint8list = result;
+          } else if (result is ByteBuffer) {
+            uint8list = result.asUint8List();
+          } else {
+            throw Exception('Unexpected file data type');
+          }
+          final bytes = uint8list.toList();
           final filename = file.name;
           final uploadResult = await apiService.uploadFile(bytes, filename);
           final url = uploadResult['url'] as String;
 
           String type = 'image';
           final lowerName = filename.toLowerCase();
-          if (lowerName.endsWith('.mp4') || lowerName.endsWith('.mov') || lowerName.endsWith('.webm') || lowerName.endsWith('.avi')) {
+          if (lowerName.endsWith('.mp4')) {
             type = 'video';
           }
 

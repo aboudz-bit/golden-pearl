@@ -1,0 +1,56 @@
+You are Replit Agent working inside my existing Replit project (Flutter Web + Express backend) for “Golden Pearl”. DO NOT add extra features beyond what I request. Implement ONLY the items below, end-to-end, and verify in Preview that everything works.
+
+CONTEXT (current pain points)
+- Admin Panel exists, but:
+  - Category names (AR/EN) are not editable by admin.
+  - Banner upload often doesn’t upload (stuck / no result).
+  - Customer home hero media is cropped; I want the hero image to be fully visible (no crop).
+  - Orders in admin should show product thumbnails.
+  - Products list in admin should be grouped/filtered by category like the customer app (Dresses / Jalabiyas / Kids / Gifts).
+  - “Add Product” button currently routes incorrectly back to Products list instead of opening the Add Product flow (bug).
+- We are ONE store only (single-tenant). Keep everything simple.
+
+NON-NEGOTIABLES
+- Keep current design language (luxury / gold theme).
+- Must work on Flutter Web (Replit Preview) reliably.
+- No breaking changes to existing flows.
+- After changes: run the app and confirm behavior in Preview.
+
+========================================
+TASK A — Fix Banner Upload (Admin)
+========================================
+Goal: Admin can upload banner images (and later videos) from the Admin Panel reliably.
+
+1) Backend (Express):
+- Add/verify Multer-based upload endpoints:
+  - POST /api/admin/upload/image  (multipart/form-data, field name: "file")
+  - POST /api/admin/upload/video  (multipart/form-data, field name: "file")
+- Save files under a predictable public folder that is already served statically, e.g.:
+  - golden_pearl/public/uploads/images/
+  - golden_pearl/public/uploads/videos/
+- Return JSON: { "url": "/uploads/images/<filename>" } or "/uploads/videos/<filename>"
+- Ensure express.static serves /uploads with correct headers:
+  - For images: cache-control (ok)
+  - For videos: MUST support Range requests (206) and Content-Type video/mp4
+- Add file validation:
+  - Images: jpg/jpeg/png/webp, max 5MB
+  - Videos: mp4, max 25MB
+- If upload fails, return clear 4xx error JSON.
+
+2) Flutter Admin (Banner Management screen):
+- Replace “Enter image URL…” only flow with:
+  - Button: “Upload Image” -> file picker -> multipart upload -> gets returned URL -> save to banner record
+  - Button: “Upload Video” (optional UI now, but backend must exist)
+- Show progress indicator during upload + success toast.
+- After upload, immediately show preview thumbnail (image) or video icon.
+- Ensure this works on Flutter Web. Use http.MultipartRequest.
+- IMPORTANT: If file_picker has limitations on web, implement a fallback using an <input type="file"> via universal_html or similar—but prefer file_picker first.
+
+========================================
+TASK B — Multi-Banner Support (Images + Videos)
+========================================
+Goal: Admin can add multiple hero banners (e.g., 3+) and optionally set a banner type (image/video).
+
+- Update data model/storage for banners to be a LIST, not a single hero URL.
+- Each banner item:
+ 

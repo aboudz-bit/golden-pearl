@@ -21,6 +21,31 @@ declare module "express-session" {
 const uploadsDir = path.resolve(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only jpg, png, webp images are allowed (max 5MB)"));
+    }
+  },
+});
+
+const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "video/mp4") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only mp4 videos are allowed (max 25MB)"));
+    }
+  },
+});
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
@@ -143,6 +168,35 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  app.post("/api/admin/upload/image", isAdmin, imageUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No image file uploaded" });
+      const filename = `${randomUUID()}.jpg`;
+      const filepath = path.join(uploadsDir, filename);
+      await sharp(req.file.buffer)
+        .resize(1200, undefined, { withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toFile(filepath);
+      res.json({ url: `/uploads/${filename}`, type: "image" });
+    } catch (error) {
+      console.error("Image upload error:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
+  app.post("/api/admin/upload/video", isAdmin, videoUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No video file uploaded" });
+      const filename = `${randomUUID()}.mp4`;
+      const filepath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filepath, req.file.buffer);
+      res.json({ url: `/uploads/${filename}`, type: "video" });
+    } catch (error) {
+      console.error("Video upload error:", error);
+      res.status(500).json({ message: "Failed to upload video" });
     }
   });
 

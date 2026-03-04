@@ -110,6 +110,40 @@ app.use((req, res, next) => {
   }
 
   const cacheOptions = { maxAge: "7d", immutable: true };
+
+  app.get("/uploads/:filename", (req, res, next) => {
+    const filepath = path.resolve(process.cwd(), "uploads", req.params.filename);
+    if (!fs.existsSync(filepath)) return next();
+    const ext = path.extname(filepath).toLowerCase();
+    if (ext !== ".mp4") return next();
+    const stat = fs.statSync(filepath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      const stream = fs.createReadStream(filepath, { start, end });
+      res.writeHead(206, {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunkSize,
+        "Content-Type": "video/mp4",
+        "Cache-Control": "public, max-age=604800",
+      });
+      stream.pipe(res);
+    } else {
+      res.writeHead(200, {
+        "Content-Length": fileSize,
+        "Content-Type": "video/mp4",
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=604800",
+      });
+      fs.createReadStream(filepath).pipe(res);
+    }
+  });
+
   app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads"), { maxAge: "7d" }));
   app.use("/images", express.static(path.resolve(flutterBuildPath, "images"), cacheOptions));
   app.use("/videos", express.static(path.resolve(flutterBuildPath, "videos"), cacheOptions));

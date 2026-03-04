@@ -41,6 +41,88 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
+  Future<void> _editCategoryNames(Map<String, dynamic> category) async {
+    final id = category['id'] as int;
+    final enController = TextEditingController(text: category['nameEn'] ?? category['name'] ?? '');
+    final arController = TextEditingController(text: category['nameAr'] ?? '');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kCardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Edit Category Name',
+          style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: enController,
+              decoration: InputDecoration(
+                labelText: 'Name (English)',
+                labelStyle: const TextStyle(color: kSecondaryText, fontSize: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: kGoldPrimary, width: 1.5),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: arController,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                labelText: 'الاسم (عربي)',
+                labelStyle: const TextStyle(color: kSecondaryText, fontSize: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: kGoldPrimary, width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: kSecondaryText)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save', style: TextStyle(color: kGoldPrimary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (saved == true && mounted) {
+      try {
+        await apiService.updateCategory(id, {
+          'nameEn': enController.text.trim(),
+          'nameAr': arController.text.trim(),
+        });
+        await _loadCategories();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Category name updated'), backgroundColor: kGoldPrimary),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red.shade700),
+          );
+        }
+      }
+    }
+    enController.dispose();
+    arController.dispose();
+  }
+
   Future<void> _toggleVisibility(Map<String, dynamic> category) async {
     final id = category['id'] as int;
     final current = category['visible'] ?? true;
@@ -70,9 +152,18 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       reader.onLoadEnd.listen((_) async {
         setState(() => _uploading.add(id));
         try {
-          final bytes = (reader.result as Uint8List).toList();
-          final result = await apiService.uploadFile(bytes, file.name);
-          final url = result['url'] as String;
+          final rawData = reader.result;
+          final Uint8List uint8list;
+          if (rawData is Uint8List) {
+            uint8list = rawData;
+          } else if (rawData is ByteBuffer) {
+            uint8list = rawData.asUint8List();
+          } else {
+            throw Exception('Unexpected file data type');
+          }
+          final bytes = uint8list.toList();
+          final uploadResult = await apiService.uploadFile(bytes, file.name);
+          final url = uploadResult['url'] as String;
           await apiService.updateCategory(id, {'imageUrl': url});
           await _loadCategories();
           if (mounted) {
@@ -197,6 +288,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               isUploading: _uploading.contains(cat['id']),
                               onToggleVisibility: () => _toggleVisibility(cat),
                               onPickImage: () => _pickAndUploadImage(cat),
+                              onEditName: () => _editCategoryNames(cat),
                             );
                           },
                         ),
@@ -213,6 +305,7 @@ class _CategoryCard extends StatelessWidget {
   final bool isUploading;
   final VoidCallback onToggleVisibility;
   final VoidCallback onPickImage;
+  final VoidCallback onEditName;
 
   const _CategoryCard({
     super.key,
@@ -220,6 +313,7 @@ class _CategoryCard extends StatelessWidget {
     required this.isUploading,
     required this.onToggleVisibility,
     required this.onPickImage,
+    required this.onEditName,
   });
 
   @override
@@ -298,34 +392,44 @@ class _CategoryCard extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    nameEn,
-                    style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal),
-                  ),
-                  if (nameAr.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      nameAr,
-                      style: TextStyle(fontSize: 14, color: kSecondaryText, fontWeight: FontWeight.w500),
-                      textDirection: TextDirection.rtl,
+              child: GestureDetector(
+                onTap: onEditName,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            nameEn,
+                            style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal),
+                          ),
+                        ),
+                        Icon(Icons.edit_outlined, size: 16, color: kGoldPrimary.withOpacity(0.7)),
+                      ],
+                    ),
+                    if (nameAr.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        nameAr,
+                        style: TextStyle(fontSize: 14, color: kSecondaryText, fontWeight: FontWeight.w500),
+                        textDirection: TextDirection.rtl,
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: kCreamBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        slug,
+                        style: TextStyle(fontSize: 11, color: kSecondaryText.withOpacity(0.7), fontFamily: 'monospace'),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: kCreamBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      slug,
-                      style: TextStyle(fontSize: 11, color: kSecondaryText.withOpacity(0.7), fontFamily: 'monospace'),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
