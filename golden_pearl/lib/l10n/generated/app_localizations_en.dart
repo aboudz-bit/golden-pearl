@@ -103,7 +103,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get price => 'Price';
 
   @override
-  String get sortBy => 'Sort By';
+  String get sortBy => 'Sort';
 
   @override
   String get newest => 'Newest';
@@ -208,7 +208,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get orderHistory => 'Order History';
 
   @override
-  String get noOrders => 'No orders yet';
+  String get noOrders => 'No Orders';
 
   @override
   String get pending => 'Pending';
@@ -529,4 +529,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get edit => 'Edit';
+
+  @override
+  String get customers => 'Customers';
+
+  @override
+  String get searchCustomers => 'Search by name, email, phone...';
+
+  @override
+  String get totalSpent => 'Total Spent';
+
+  @override
+  String get lastOrder => 'Last Order';
+
+  @override
+  String get registered => 'Registered';
+
+  @override
+  String get hasOrders => 'Has Orders';
+
+  @override
+  String get allCustomers => 'All Customers';
+
+  @override
+  String get newestFirst => 'Newest';
+
+  @override
+  String get highestSpent => 'Highest Spent';
+
+  @override
+  String get mostOrders => 'Most Orders';
+
+  @override
+  String get lastOrderDate => 'Last Order Date';
+
+  @override
+  String get customerDetails => 'Customer Details';
+
+  @override
+  String get currentCart => 'Current Cart';
+
+  @override
+  String get cartEmpty => 'Cart is empty';
+
+  @override
+  String get noOrdersYet => 'No orders yet';
+
+  @override
+  String get exportList => 'Export List';
+
+  @override
+  String get exportCustomer => 'Export Report';
+
+  @override
+  String get customerInfo => 'Customer Info';
+
+  @override
+  String get itemsCount => 'Items';
 }

@@ -11,6 +11,7 @@ import * as admin from "./controllers/admin.controller";
 import * as pub from "./controllers/public.controller";
 import * as pay from "./controllers/payments.controller";
 import * as ship from "./controllers/shipping.controller";
+import * as customers from "./controllers/customers.controller";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -24,8 +25,6 @@ export async function registerRoutes(
   app.post("/api/auth/merge", asyncHandler(auth.mergeCart));
 
   app.post("/api/admin/upload", isAdmin, upload.single("file"), asyncHandler(uploadFile));
-  app.post("/api/admin/upload/image", isAdmin, upload.single("file"), asyncHandler(uploadFile));
-  app.post("/api/admin/upload/video", isAdmin, upload.single("file"), asyncHandler(uploadFile));
   app.delete("/api/admin/upload", isAdmin, asyncHandler(deleteFile));
 
   app.get("/api/products", asyncHandler(products.listProducts));
@@ -74,7 +73,6 @@ export async function registerRoutes(
 
   app.get("/api/admin/categories", isAdmin, asyncHandler(admin.listCategories));
   app.patch("/api/admin/categories/reorder", isAdmin, asyncHandler(admin.reorderCategories));
-  app.post("/api/admin/categories/reorder", isAdmin, asyncHandler(admin.reorderCategories));
   app.patch("/api/admin/categories/:id", isAdmin, asyncHandler(admin.updateCategory));
 
   app.post("/api/admin/discounts", isAdmin, asyncHandler(admin.createDiscount));
@@ -83,6 +81,11 @@ export async function registerRoutes(
   app.delete("/api/admin/discounts/:id", isAdmin, asyncHandler(admin.deleteDiscount));
 
   app.post("/api/admin/notifications/send", isAdmin, asyncHandler(admin.sendNotification));
+
+  app.get("/api/admin/customers/export", isAdmin, asyncHandler(customers.exportCustomers));
+  app.get("/api/admin/customers/:id/export", isAdmin, asyncHandler(customers.exportCustomer));
+  app.get("/api/admin/customers/:id", isAdmin, asyncHandler(customers.getCustomer));
+  app.get("/api/admin/customers", isAdmin, asyncHandler(customers.listCustomers));
 
   app.post("/api/payments/create", asyncHandler(pay.createPaymentStub));
   app.post("/api/webhooks/moyasar", asyncHandler(pay.moyasarWebhook));

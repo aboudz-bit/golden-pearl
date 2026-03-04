@@ -287,7 +287,7 @@ abstract class AppLocalizations {
   /// No description provided for @sortBy.
   ///
   /// In en, this message translates to:
-  /// **'Sort By'**
+  /// **'Sort'**
   String get sortBy;
 
   /// No description provided for @newest.
@@ -491,7 +491,7 @@ abstract class AppLocalizations {
   /// No description provided for @noOrders.
   ///
   /// In en, this message translates to:
-  /// **'No orders yet'**
+  /// **'No Orders'**
   String get noOrders;
 
   /// No description provided for @pending.
@@ -1105,6 +1105,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit'**
   String get edit;
+
+  /// No description provided for @customers.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers'**
+  String get customers;
+
+  /// No description provided for @searchCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, email, phone...'**
+  String get searchCustomers;
+
+  /// No description provided for @totalSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Spent'**
+  String get totalSpent;
+
+  /// No description provided for @lastOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Order'**
+  String get lastOrder;
+
+  /// No description provided for @registered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get registered;
+
+  /// No description provided for @hasOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Has Orders'**
+  String get hasOrders;
+
+  /// No description provided for @allCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'All Customers'**
+  String get allCustomers;
+
+  /// No description provided for @newestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get newestFirst;
+
+  /// No description provided for @highestSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest Spent'**
+  String get highestSpent;
+
+  /// No description provided for @mostOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Most Orders'**
+  String get mostOrders;
+
+  /// No description provided for @lastOrderDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Order Date'**
+  String get lastOrderDate;
+
+  /// No description provided for @customerDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer Details'**
+  String get customerDetails;
+
+  /// No description provided for @currentCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Cart'**
+  String get currentCart;
+
+  /// No description provided for @cartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart is empty'**
+  String get cartEmpty;
+
+  /// No description provided for @noOrdersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No orders yet'**
+  String get noOrdersYet;
+
+  /// No description provided for @exportList.
+  ///
+  /// In en, this message translates to:
+  /// **'Export List'**
+  String get exportList;
+
+  /// No description provided for @exportCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Report'**
+  String get exportCustomer;
+
+  /// No description provided for @customerInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer Info'**
+  String get customerInfo;
+
+  /// No description provided for @itemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get itemsCount;
 }
 
 class _AppLocalizationsDelegate

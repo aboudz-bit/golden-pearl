@@ -13,6 +13,7 @@ import 'admin_categories.dart';
 import 'admin_promotions.dart';
 import 'admin_notifications.dart';
 import 'admin_product_form.dart';
+import 'admin_customers.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -65,6 +66,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       const AdminCategoriesScreen(),
       const AdminPromotions(),
       const AdminNotificationsScreen(),
+      const AdminCustomersScreen(),
     ];
 
     final labels = [
@@ -75,6 +77,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       l10n.categories,
       'Promos',
       l10n.notifications,
+      l10n.customers,
     ];
 
     final icons = [
@@ -85,16 +88,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
       Icons.category_outlined,
       Icons.local_offer_outlined,
       Icons.notifications_outlined,
+      Icons.people_outlined,
     ];
 
     final activeIcons = [
       Icons.dashboard,
       Icons.inventory_2,
       Icons.receipt_long,
-      Icons.slideshow,
+      Icons.photo_library,
       Icons.category,
       Icons.local_offer,
       Icons.notifications,
+      Icons.people,
     ];
 
     return Scaffold(
@@ -276,6 +281,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _actionTile(Icons.category_outlined, l10n.categories, () => setState(() => _selectedIndex = 4)),
           _actionTile(Icons.local_offer_outlined, 'Promotions', () => setState(() => _selectedIndex = 5)),
           _actionTile(Icons.campaign_outlined, 'Send Notification', () => setState(() => _selectedIndex = 6)),
+          _actionTile(Icons.people_outlined, l10n.customers, () => setState(() => _selectedIndex = 7)),
         ],
       ),
     );

@@ -1,0 +1,129 @@
+You are Replit AI working inside my existing Flutter Web + Node.js/Express backend app (single-store). Implement ONE new admin feature: **Customers (Clients) Management** with full customer profile, order history, cart snapshot, search, and Excel export. Keep the current app style and do NOT break existing functionality.
+
+SCOPE (Admin-only)
+Add a new Admin tab/page called **Customers** (Clients) accessible from Admin Panel:
+- Add it to Admin navigation (bottom nav or drawer — choose the cleanest without clutter; if bottom nav is already full, put it in the drawer).
+- Protect all endpoints with existing admin auth middleware (isAdmin).
+- Arabic + English labels (use existing localization pattern/ARB).
+
+DATA WE NEED TO SHOW (What admin can see)
+For each registered customer, the admin must see:
+1) **Customer Summary (list view)**
+   - Full name
+   - Email
+   - Phone number
+   - Account status: Active / Disabled (optional toggle if easy; if not, just show status)
+   - Total orders count
+   - Total spent (sum of completed/paid orders if payment status exists; otherwise sum of all non-cancelled)
+   - Last order date
+   - Date registered (createdAt)
+   - Customer ID (internal)
+
+2) **Customer Details (profile view)**
+   - All summary fields above + any address fields if they exist in the current schema
+   - **Order History table**
+     - Order ID
+     - Date/time
+     - Status (Pending/Processing/Ready/PickedUp/Delivered/Cancelled etc.)
+     - Fulfillment method (Delivery / Store Pickup)
+     - Total amount
+     - Items count
+     - View order details (line items with product image, name, variant if exists, qty, price)
+   - **Cart snapshot (current basket)**
+     - Show current cart items for that user (product image, name, qty, unit price, subtotal)
+     - Show cart updatedAt if available
+     - If the user has no cart items, show “Cart is empty”
+   - **Likes / Favorites**
+     - If favorites exist in the app: show list of liked products (image + name + price)
+     - If not implemented in current backend, gracefully hide this section (do NOT invent fake data)
+
+3) **Search + Filters**
+   - A search bar that searches by:
+     - Name
+     - Email
+     - Phone
+     - Customer ID (optional)
+   - Filters:
+     - Has orders / No orders
+     - Date registered range (optional)
+     - Last order range (optional)
+   - Sorting:
+     - Newest registered
+     - Highest spent
+     - Most orders
+     - Last order date
+
+4) **Export to Excel**
+   - Admin can export:
+     A) Current filtered list (customers summary)
+     B) A single customer full report (profile + orders + cart snapshot)
+   - Export format: .xlsx (preferred) or .csv if xlsx is too heavy.
+   - Include clear column headers in English + Arabic (or at minimum English).
+   - Ensure export respects current filters/search.
+
+BACKEND REQUIREMENTS (Node.js + Express)
+1) Create admin endpoints:
+   - GET /api/admin/customers?search=&sort=&hasOrders=&from=&to=&page=&limit=
+     Returns paginated customers summary + totals (totalCount).
+   - GET /api/admin/customers/:id
+     Returns customer profile + orders list + cart items (+ favorites if exists).
+   - GET /api/admin/customers/export?search=&sort=&hasOrders=&from=&to=
+     Returns file download for current filtered list.
+   - GET /api/admin/customers/:id/export
+     Returns file download for single customer report.
+
+2) Implementation notes:
+   - Use existing storage/data access layer patterns (controllers/services if project already refactored).
+   - All admin routes must be protected with isAdmin middleware.
+   - Use structured responses:
+     { success: true, data: ... } and errors { success: false, message: ... }
+   - Efficient queries:
+     - Avoid N+1 queries. Use joins or batched queries where possible.
+     - Add indexes if needed (user email/phone, orders userId, cart userId).
+   - If the schema doesn’t have a dedicated “users” table but something similar, adapt accordingly.
+
+3) Excel export:
+   - Use a reliable library (Node) to generate .xlsx if possible.
+   - Set proper headers:
+     Content-Type and Content-Disposition for download.
+   - Ensure export won’t block the server for large datasets:
+     - If dataset is big, stream CSV as fallback.
+
+FRONTEND REQUIREMENTS (Flutter Web)
+1) Admin Customers List Screen
+   - Matches current admin UI style (cards/tables, same typography).
+   - Search bar + filter chips/dropdowns + sort dropdown.
+   - Paginated table/list.
+   - Row click opens Customer Details screen.
+   - “Export” button (exports filtered list).
+
+2) Customer Details Screen
+   - Header with customer identity (name/email/phone).
+   - Sections:
+     - Customer info
+     - Orders history (table + status badges)
+     - Cart snapshot (items list with product thumbnails)
+     - Favorites (only if data exists)
+   - “Export Customer” button (full report).
+
+3) Localization
+   - Add AR/EN strings for:
+     Customers, Search, Export, Total Spent, Orders, Cart, Favorites, Registered, Last Order, etc.
+
+4) QA / Edge Cases
+   - Customer with no orders
+   - Customer with empty cart
+   - Missing phone/email
+   - Very long names/emails (UI overflow)
+   - Export works after applying search/filter
+   - Admin-only: normal users must not access these screens or APIs
+
+DELIVERABLE
+- Implement backend endpoints + frontend screens
+- Add navigation entry in Admin Panel
+- Test end-to-end:
+  - Search works (name/email/phone)
+  - Details loads correctly
+  - Export list works
+  - Export single customer works
+- Keep everything else unchanged.

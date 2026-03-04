@@ -29,7 +29,7 @@ export async function getProduct(req: Request, res: Response) {
 
 export async function createProduct(req: Request, res: Response) {
   const result = insertProductSchema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ message: "Invalid product", errors: result.error.flatten() });
+  if (!result.success) return res.status(400).json({ success: false, message: "Invalid product", code: "VALIDATION_ERROR", errors: result.error.flatten() });
   res.json(await storage.createProduct(result.data));
 }
 

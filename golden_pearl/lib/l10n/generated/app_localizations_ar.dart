@@ -103,7 +103,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get price => 'السعر';
 
   @override
-  String get sortBy => 'ترتيب حسب';
+  String get sortBy => 'ترتيب';
 
   @override
   String get newest => 'الأحدث';
@@ -208,7 +208,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get orderHistory => 'سجل الطلبات';
 
   @override
-  String get noOrders => 'لا توجد طلبات بعد';
+  String get noOrders => 'بدون طلبات';
 
   @override
   String get pending => 'قيد الانتظار';
@@ -527,4 +527,61 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get edit => 'تعديل';
+
+  @override
+  String get customers => 'العملاء';
+
+  @override
+  String get searchCustomers => 'بحث بالاسم، البريد، الهاتف...';
+
+  @override
+  String get totalSpent => 'إجمالي المشتريات';
+
+  @override
+  String get lastOrder => 'آخر طلب';
+
+  @override
+  String get registered => 'تاريخ التسجيل';
+
+  @override
+  String get hasOrders => 'لديه طلبات';
+
+  @override
+  String get allCustomers => 'جميع العملاء';
+
+  @override
+  String get newestFirst => 'الأحدث';
+
+  @override
+  String get highestSpent => 'الأعلى إنفاقاً';
+
+  @override
+  String get mostOrders => 'الأكثر طلبات';
+
+  @override
+  String get lastOrderDate => 'تاريخ آخر طلب';
+
+  @override
+  String get customerDetails => 'تفاصيل العميل';
+
+  @override
+  String get currentCart => 'السلة الحالية';
+
+  @override
+  String get cartEmpty => 'السلة فارغة';
+
+  @override
+  String get noOrdersYet => 'لا توجد طلبات بعد';
+
+  @override
+  String get exportList => 'تصدير القائمة';
+
+  @override
+  String get exportCustomer => 'تصدير التقرير';
+
+  @override
+  String get customerInfo => 'معلومات العميل';
+
+  @override
+  String get itemsCount => 'المنتجات';
 }

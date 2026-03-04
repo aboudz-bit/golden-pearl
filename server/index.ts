@@ -54,7 +54,7 @@ const authLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many attempts, please try again later" },
+  message: { success: false, message: "Too many attempts, please try again later", code: "RATE_LIMITED" },
 });
 
 const uploadLimiter = rateLimit({
@@ -62,7 +62,7 @@ const uploadLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Upload rate limit exceeded" },
+  message: { success: false, message: "Upload rate limit exceeded", code: "RATE_LIMITED" },
 });
 
 const apiLimiter = rateLimit({
@@ -70,7 +70,7 @@ const apiLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Rate limit exceeded" },
+  message: { success: false, message: "Rate limit exceeded", code: "RATE_LIMITED" },
 });
 
 app.use("/api/auth/login", authLimiter);
@@ -199,7 +199,7 @@ app.use((req, res, next) => {
   app.use(express.static(flutterBuildPath));
 
   app.all("/api/{*path}", (_req, res) => {
-    res.status(404).json({ message: "Not found" });
+    res.status(404).json({ success: false, message: "Not found", code: "NOT_FOUND" });
   });
 
   app.use("/{*path}", (_req, res) => {

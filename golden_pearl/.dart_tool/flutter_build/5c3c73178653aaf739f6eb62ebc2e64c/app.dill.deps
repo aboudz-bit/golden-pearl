@@ -479,6 +479,8 @@ file:///home/runner/workspace/golden_pearl/lib/providers/cart_provider.dart
 file:///home/runner/workspace/golden_pearl/lib/providers/favorites_provider.dart
 file:///home/runner/workspace/golden_pearl/lib/providers/language_provider.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/admin/admin_categories.dart
+file:///home/runner/workspace/golden_pearl/lib/screens/admin/admin_customer_detail.dart
+file:///home/runner/workspace/golden_pearl/lib/screens/admin/admin_customers.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/admin/admin_dashboard.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/admin/admin_hero_page.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/admin/admin_notifications.dart
