@@ -554,10 +554,6 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/api/admin/customers/export').replace(queryParameters: params);
     return uri.toString();
   }
-    if (sort != null) params['sort'] = sort;
-    if (hasOrders != null) params['hasOrders'] = hasOrders;
-    return Uri.parse('$baseUrl/api/admin/customers/export').replace(queryParameters: params.isNotEmpty ? params : null).toString();
-  }
 
   String getCustomerExportUrl(int id) {
     return '$baseUrl/api/admin/customers/$id/export';
