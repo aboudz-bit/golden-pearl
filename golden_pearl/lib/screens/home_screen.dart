@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
@@ -68,19 +69,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final size = MediaQuery.of(context).size;
     final hasBanners = _banners.isNotEmpty;
 
+    final heroHeight = size.width > 800
+        ? (size.height * 0.65).clamp(520.0, 650.0)
+        : (size.height * 0.5).clamp(size.height * 0.45, size.height * 0.55);
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: size.height * 0.55,
+            expandedHeight: heroHeight,
             pinned: true,
             stretch: true,
             backgroundColor: kCreamBg,
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
             actions: const [],
             flexibleSpace: FlexibleSpaceBar(
-              background: hasBanners ? _buildBannerCarousel(size, l10n) : _buildDefaultHero(size, l10n),
+              background: hasBanners ? _buildBannerCarousel(size, l10n, topPadding) : _buildDefaultHero(size, l10n, topPadding),
             ),
           ),
           SliverToBoxAdapter(
@@ -170,40 +176,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBannerCarousel(Size size, AppLocalizations l10n) {
+  Widget _buildContainedNetworkImage(String fullUrl) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        PageView.builder(
-          controller: _bannerController,
-          itemCount: _banners.length,
-          onPageChanged: (i) => setState(() => _currentBanner = i),
-          itemBuilder: (context, index) {
-            final banner = _banners[index];
-            final url = banner['url'] as String? ?? '';
-            final type = banner['type'] as String? ?? 'image';
-            final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
-
-            if (type == 'video') {
-              return const HeroVideoBackground();
-            }
-
-            return Image.network(
-              fullUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: kCharcoal,
-                child: const Center(child: Icon(Icons.image, color: Colors.white30, size: 48)),
+        ClipRect(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
               ),
-            );
-          },
+              child: Image.network(fullUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+            ),
+          ),
         ),
+        Center(
+          child: Image.network(
+            fullUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Container(
+              color: kCharcoal,
+              child: const Center(child: Icon(Icons.image, color: Colors.white30, size: 48)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroOverlay(AppLocalizations l10n, double topPadding, {bool showDots = false}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
-              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
+              stops: const [0.0, 0.45],
+              colors: [Colors.black.withOpacity(0.65), Colors.transparent],
             ),
           ),
         ),
@@ -211,20 +224,24 @@ class _HomeScreenState extends State<HomeScreen> {
           bottom: 90,
           left: 24,
           right: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                l10n.heroTitle,
-                style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
-            ],
+          child: SafeArea(
+            top: true,
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  l10n.heroTitle,
+                  style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
+              ],
+            ),
           ),
         ),
-        if (_banners.length > 1)
+        if (showDots && _banners.length > 1)
           Positioned(
             bottom: 66,
             left: 0,
@@ -264,54 +281,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDefaultHero(Size size, AppLocalizations l10n) {
+  Widget _buildBannerCarousel(Size size, AppLocalizations l10n, double topPadding) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _bannerController,
+          itemCount: _banners.length,
+          onPageChanged: (i) => setState(() => _currentBanner = i),
+          itemBuilder: (context, index) {
+            final banner = _banners[index];
+            final url = banner['url'] as String? ?? '';
+            final type = banner['type'] as String? ?? 'image';
+            final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
+
+            if (type == 'video') {
+              return HeroVideoBackground(videoUrl: fullUrl);
+            }
+
+            return _buildContainedNetworkImage(fullUrl);
+          },
+        ),
+        _buildHeroOverlay(l10n, topPadding, showDots: true),
+      ],
+    );
+  }
+
+  Widget _buildDefaultHero(Size size, AppLocalizations l10n, double topPadding) {
     return Stack(
       fit: StackFit.expand,
       children: [
         const HeroVideoBackground(),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 90,
-          left: 24,
-          right: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                l10n.heroTitle,
-                style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(l10n.heroSubtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-        Positioned(
-          bottom: 20,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(context, PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const ShopScreen(),
-                  transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
-                  transitionDuration: const Duration(milliseconds: 280),
-                ));
-              },
-              child: Text(l10n.shopNow),
-            ),
-          ),
-        ),
+        _buildHeroOverlay(l10n, topPadding),
       ],
     );
   }

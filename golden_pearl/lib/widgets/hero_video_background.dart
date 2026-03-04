@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../services/api_service.dart';
+import 'dart:ui';
 
 class HeroVideoBackground extends StatefulWidget {
-  const HeroVideoBackground({super.key});
+  final String? videoUrl;
+  const HeroVideoBackground({super.key, this.videoUrl});
 
   @override
   State<HeroVideoBackground> createState() => _HeroVideoBackgroundState();
@@ -21,7 +23,7 @@ class _HeroVideoBackgroundState extends State<HeroVideoBackground> {
   }
 
   Future<void> _initVideo() async {
-    final videoUrl = '${ApiService.baseUrl}/videos/dresses_video.mp4';
+    final videoUrl = widget.videoUrl ?? '${ApiService.baseUrl}/videos/dresses_video.mp4';
     debugPrint('Hero video URL: $videoUrl');
 
     try {
@@ -55,25 +57,73 @@ class _HeroVideoBackgroundState extends State<HeroVideoBackground> {
   @override
   Widget build(BuildContext context) {
     if (_hasError || !_initialized || _controller == null) {
-      return Image.asset('assets/images/hero1.png', fit: BoxFit.cover);
+      return _buildContainedImage('assets/images/hero1.png', isAsset: true);
     }
 
     final controller = _controller!;
 
-    return ClipRect(
-      child: OverflowBox(
-        alignment: Alignment.center,
-        maxWidth: double.infinity,
-        maxHeight: double.infinity,
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: controller.value.size.width,
-            height: controller.value.size.height,
-            child: VideoPlayer(controller),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRect(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
+              ),
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: controller.value.size.width,
+                  height: controller.value.size.height,
+                  child: VideoPlayer(controller),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+        Center(
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: controller.value.size.width,
+              height: controller.value.size.height,
+              child: VideoPlayer(controller),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContainedImage(String src, {bool isAsset = false}) {
+    final image = isAsset
+        ? Image.asset(src, fit: BoxFit.cover)
+        : Image.network(src, fit: BoxFit.cover);
+
+    final containedImage = isAsset
+        ? Image.asset(src, fit: BoxFit.contain)
+        : Image.network(src, fit: BoxFit.contain);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRect(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
+              ),
+              child: SizedBox.expand(child: FittedBox(fit: BoxFit.cover, child: image)),
+            ),
+          ),
+        ),
+        Center(child: containedImage),
+      ],
     );
   }
 }
