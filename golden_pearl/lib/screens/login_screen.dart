@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/language_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +23,64 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isRegister = false;
   bool _submitting = false;
   bool _obscurePassword = true;
+  bool _rememberMe = false;
+  bool _hasSavedAccount = false;
+  bool _prefsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedAccount();
+  }
+
+  Future<void> _loadSavedAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getBool('rememberAccount') ?? false;
+    final identifier = prefs.getString('savedIdentifier') ?? '';
+    final savedLang = prefs.getString('savedLanguage');
+
+    if (saved && identifier.isNotEmpty) {
+      _emailController.text = identifier;
+      _rememberMe = true;
+      _hasSavedAccount = true;
+
+      if (savedLang != null && mounted) {
+        final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+        if (langProvider.languageCode != savedLang) {
+          langProvider.setLanguage(savedLang);
+        }
+      }
+    }
+
+    if (mounted) setState(() => _prefsLoaded = true);
+  }
+
+  Future<void> _saveRememberMe(String identifier) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setBool('rememberAccount', true);
+      await prefs.setString('savedIdentifier', identifier);
+      final lang = Provider.of<LanguageProvider>(context, listen: false).languageCode;
+      await prefs.setString('savedLanguage', lang);
+    } else {
+      await prefs.remove('rememberAccount');
+      await prefs.remove('savedIdentifier');
+      await prefs.remove('savedLanguage');
+    }
+  }
+
+  Future<void> _clearSavedAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('rememberAccount');
+    await prefs.remove('savedIdentifier');
+    await prefs.remove('savedLanguage');
+    setState(() {
+      _emailController.clear();
+      _passwordController.clear();
+      _rememberMe = false;
+      _hasSavedAccount = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -63,6 +123,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
       return;
+    }
+
+    if (!_isRegister) {
+      await _saveRememberMe(_emailController.text.trim());
     }
 
     try {
@@ -159,6 +223,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
+              if (!_isRegister && _prefsLoaded) ...[
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                            activeColor: kGoldPrimary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            side: BorderSide(color: _rememberMe ? kGoldPrimary : kSecondaryText, width: 1.5),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          l10n.rememberMe,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _rememberMe ? kCharcoal : kSecondaryText,
+                            fontWeight: _rememberMe ? FontWeight.w500 : FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
@@ -170,6 +270,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       : Text(_isRegister ? l10n.register : l10n.login),
                 ),
               ),
+              if (!_isRegister && _hasSavedAccount) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: _clearSavedAccount,
+                  icon: const Icon(Icons.switch_account_outlined, size: 18, color: kGoldPrimary),
+                  label: Text(
+                    l10n.useAnotherAccount,
+                    style: const TextStyle(fontSize: 13, color: kGoldPrimary, fontWeight: FontWeight.w500),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: kGoldPrimary.withOpacity(0.2)),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -629,4 +629,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get confirm => 'تأكيد';
+
+  @override
+  String get rememberMe => 'حفظ الحساب';
+
+  @override
+  String get useAnotherAccount => 'تسجيل بحساب آخر';
 }

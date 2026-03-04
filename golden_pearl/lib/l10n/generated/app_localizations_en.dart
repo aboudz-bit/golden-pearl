@@ -632,4 +632,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirm => 'Confirm';
+
+  @override
+  String get rememberMe => 'Remember me';
+
+  @override
+  String get useAnotherAccount => 'Use another account';
 }

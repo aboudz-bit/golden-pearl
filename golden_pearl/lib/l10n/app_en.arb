@@ -233,5 +233,7 @@
   "items": "Items",
   "deliveryFee": "Delivery fee",
   "trackingNumber": "Tracking number",
-  "confirm": "Confirm"
+  "confirm": "Confirm",
+  "rememberMe": "Remember me",
+  "useAnotherAccount": "Use another account"
 }

@@ -233,5 +233,7 @@
   "items": "العناصر",
   "deliveryFee": "رسوم التوصيل",
   "trackingNumber": "رقم التتبع",
-  "confirm": "تأكيد"
+  "confirm": "تأكيد",
+  "rememberMe": "حفظ الحساب",
+  "useAnotherAccount": "تسجيل بحساب آخر"
 }
