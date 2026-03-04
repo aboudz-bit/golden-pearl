@@ -29,7 +29,7 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 ### Flutter App (`golden_pearl/`)
 - `lib/main.dart` — App entry, luxury theme, navigation (4 tabs: Home, Shop, Cart, Settings), route handling (/login, /admin)
 - `lib/screens/` — HomeScreen, ShopScreen, CategoryScreen, ProductDetailScreen, CartScreen, CheckoutScreen (with login guard + store pickup), OrdersScreen, NotificationsScreen, SettingsScreen, OrderConfirmationScreen, LoginScreen
-- `lib/screens/admin/` — AdminDashboard (9 pages: Overview, Products, Orders, Banners, Categories, Promotions, Notifications, Settings, Analytics + bottom nav + drawer), AdminProductsScreen (category tabs), AdminProductFormScreen (create/edit with image upload), AdminOrdersScreen (with item thumbnails), AdminBannersScreen (CRUD + reorder + upload), AdminCategoriesScreen (image upload + visibility + reorder), AdminPromotions (discount code management), AdminNotificationsScreen (send to all users), AdminSettingsScreen, AdminAnalyticsScreen
+- `lib/screens/admin/` — AdminDashboard (7 pages: Overview, Products, Orders, Hero, Categories + bottom nav 5 tabs + drawer 7 items including Promotions, Notifications), AdminProductsScreen (category tabs), AdminProductFormScreen (create/edit with image upload), AdminOrdersScreen (with item thumbnails), AdminHeroPage (unified slides + per-slide text overlays with AR/EN editing, live preview, typography/position controls), AdminCategoriesScreen (image upload + visibility + reorder + name editing), AdminPromotions (discount code management), AdminNotificationsScreen (send to all users)
 - `lib/providers/` — LanguageProvider, CartProvider, FavoritesProvider, AuthProvider (login/register/logout/checkAuth)
 - `lib/services/api_service.dart` — HTTP client with auth endpoints, admin CRUD, analytics tracking
 - `lib/models/` — Product (with stock field), CartItem, Order, AppNotification
@@ -58,18 +58,15 @@ A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app buil
 - **Session-based**: express-session with userId stored in session
 
 ## Admin Panel
-Accessible from Settings → Admin Panel (only visible to admin users). Navigation: 5-tab bottom nav (Dashboard, Products, Orders, Banners, Categories) + drawer for Promotions, Notifications, Settings, Analytics.
-- **Dashboard**: Overview cards (products, orders, visits, sessions), quick action links, Add Product FAB
+Accessible from Settings → Admin Panel (only visible to admin users). Admin name: "Zainab Hussain". Navigation: 5-tab bottom nav (Dashboard, Products, Orders, Hero, Categories) + drawer adds Promotions, Notifications.
+- **Dashboard**: Welcome message, stat cards (products, orders, visits, sessions), top viewed products list, quick action links
 - **Products**: Category tabs (All/Dresses/Jalabiyas/Kids/Gifts), stock color coding, edit/duplicate/delete actions, stock update dialog
 - **Product Form**: Create/edit with multi-image upload (sharp compression), name En/Ar, price, category, description, stock, sizes, colors
 - **Orders**: Filtered tabs (All/Delivery/Pickup), product thumbnails in order cards, status update dialog, order detail bottom sheet
-- **Banners**: Upload image/video banners, toggle active, drag-to-reorder, delete with confirmation
-- **Categories**: Upload category images, edit AR/EN names (tap name to open edit dialog), toggle visibility, drag-to-reorder (4 default: Dresses, Jalabiyas, Kids, Gifts)
+- **Hero** (unified): Slide list with image previews, upload new slides (image), toggle active, drag-to-reorder, delete. Each slide has per-slide text overlay editing (AR/EN) with full typography controls (font family, size, weight, letter spacing, color, shadow, alignment, position preset), live preview on actual slide image. Overlays stored as JSON in banner `overlay` column
+- **Categories**: Upload category images, edit AR/EN names (pencil icon → dialog), toggle visibility, drag-to-reorder (4 default: Dresses, Jalabiyas, Kids, Gifts)
 - **Promotions**: Discount code CRUD, percentage/fixed types, expiration dates, min order, usage tracking
-- **Notifications**: Compose and send notifications to all users, sent history
-- **Hero Text Editor**: Bilingual (AR/EN) hero overlay text editing with full style controls (font family, size, weight, letter spacing, color, shadow, alignment, position preset + fine-tune X/Y offsets), live preview card, draft/publish separation, reset to published state
-- **Settings**: Site settings management
-- **Analytics**: Total views, unique sessions, top viewed products
+- **Notifications**: Compose and send notifications to all users, optional product link
 
 ## Currency & Pricing
 - All monetary values stored as **integer halalas** (1 SAR = 100 halalas)
@@ -77,7 +74,7 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 
 ## Features
 - **Bilingual**: Arabic RTL (default) ↔ English LTR with persistent language toggle
-- **Home**: Dynamic banner carousel (from admin-uploaded banners, fallback to hero video), dynamic hero overlay text (from admin heroOverlay settings, fallback to l10n defaults), dynamic category circles (from admin, fallback to defaults), featured products grid
+- **Home**: Dynamic banner carousel with per-slide text overlays (from banner `overlay` JSON, fallback to l10n defaults), fallback to default hero video when no banners, dynamic category circles (from admin, fallback to defaults), featured products grid
 - **Shop**: Product listing with filters, search, sort
 - **Product Detail**: Multi-image + video slider, fullscreen zoom, size/color selectors
 - **Cart**: Cart + Wishlist tabs, swipe-to-delete, quantity management
@@ -89,12 +86,12 @@ Accessible from Settings → Admin Panel (only visible to admin users). Navigati
 ## Database Tables
 - **users**: id, email (unique), passwordHash, name, phone, role (default 'user'), createdAt
 - **products**: id, nameEn/Ar, descriptionEn/Ar, price, originalPrice, category, images[], videoUrl, sizes[], colors[], fabricEn/Ar, inStock, featured, badge, rating, reviewCount, stock (default 100), orderIndex (default 0)
-- **banners**: id, type ("image"|"video"), url (text), active (boolean default true), sortOrder (integer default 0)
+- **banners**: id, type ("image"|"video"), url (text), active (boolean default true), sortOrder (integer default 0), overlay (text, JSON with per-slide AR/EN text + style), createdAt
 - **categories**: id, slug (text unique), nameEn (text), nameAr (text), imageUrl (text nullable), visible (boolean default true), sortOrder (integer default 0)
 - **cart_items**: id, sessionId, userId (nullable), productId, quantity, size, color
 - **orders**: id, sessionId, userId (nullable), items (JSONB), subtotal/shipping/discount/total, status, deliveryMethod, customer info, notes
 - **discount_codes**: id, code, type, value, minOrder, maxUses, usedCount, active, expiresAt
-- **notifications**: id, userId, orderId, title, message, read, createdAt
+- **notifications**: id, userId, orderId, productId (nullable), title, message, read, createdAt
 - **admin_users**: id, username, passwordHash
 - **site_settings**: id, key (unique), value, updatedAt
 - **page_views**: id, sessionId, page, productId, createdAt

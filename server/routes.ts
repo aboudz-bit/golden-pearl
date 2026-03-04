@@ -689,6 +689,40 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/admin/categories/reorder", isAdmin, async (req, res) => {
+    try {
+      const { items, orderedIds } = req.body;
+      if (orderedIds && Array.isArray(orderedIds)) {
+        const mapped = orderedIds.map((id: number, idx: number) => ({ id, sortOrder: idx }));
+        await storage.reorderCategories(mapped);
+        return res.json({ success: true });
+      }
+      if (!Array.isArray(items)) return res.status(400).json({ message: "items array or orderedIds required" });
+      await storage.reorderCategories(items);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reorder categories" });
+    }
+  });
+
+  app.post("/api/admin/categories/reorder", isAdmin, async (req, res) => {
+    try {
+      const { orderedIds, items } = req.body;
+      if (orderedIds && Array.isArray(orderedIds)) {
+        const mapped = orderedIds.map((id: number, idx: number) => ({ id, sortOrder: idx }));
+        await storage.reorderCategories(mapped);
+        return res.json({ success: true });
+      }
+      if (items && Array.isArray(items)) {
+        await storage.reorderCategories(items);
+        return res.json({ success: true });
+      }
+      res.status(400).json({ message: "orderedIds or items array required" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reorder categories" });
+    }
+  });
+
   app.patch("/api/admin/categories/:id", isAdmin, async (req, res) => {
     try {
       const cat = await storage.updateCategory(parseInt(req.params.id), req.body);
@@ -696,17 +730,6 @@ export async function registerRoutes(
       res.json(cat);
     } catch (error) {
       res.status(500).json({ message: "Failed to update category" });
-    }
-  });
-
-  app.patch("/api/admin/categories/reorder", isAdmin, async (req, res) => {
-    try {
-      const { items } = req.body;
-      if (!Array.isArray(items)) return res.status(400).json({ message: "items array required" });
-      await storage.reorderCategories(items);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to reorder categories" });
     }
   });
 

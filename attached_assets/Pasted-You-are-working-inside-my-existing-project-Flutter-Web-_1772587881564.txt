@@ -1,0 +1,268 @@
+You are working inside my existing project (Flutter Web + Node/Express backend). Do NOT rebuild the app from scratch. Fix and improve the current system based on the following requirements.
+
+The app is a SINGLE STORE ecommerce platform (not multi-tenant).
+
+Follow the instructions exactly and keep the current design style (luxury gold theme).
+
+--------------------------------
+1) ADMIN NAME UPDATE
+--------------------------------
+
+Update the admin display name everywhere in the system.
+
+Admin name must be:
+
+Zainab Hussain
+
+Requirements:
+- Update seed data if admin user is seeded.
+- Update any demo/local admin name.
+- Ensure Admin Panel displays "Zainab Hussain".
+- Do NOT change roles or authentication.
+
+--------------------------------
+2) CUSTOMER HOME HERO IMAGE FIX
+--------------------------------
+
+The hero image on the customer homepage is not displaying correctly.
+
+Fix the hero banner so the FULL image is visible.
+
+Requirements:
+- The hero should NOT crop the image aggressively.
+- Avoid black bars or incorrect stretching.
+- Use a responsive layout.
+- Ensure the overlay text remains readable.
+- Ensure the hero works correctly on mobile and web.
+
+--------------------------------
+3) MERGE HERO TEXT + MANAGE BANNERS
+--------------------------------
+
+Currently there are TWO admin pages:
+
+1. Manage Banners
+2. Hero Text
+
+This is incorrect.
+
+Create ONE unified page called:
+
+Hero
+
+This page must handle BOTH banner images AND hero text.
+
+Features required:
+
+Admin can manage MULTIPLE hero slides.
+
+Each slide must support:
+- Image upload
+- Text overlay
+
+Each slide must contain:
+
+Arabic:
+- Headline
+- Subheadline
+- CTA button text
+
+English:
+- Headline
+- Subheadline
+- CTA button text
+
+Admin can:
+- Upload image (file upload NOT URL)
+- Delete slide
+- Enable / disable slide
+- Drag to reorder slides
+- Preview slide live
+
+Text style controls:
+- Text alignment
+- Font family
+- Font size
+- Text color
+- Shadow
+- Text position presets (top/center/bottom etc)
+
+Add Draft / Publish behavior:
+- Draft changes do NOT affect the live site.
+- Publish applies changes to customer home.
+
+Customer home must display the published slides.
+
+--------------------------------
+4) REMOVE OLD ADMIN SETTINGS PAGE
+--------------------------------
+
+There is an old admin page that opens:
+
+Manage Banners with image URL fields.
+
+This page is outdated.
+
+Remove:
+- The old settings banner page
+- Any navigation routes pointing to it
+
+Admin navigation should only contain:
+
+Dashboard
+Products
+Orders
+Hero
+Categories
+
+--------------------------------
+5) MOVE ANALYTICS INTO DASHBOARD
+--------------------------------
+
+Remove Analytics as a separate page or tab.
+
+Analytics should appear inside the Dashboard.
+
+Dashboard should show:
+
+Total Visits
+Unique Sessions
+Top Viewed Products
+
+--------------------------------
+6) CATEGORY MANAGEMENT FIXES
+--------------------------------
+
+Categories must support:
+
+Editing names in BOTH languages:
+
+English name
+Arabic name
+
+Admin can open edit dialog and modify both.
+
+--------------------------------
+7) CATEGORY IMAGE UPLOAD
+--------------------------------
+
+Category images must support file upload.
+
+Replace any URL input with:
+
+Upload image button
+
+Use file picker and send multipart upload to backend.
+
+Backend must:
+- accept image uploads
+- store them in public static folder
+- return URL
+
+Allowed formats:
+jpg
+png
+webp
+
+Max size: 5MB
+
+--------------------------------
+8) CATEGORY REORDER BUG FIX
+--------------------------------
+
+Currently drag reorder fails with error:
+
+"Reorder failed: Failed to update category"
+
+Fix category reorder.
+
+Implement backend endpoint:
+
+POST /api/admin/categories/reorder
+
+Body example:
+
+{
+  "orderedIds": ["id1","id2","id3"]
+}
+
+Backend must update sortOrder for all categories.
+
+Frontend drag drop must call this endpoint and update UI.
+
+--------------------------------
+9) HERO SLIDE DATA MODEL
+--------------------------------
+
+Store hero slides as array.
+
+Example structure:
+
+{
+"id": "uuid",
+"type": "image",
+"src": "/uploads/hero/image1.webp",
+"active": true,
+"overlay": {
+"ar": {
+"headline": "...",
+"subheadline": "...",
+"cta": "...",
+"style": {}
+},
+"en": {
+"headline": "...",
+"subheadline": "...",
+"cta": "...",
+"style": {}
+}
+}
+}
+
+If no hero slides exist, seed one default slide.
+
+--------------------------------
+10) FILE UPLOAD SERVER
+--------------------------------
+
+Use Multer for uploads.
+
+Save files to:
+
+/public/uploads
+
+Serve them via Express static.
+
+--------------------------------
+11) VERIFY AFTER IMPLEMENTATION
+--------------------------------
+
+After implementing everything verify:
+
+Admin Panel
+- Admin name shows: Zainab Hussain
+
+Hero page
+- can add slides
+- upload image
+- edit AR + EN text
+- reorder slides
+- preview works
+
+Customer Home
+- hero image displays FULL
+- published slides appear
+
+Categories
+- edit names AR + EN works
+- upload image works
+- drag reorder works without errors
+
+Dashboard
+- analytics visible there
+- no separate analytics tab
+
+--------------------------------
+Do NOT add unrelated features (payments, AR, shipping APIs).
+
+Only implement what is listed above.

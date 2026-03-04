@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'dart:ui';
 import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
@@ -24,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _categories = [];
   int _currentBanner = 0;
   final PageController _bannerController = PageController();
-  Map<String, dynamic>? _heroOverlay;
 
   @override
   void initState() {
@@ -32,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadFeatured();
     _loadBanners();
     _loadCategories();
-    _loadHeroOverlay();
   }
 
   @override
@@ -64,11 +63,26 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadHeroOverlay() async {
+  Map<String, dynamic>? _getOverlayForBanner(int index, String lang) {
+    if (index < 0 || index >= _banners.length) return null;
+    final banner = _banners[index];
     try {
-      final overlay = await apiService.getHeroOverlay();
-      if (mounted && overlay != null) setState(() => _heroOverlay = overlay);
+      final raw = banner['overlay'];
+      Map<String, dynamic>? overlay;
+      if (raw is String && raw.isNotEmpty) {
+        overlay = Map<String, dynamic>.from(
+          (Map<String, dynamic>.from(
+            const JsonDecoder().convert(raw) as Map,
+          )),
+        );
+      } else if (raw is Map) {
+        overlay = Map<String, dynamic>.from(raw);
+      }
+      if (overlay != null) {
+        return overlay[lang] as Map<String, dynamic>?;
+      }
     } catch (_) {}
+    return null;
   }
 
   @override
@@ -77,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final lang = Provider.of<LanguageProvider>(context).languageCode;
     final size = MediaQuery.of(context).size;
     final hasBanners = _banners.isNotEmpty;
-    final overlayLang = _heroOverlay?[lang] as Map<String, dynamic>?;
+    final overlayLang = hasBanners ? _getOverlayForBanner(_currentBanner, lang) : null;
 
     final heroHeight = size.width > 800
         ? (size.height * 0.65).clamp(520.0, 650.0)
@@ -97,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
             actions: const [],
             flexibleSpace: FlexibleSpaceBar(
               background: hasBanners
-                  ? _buildBannerCarousel(size, l10n, topPadding, overlayLang)
+                  ? _buildBannerCarousel(size, l10n, topPadding, overlayLang, lang)
                   : _buildDefaultHero(size, l10n, topPadding, overlayLang),
             ),
           ),
@@ -314,8 +328,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeroOverlay(AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang, {bool showDots = false}) {
     final headline = overlayLang?['headline'] as String? ?? l10n.heroTitle;
     final subheadline = overlayLang?['subheadline'] as String? ?? l10n.heroSubtitle;
-    final cta = overlayLang?['cta'] as String?;
-    final ctaText = (cta != null && cta.isNotEmpty) ? cta : l10n.shopNow;
     final style = overlayLang?['style'] as Map<String, dynamic>?;
     final textAlign = _parseAlign(style?['align'] as String?);
     final crossAlign = _parseCross(style?['align'] as String?);
@@ -366,7 +378,38 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        if (showDots && _banners.length > 1)
+      ],
+    );
+  }
+
+  Widget _buildBannerCarousel(Size size, AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang, String lang) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _bannerController,
+          itemCount: _banners.length,
+          onPageChanged: (i) => setState(() => _currentBanner = i),
+          itemBuilder: (context, index) {
+            final banner = _banners[index];
+            final url = banner['url'] as String? ?? '';
+            final type = banner['type'] as String? ?? 'image';
+            final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
+            final slideOverlay = _getOverlayForBanner(index, lang);
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                if (type == 'video')
+                  HeroVideoBackground(videoUrl: fullUrl)
+                else
+                  _buildContainedNetworkImage(fullUrl),
+                _buildHeroOverlay(l10n, topPadding, slideOverlay, showDots: false),
+              ],
+            );
+          },
+        ),
+        if (_banners.length > 1)
           Positioned(
             bottom: 66,
             left: 0,
@@ -398,36 +441,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   transitionDuration: const Duration(milliseconds: 280),
                 ));
               },
-              child: Text(ctaText),
+              child: Text(overlayLang?['cta'] as String? ?? l10n.shopNow),
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildBannerCarousel(Size size, AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        PageView.builder(
-          controller: _bannerController,
-          itemCount: _banners.length,
-          onPageChanged: (i) => setState(() => _currentBanner = i),
-          itemBuilder: (context, index) {
-            final banner = _banners[index];
-            final url = banner['url'] as String? ?? '';
-            final type = banner['type'] as String? ?? 'image';
-            final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
-
-            if (type == 'video') {
-              return HeroVideoBackground(videoUrl: fullUrl);
-            }
-
-            return _buildContainedNetworkImage(fullUrl);
-          },
-        ),
-        _buildHeroOverlay(l10n, topPadding, overlayLang, showDots: true),
       ],
     );
   }
@@ -438,6 +455,23 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         const HeroVideoBackground(),
         _buildHeroOverlay(l10n, topPadding, overlayLang),
+        Positioned(
+          bottom: 20,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const ShopScreen(),
+                  transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+                  transitionDuration: const Duration(milliseconds: 280),
+                ));
+              },
+              child: Text(l10n.shopNow),
+            ),
+          ),
+        ),
       ],
     );
   }

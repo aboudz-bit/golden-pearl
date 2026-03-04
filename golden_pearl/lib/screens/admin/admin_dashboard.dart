@@ -8,14 +8,11 @@ import '../../providers/language_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'admin_products.dart';
 import 'admin_orders.dart';
-import 'admin_settings.dart';
-import 'admin_analytics.dart';
-import 'admin_banners.dart';
+import 'admin_hero_page.dart';
 import 'admin_categories.dart';
 import 'admin_promotions.dart';
 import 'admin_notifications.dart';
 import 'admin_product_form.dart';
-import 'admin_hero_text.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -58,57 +55,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final lang = Provider.of<LanguageProvider>(context).languageCode;
 
     final pages = [
-      _buildOverview(l10n),
+      _buildOverview(l10n, lang),
       const AdminProductsScreen(),
       const AdminOrdersScreen(),
-      const AdminBannersScreen(),
+      const AdminHeroPage(),
       const AdminCategoriesScreen(),
       const AdminPromotions(),
       const AdminNotificationsScreen(),
-      const AdminHeroTextScreen(),
-      const AdminSettingsScreen(),
-      const AdminAnalyticsScreen(),
     ];
 
     final labels = [
       l10n.dashboard,
       l10n.products,
       l10n.orders,
-      l10n.manageBanners,
+      'Hero',
       l10n.categories,
       'Promos',
       l10n.notifications,
-      'Hero Text',
-      l10n.adminSettings,
-      l10n.analytics,
     ];
 
     final icons = [
       Icons.dashboard_outlined,
       Icons.inventory_2_outlined,
       Icons.receipt_long_outlined,
-      Icons.image_outlined,
+      Icons.slideshow_outlined,
       Icons.category_outlined,
       Icons.local_offer_outlined,
       Icons.notifications_outlined,
-      Icons.title_outlined,
-      Icons.settings_outlined,
-      Icons.analytics_outlined,
     ];
 
     final activeIcons = [
       Icons.dashboard,
       Icons.inventory_2,
       Icons.receipt_long,
-      Icons.image,
+      Icons.slideshow,
       Icons.category,
       Icons.local_offer,
       Icons.notifications,
-      Icons.title,
-      Icons.settings,
-      Icons.analytics,
     ];
 
     return Scaffold(
@@ -152,7 +138,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: const Icon(Icons.admin_panel_settings, color: kGoldPrimary, size: 26),
                     ),
                     const SizedBox(height: 12),
-                    Text(l10n.adminPanel, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: kCharcoal)),
+                    Text('Zainab Hussain', style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: kCharcoal)),
                     const SizedBox(height: 2),
                     Text('Golden Pearl CMS', style: TextStyle(fontSize: 12, color: kSecondaryText)),
                   ],
@@ -211,10 +197,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildOverview(AppLocalizations l10n) {
+  Widget _buildOverview(AppLocalizations l10n, String lang) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: kGoldPrimary));
     }
+
+    final topProducts = (_analytics?['topProducts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return RefreshIndicator(
       onRefresh: _loadDashboard,
@@ -223,7 +211,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         padding: const EdgeInsets.all(20),
         children: [
-          Text(l10n.dashboard, style: playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: kCharcoal)),
+          Text('Welcome, Zainab', style: playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: kCharcoal)),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -241,6 +229,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           ),
           const SizedBox(height: 24),
+          Text(l10n.topProducts, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
+          const SizedBox(height: 12),
+          if (topProducts.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: kCardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: kDivider)),
+              child: Center(child: Text(l10n.noProducts, style: const TextStyle(color: kSecondaryText))),
+            )
+          else
+            ...topProducts.take(5).toList().asMap().entries.map((entry) {
+              final idx = entry.key;
+              final item = entry.value;
+              final product = item['product'] as Map<String, dynamic>?;
+              final views = item['views'] ?? 0;
+              final name = product != null
+                  ? (lang == 'ar' ? product['nameAr'] : product['nameEn']) ?? 'Product #${item['productId']}'
+                  : 'Product #${item['productId']}';
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(color: kCardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: kDivider)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(color: kGoldPrimary.withOpacity(0.1), shape: BoxShape.circle),
+                      child: Center(child: Text('${idx + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kGoldPrimary))),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kCharcoal), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Text('$views ${l10n.views}', style: const TextStyle(fontSize: 12, color: kSecondaryText)),
+                  ],
+                ),
+              );
+            }),
+          const SizedBox(height: 24),
           Text(l10n.quickActions, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
           const SizedBox(height: 12),
           _actionTile(Icons.add_box_outlined, l10n.addProduct, () async {
@@ -248,11 +272,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _loadDashboard();
           }),
           _actionTile(Icons.receipt_long_outlined, l10n.manageOrders, () => setState(() => _selectedIndex = 2)),
-          _actionTile(Icons.image_outlined, l10n.manageBanners, () => setState(() => _selectedIndex = 3)),
+          _actionTile(Icons.slideshow_outlined, 'Manage Hero', () => setState(() => _selectedIndex = 3)),
           _actionTile(Icons.category_outlined, l10n.categories, () => setState(() => _selectedIndex = 4)),
           _actionTile(Icons.local_offer_outlined, 'Promotions', () => setState(() => _selectedIndex = 5)),
           _actionTile(Icons.campaign_outlined, 'Send Notification', () => setState(() => _selectedIndex = 6)),
-          _actionTile(Icons.analytics_outlined, l10n.viewAnalytics, () => setState(() => _selectedIndex = 8)),
         ],
       ),
     );

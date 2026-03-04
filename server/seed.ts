@@ -256,7 +256,7 @@ export async function seedDatabase() {
       await db.insert(users).values({
         email: "admin@goldenpearl.com",
         passwordHash,
-        name: "Admin",
+        name: "Zainab Hussain",
         phone: "0555012942",
         role: "admin",
       });

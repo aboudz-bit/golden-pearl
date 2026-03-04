@@ -122,6 +122,7 @@ export const banners = pgTable("banners", {
   url: text("url").notNull(),
   active: boolean("active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
+  overlay: text("overlay"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
