@@ -138,6 +138,7 @@ class _AdminPromotionsState extends State<AdminPromotions> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
+        bool isSubmitting = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             return Padding(
@@ -152,6 +153,21 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                        Text(
+                          isEdit ? 'Edit Discount Code' : 'Add Discount Code',
+                          style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal),
+                        ),
+                        const SizedBox(width: 48), // Spacer for centering
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     Center(
                       child: Container(
                         width: 40,
@@ -161,12 +177,6 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      isEdit ? 'Edit Discount Code' : 'Add Discount Code',
-                      style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal),
-                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
                     _buildLabel('Code'),
@@ -277,18 +287,31 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                     ),
                     const SizedBox(height: 28),
                     ElevatedButton(
-                      onPressed: () async {
+                      onPressed: isSubmitting ? null : () async {
                         final code = codeController.text.trim();
-                        final value = int.tryParse(valueController.text.trim()) ?? 0;
-                        final minOrder = int.tryParse(minOrderController.text.trim()) ?? 0;
-                        final maxUses = int.tryParse(maxUsesController.text.trim()) ?? 0;
+                        final valueStr = valueController.text.trim();
+                        final minOrderStr = minOrderController.text.trim();
+                        final maxUsesStr = maxUsesController.text.trim();
 
-                        if (code.isEmpty || value <= 0) {
+                        if (code.isEmpty || valueStr.isEmpty || minOrderStr.isEmpty || maxUsesStr.isEmpty) {
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(content: Text('Code and value are required')),
+                            const SnackBar(content: Text('All fields are required')),
                           );
                           return;
                         }
+
+                        final value = int.tryParse(valueStr) ?? 0;
+                        final minOrder = int.tryParse(minOrderStr) ?? 0;
+                        final maxUses = int.tryParse(maxUsesStr) ?? 0;
+
+                        if (value <= 0) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Value must be greater than 0')),
+                          );
+                          return;
+                        }
+
+                        setSheetState(() => isSubmitting = true);
 
                         final data = <String, dynamic>{
                           'code': code,
@@ -298,7 +321,7 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                           'maxUses': maxUses,
                         };
                         if (expiresAt != null) {
-                          data['expiresAt'] = expiresAt!.toIso8601String();
+                          data['expiresAt'] = expiresAt!.toIso8601String().split('T')[0];
                         }
 
                         try {
@@ -307,7 +330,12 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                           } else {
                             await apiService.createDiscount(data);
                           }
-                          if (mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(isEdit ? 'Code updated successfully' : 'Code created successfully')),
+                            );
+                          }
                           _loadDiscounts();
                         } catch (e) {
                           if (mounted) {
@@ -315,6 +343,8 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                               SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
                             );
                           }
+                        } finally {
+                          setSheetState(() => isSubmitting = false);
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -323,7 +353,9 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text(isEdit ? 'Update Code' : 'Create Code'),
+                      child: isSubmitting 
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(isEdit ? 'Update Code' : 'Create Code'),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -368,6 +400,10 @@ class _AdminPromotionsState extends State<AdminPromotions> {
     return Scaffold(
       backgroundColor: kCreamBg,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text('Promotions', style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal)),
         backgroundColor: kCreamBg,
         elevation: 0,
