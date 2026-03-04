@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   phone: text("phone"),
   role: text("role").notNull().default("user"),
+  isActive: boolean("is_active").notNull().default(true),
+  permissions: jsonb("permissions"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

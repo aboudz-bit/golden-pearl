@@ -3,6 +3,11 @@ import bcrypt from "bcrypt";
 import { storage } from "../storage";
 import { AppError } from "../utils/AppError";
 
+function safeUser(user: any) {
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
+
 export async function register(req: Request, res: Response) {
   const { email, password, name, phone } = req.body;
   if (!email || !password || !name) {
@@ -15,8 +20,7 @@ export async function register(req: Request, res: Response) {
   const user = await storage.createUser({ email: email.toLowerCase(), passwordHash, name, phone });
   req.session!.userId = user.id;
 
-  const { passwordHash: _, ...safeUser } = user;
-  res.json({ user: safeUser });
+  res.json({ user: safeUser(user) });
 }
 
 export async function login(req: Request, res: Response) {
@@ -26,12 +30,15 @@ export async function login(req: Request, res: Response) {
   const user = await storage.getUserByEmail(email);
   if (!user) throw AppError.unauthorized("Invalid email or password");
 
+  if (!user.isActive) {
+    throw AppError.forbidden("Account disabled. Please contact the administrator.");
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw AppError.unauthorized("Invalid email or password");
 
   req.session!.userId = user.id;
-  const { passwordHash: _, ...safeUser } = user;
-  res.json({ user: safeUser });
+  res.json({ user: safeUser(user) });
 }
 
 export async function logout(req: Request, res: Response) {
@@ -44,8 +51,8 @@ export async function me(req: Request, res: Response) {
   if (!userId) return res.json({ user: null });
   const user = await storage.getUserById(userId);
   if (!user) return res.json({ user: null });
-  const { passwordHash: _, ...safeUser } = user;
-  res.json({ user: safeUser });
+  if (!user.isActive) return res.json({ user: null });
+  res.json({ user: safeUser(user) });
 }
 
 export async function mergeCart(req: Request, res: Response) {

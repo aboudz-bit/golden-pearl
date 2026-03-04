@@ -66,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-          if (auth.isAdmin) ...[
+          if (auth.isAdminOrStaff) ...[
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,

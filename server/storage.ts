@@ -53,10 +53,12 @@ export interface IStorage {
   deleteNotification(id: number): Promise<void>;
   getAllNotifications(): Promise<Notification[]>;
 
-  createUser(user: InsertUser & { role?: string }): Promise<User>;
+  createUser(user: InsertUser & { role?: string; isActive?: boolean; permissions?: any }): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  getStaffUsers(): Promise<User[]>;
+  updateUser(id: number, data: Partial<{ name: string; email: string; phone: string | null; passwordHash: string; isActive: boolean; permissions: any }>): Promise<User | undefined>;
 
   getSetting(key: string): Promise<string | undefined>;
   setSetting(key: string, value: string): Promise<SiteSetting>;
@@ -316,9 +318,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(notifications).orderBy(desc(notifications.createdAt));
   }
 
-  async createUser(user: InsertUser & { role?: string }): Promise<User> {
+  async createUser(user: InsertUser & { role?: string; isActive?: boolean; permissions?: any }): Promise<User> {
     const values: any = { ...user };
     if (user.role) values.role = user.role;
+    if (user.isActive !== undefined) values.isActive = user.isActive;
+    if (user.permissions !== undefined) values.permissions = user.permissions;
     const [created] = await db.insert(users).values(values).returning();
     return created;
   }
@@ -335,6 +339,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return db.select().from(users);
+  }
+
+  async getStaffUsers(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, "staff")).orderBy(desc(users.createdAt));
+  }
+
+  async updateUser(id: number, data: Partial<{ name: string; email: string; phone: string | null; passwordHash: string; isActive: boolean; permissions: any }>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data as any).where(eq(users.id, id)).returning();
+    return updated;
   }
 
   async getSetting(key: string): Promise<string | undefined> {

@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../utils/money_formatter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
   const AdminOrdersScreen({super.key});
@@ -608,22 +609,27 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _showUpdateStatusDialog(order);
-                },
-                icon: const Icon(Icons.sync_alt, size: 18),
-                label: Text(l10n.updateStatus),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kGoldPrimary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-              ),
+              child: Builder(builder: (innerCtx) {
+                final canUpdate = Provider.of<AuthProvider>(innerCtx, listen: false).hasPermission('orders.updateStatus');
+                return ElevatedButton.icon(
+                  onPressed: canUpdate ? () {
+                    Navigator.pop(ctx);
+                    _showUpdateStatusDialog(order);
+                  } : null,
+                  icon: const Icon(Icons.sync_alt, size: 18),
+                  label: Text(canUpdate ? l10n.updateStatus : 'No Permission'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kGoldPrimary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: kDivider,
+                    disabledForegroundColor: kSecondaryText,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                );
+              }),
             ),
             const SizedBox(height: 16),
           ],
@@ -1082,18 +1088,22 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
                     Text('${items.length} ${l10n.items}', style: const TextStyle(fontSize: 11, color: kSecondaryText)),
                   ],
                   const Spacer(),
-                  OutlinedButton.icon(
-                    onPressed: () => _showUpdateStatusDialog(order),
-                    icon: const Icon(Icons.sync_alt, size: 14),
-                    label: Text(l10n.updateStatus, style: const TextStyle(fontSize: 11)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: kGoldPrimary,
-                      side: const BorderSide(color: kGoldPrimary),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      minimumSize: Size.zero,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
+                  Builder(builder: (innerCtx) {
+                    final canUpdate = Provider.of<AuthProvider>(innerCtx, listen: false).hasPermission('orders.updateStatus');
+                    if (!canUpdate) return const SizedBox.shrink();
+                    return OutlinedButton.icon(
+                      onPressed: () => _showUpdateStatusDialog(order),
+                      icon: const Icon(Icons.sync_alt, size: 14),
+                      label: Text(l10n.updateStatus, style: const TextStyle(fontSize: 11)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: kGoldPrimary,
+                        side: const BorderSide(color: kGoldPrimary),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ],

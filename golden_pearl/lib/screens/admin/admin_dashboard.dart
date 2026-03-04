@@ -14,6 +14,25 @@ import 'admin_promotions.dart';
 import 'admin_notifications.dart';
 import 'admin_product_form.dart';
 import 'admin_customers.dart';
+import 'admin_staff.dart';
+
+class _NavItem {
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  final Widget page;
+  final String? permission;
+  final bool adminOnly;
+
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+    required this.page,
+    this.permission,
+    this.adminOnly = false,
+  });
+}
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -35,11 +54,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _loadDashboard();
   }
 
+  List<_NavItem> _buildNavItems(AppLocalizations l10n) {
+    return [
+      _NavItem(label: l10n.dashboard, icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, page: _buildOverviewPlaceholder(), permission: 'dashboard.view'),
+      _NavItem(label: l10n.products, icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, page: const AdminProductsScreen(), permission: 'products.view'),
+      _NavItem(label: l10n.orders, icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long, page: const AdminOrdersScreen(), permission: 'orders.view'),
+      _NavItem(label: l10n.manageBanners, icon: Icons.photo_library_outlined, activeIcon: Icons.photo_library, page: const AdminHeroPage(), permission: 'banners.view'),
+      _NavItem(label: l10n.categories, icon: Icons.category_outlined, activeIcon: Icons.category, page: const AdminCategoriesScreen(), permission: 'categories.view'),
+      _NavItem(label: 'Promos', icon: Icons.local_offer_outlined, activeIcon: Icons.local_offer, page: const AdminPromotions(), permission: 'discountCodes.view'),
+      _NavItem(label: l10n.notifications, icon: Icons.notifications_outlined, activeIcon: Icons.notifications, page: const AdminNotificationsScreen(), permission: 'notifications.view'),
+      _NavItem(label: l10n.customers, icon: Icons.people_outlined, activeIcon: Icons.people, page: const AdminCustomersScreen(), permission: 'customers.view'),
+      _NavItem(label: 'Staff', icon: Icons.badge_outlined, activeIcon: Icons.badge, page: const AdminStaffScreen(), adminOnly: true),
+    ];
+  }
+
+  List<_NavItem> _getVisibleItems(AuthProvider auth, AppLocalizations l10n) {
+    final allItems = _buildNavItems(l10n);
+    if (auth.isAdmin) return allItems;
+
+    return allItems.where((item) {
+      if (item.adminOnly) return false;
+      if (item.permission == null) return true;
+      return auth.hasPermission(item.permission!);
+    }).toList();
+  }
+
+  Widget _buildOverviewPlaceholder() {
+    return const SizedBox.shrink();
+  }
+
   Future<void> _loadDashboard() async {
     try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final hasDashboard = auth.hasPermission('dashboard.view');
+      if (!hasDashboard) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final analytics = await apiService.getAnalytics();
       final products = await apiService.getProducts();
-      final orders = await apiService.getAllOrders();
+      List orders = [];
+      if (auth.hasPermission('orders.view')) {
+        orders = await apiService.getAllOrders();
+      }
       if (mounted) {
         setState(() {
           _analytics = analytics;
@@ -57,57 +114,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
+    final auth = Provider.of<AuthProvider>(context);
 
-    final pages = [
-      _buildOverview(l10n, lang),
-      const AdminProductsScreen(),
-      const AdminOrdersScreen(),
-      const AdminHeroPage(),
-      const AdminCategoriesScreen(),
-      const AdminPromotions(),
-      const AdminNotificationsScreen(),
-      const AdminCustomersScreen(),
-    ];
+    final visibleItems = _getVisibleItems(auth, l10n);
 
-    final labels = [
-      l10n.dashboard,
-      l10n.products,
-      l10n.orders,
-      l10n.manageBanners,
-      l10n.categories,
-      'Promos',
-      l10n.notifications,
-      l10n.customers,
-    ];
+    if (visibleItems.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.adminPanel, style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal)),
+          backgroundColor: kCreamBg,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 48, color: kSecondaryText),
+              const SizedBox(height: 16),
+              Text('Access Denied', style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w600, color: kCharcoal)),
+              const SizedBox(height: 8),
+              const Text('No permissions assigned. Contact your administrator.', style: TextStyle(color: kSecondaryText, fontSize: 13)),
+            ],
+          ),
+        ),
+      );
+    }
 
-    final icons = [
-      Icons.dashboard_outlined,
-      Icons.inventory_2_outlined,
-      Icons.receipt_long_outlined,
-      Icons.photo_library_outlined,
-      Icons.category_outlined,
-      Icons.local_offer_outlined,
-      Icons.notifications_outlined,
-      Icons.people_outlined,
-    ];
+    final safeIndex = _selectedIndex.clamp(0, visibleItems.length - 1);
 
-    final activeIcons = [
-      Icons.dashboard,
-      Icons.inventory_2,
-      Icons.receipt_long,
-      Icons.photo_library,
-      Icons.category,
-      Icons.local_offer,
-      Icons.notifications,
-      Icons.people,
-    ];
+    final pages = visibleItems.map((item) {
+      if (item.permission == 'dashboard.view') {
+        return _buildOverview(l10n, lang, auth);
+      }
+      return item.page;
+    }).toList();
+
+    final bottomItems = visibleItems.take(5).toList();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.adminPanel, style: playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: kCharcoal)),
         backgroundColor: kCreamBg,
         actions: [
-          if (_selectedIndex == 1)
+          if (visibleItems[safeIndex].permission == 'products.view' && auth.hasPermission('products.create'))
             IconButton(
               icon: const Icon(Icons.add, color: kGoldPrimary),
               onPressed: () async {
@@ -118,7 +166,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
         ],
       ),
-      body: pages[_selectedIndex],
+      body: pages[safeIndex],
       drawer: Drawer(
         backgroundColor: kCardBg,
         child: SafeArea(
@@ -140,20 +188,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         color: kGoldPrimary.withOpacity(0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.admin_panel_settings, color: kGoldPrimary, size: 26),
+                      child: Icon(auth.isAdmin ? Icons.admin_panel_settings : Icons.badge, color: kGoldPrimary, size: 26),
                     ),
                     const SizedBox(height: 12),
-                    Text('Zainab Hussain', style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: kCharcoal)),
+                    Text(auth.userName, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: kCharcoal)),
                     const SizedBox(height: 2),
-                    Text('Golden Pearl CMS', style: TextStyle(fontSize: 12, color: kSecondaryText)),
+                    Text(
+                      auth.isAdmin ? 'Administrator' : 'Staff',
+                      style: TextStyle(fontSize: 12, color: kSecondaryText),
+                    ),
                   ],
                 ),
               ),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  children: List.generate(labels.length, (i) {
-                    final selected = _selectedIndex == i;
+                  children: List.generate(visibleItems.length, (i) {
+                    final selected = safeIndex == i;
+                    final item = visibleItems[i];
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
                       decoration: BoxDecoration(
@@ -161,8 +213,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: ListTile(
-                        leading: Icon(selected ? activeIcons[i] : icons[i], color: selected ? kGoldPrimary : kSecondaryText, size: 22),
-                        title: Text(labels[i], style: TextStyle(
+                        leading: Icon(selected ? item.activeIcon : item.icon, color: selected ? kGoldPrimary : kSecondaryText, size: 22),
+                        title: Text(item.label, style: TextStyle(
                           fontSize: 14,
                           fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                           color: selected ? kGoldPrimary : kCharcoal,
@@ -182,8 +234,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex < 5 ? _selectedIndex : 0,
+      bottomNavigationBar: bottomItems.length >= 2 ? BottomNavigationBar(
+        currentIndex: safeIndex < bottomItems.length ? safeIndex : 0,
         onTap: (i) => setState(() => _selectedIndex = i),
         type: BottomNavigationBarType.fixed,
         selectedItemColor: kGoldPrimary,
@@ -191,18 +243,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: kCardBg,
         selectedFontSize: 10,
         unselectedFontSize: 10,
-        items: [
-          BottomNavigationBarItem(icon: Icon(icons[0]), activeIcon: Icon(activeIcons[0]), label: labels[0]),
-          BottomNavigationBarItem(icon: Icon(icons[1]), activeIcon: Icon(activeIcons[1]), label: labels[1]),
-          BottomNavigationBarItem(icon: Icon(icons[2]), activeIcon: Icon(activeIcons[2]), label: labels[2]),
-          BottomNavigationBarItem(icon: Icon(icons[3]), activeIcon: Icon(activeIcons[3]), label: labels[3]),
-          BottomNavigationBarItem(icon: Icon(icons[4]), activeIcon: Icon(activeIcons[4]), label: labels[4]),
-        ],
-      ),
+        items: bottomItems.map((item) => BottomNavigationBarItem(
+          icon: Icon(item.icon),
+          activeIcon: Icon(item.activeIcon),
+          label: item.label,
+        )).toList(),
+      ) : null,
     );
   }
 
-  Widget _buildOverview(AppLocalizations l10n, String lang) {
+  Widget _buildOverview(AppLocalizations l10n, String lang, AuthProvider auth) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: kGoldPrimary));
     }
@@ -216,7 +266,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         padding: const EdgeInsets.all(20),
         children: [
-          Text('Welcome, Zainab', style: playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: kCharcoal)),
+          Text('Welcome, ${auth.userName}', style: playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: kCharcoal)),
+          if (auth.isStaff) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: kGoldPrimary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text('Staff Account', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: kGoldPrimary)),
+            ),
+          ],
           const SizedBox(height: 20),
           Row(
             children: [
@@ -272,16 +333,47 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 24),
           Text(l10n.quickActions, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: kCharcoal)),
           const SizedBox(height: 12),
-          _actionTile(Icons.add_box_outlined, l10n.addProduct, () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminProductFormScreen()));
-            _loadDashboard();
-          }),
-          _actionTile(Icons.receipt_long_outlined, l10n.manageOrders, () => setState(() => _selectedIndex = 2)),
-          _actionTile(Icons.photo_library_outlined, l10n.manageBanners, () => setState(() => _selectedIndex = 3)),
-          _actionTile(Icons.category_outlined, l10n.categories, () => setState(() => _selectedIndex = 4)),
-          _actionTile(Icons.local_offer_outlined, 'Promotions', () => setState(() => _selectedIndex = 5)),
-          _actionTile(Icons.campaign_outlined, 'Send Notification', () => setState(() => _selectedIndex = 6)),
-          _actionTile(Icons.people_outlined, l10n.customers, () => setState(() => _selectedIndex = 7)),
+          if (auth.hasPermission('products.create'))
+            _actionTile(Icons.add_box_outlined, l10n.addProduct, () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminProductFormScreen()));
+              _loadDashboard();
+            }),
+          if (auth.hasPermission('orders.view'))
+            _actionTile(Icons.receipt_long_outlined, l10n.manageOrders, () {
+              final items = _getVisibleItems(auth, l10n);
+              final ordersIdx = items.indexWhere((i) => i.permission == 'orders.view');
+              if (ordersIdx >= 0) setState(() => _selectedIndex = ordersIdx);
+            }),
+          if (auth.hasPermission('banners.view'))
+            _actionTile(Icons.photo_library_outlined, l10n.manageBanners, () {
+              final items = _getVisibleItems(auth, l10n);
+              final idx = items.indexWhere((i) => i.permission == 'banners.view');
+              if (idx >= 0) setState(() => _selectedIndex = idx);
+            }),
+          if (auth.hasPermission('categories.view'))
+            _actionTile(Icons.category_outlined, l10n.categories, () {
+              final items = _getVisibleItems(auth, l10n);
+              final idx = items.indexWhere((i) => i.permission == 'categories.view');
+              if (idx >= 0) setState(() => _selectedIndex = idx);
+            }),
+          if (auth.hasPermission('discountCodes.view'))
+            _actionTile(Icons.local_offer_outlined, 'Promotions', () {
+              final items = _getVisibleItems(auth, l10n);
+              final idx = items.indexWhere((i) => i.permission == 'discountCodes.view');
+              if (idx >= 0) setState(() => _selectedIndex = idx);
+            }),
+          if (auth.hasPermission('notifications.send'))
+            _actionTile(Icons.campaign_outlined, 'Send Notification', () {
+              final items = _getVisibleItems(auth, l10n);
+              final idx = items.indexWhere((i) => i.permission == 'notifications.view');
+              if (idx >= 0) setState(() => _selectedIndex = idx);
+            }),
+          if (auth.hasPermission('customers.view'))
+            _actionTile(Icons.people_outlined, l10n.customers, () {
+              final items = _getVisibleItems(auth, l10n);
+              final idx = items.indexWhere((i) => i.permission == 'customers.view');
+              if (idx >= 0) setState(() => _selectedIndex = idx);
+            }),
         ],
       ),
     );

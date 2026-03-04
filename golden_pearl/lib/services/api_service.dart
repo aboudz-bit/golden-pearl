@@ -596,6 +596,52 @@ class ApiService {
     return '$baseUrl/api/admin/customers/$id/export';
   }
 
+  Future<List<Map<String, dynamic>>> getStaffUsers() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/staff'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> createStaffUser(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/staff'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> updateStaffUser(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/staff/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> updateStaffPermissions(int id, Map<String, dynamic> permissions) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/staff/$id/permissions'),
+      headers: _headers,
+      body: jsonEncode({'permissions': permissions}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> deleteStaffUser(int id) async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/admin/staff/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
   Future<Map<String, dynamic>> sendCartNotification(int customerId, {required String messageAr, String? messageEn}) async {
     final body = <String, dynamic>{'messageAr': messageAr, 'channel': 'in_app'};
     if (messageEn != null && messageEn.isNotEmpty) body['messageEn'] = messageEn;

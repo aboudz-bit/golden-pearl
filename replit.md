@@ -27,13 +27,14 @@ server/
 │   ├── cart.controller.ts       # Cart CRUD
 │   ├── orders.controller.ts     # Order create, list, admin status updates
 │   ├── admin.controller.ts      # Banners, categories, discounts, notifications (send/list/delete), settings, analytics
+│   ├── staff.controller.ts      # Staff user CRUD + permission management (admin-only)
 │   ├── customers.controller.ts  # Customer list, detail, export (XLSX), cart notifications
 │   ├── uploads.controller.ts    # Unified file upload (images+videos) with sharp compression
 │   ├── public.controller.ts     # Public endpoints: banners, categories, notifications, settings, pageviews
 │   ├── payments.controller.ts   # Payment session stubs
 │   └── shipping.controller.ts   # Shipping quote/tracking stubs
 ├── middleware/
-│   ├── auth.ts              # isAdmin middleware (session-based)
+│   ├── auth.ts              # isAdmin, isStaffOrAdmin, requirePermission middleware
 │   ├── asyncHandler.ts      # Async error wrapper for route handlers
 │   ├── errorHandler.ts      # Centralized error handler (AppError + generic)
 │   └── cache.ts             # In-memory TTL cache (banners, categories)
@@ -63,7 +64,8 @@ lib/
 │   │   ├── admin_promotions.dart       # Discount code management
 │   │   ├── admin_notifications.dart    # Broadcast notification sending + grouped list + delete
 │   │   ├── admin_customers.dart        # Customer list with search/filter/export
-│   │   └── admin_customer_detail.dart  # Customer detail + cart notification
+│   │   ├── admin_customer_detail.dart  # Customer detail + cart notification
+│   │   └── admin_staff.dart            # Staff user management + permission editor (admin-only)
 │   ├── home_screen.dart, shop_screen.dart, product_detail_screen.dart
 │   ├── cart_screen.dart, checkout_screen.dart, order_confirmation_screen.dart
 │   ├── login_screen.dart, orders_screen.dart, notifications_screen.dart
@@ -89,10 +91,23 @@ Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for 
 | **Currency** | Integer halalas (1 SAR = 100 halalas). Use `MoneyFormatter.format(amount, lang)` |
 | **Color palette** | Gold #B89B5E, Cream BG #F4F4F4, Card BG #FFFFFF, Charcoal #1C1C1C |
 | **Admin credentials** | admin@goldenpearl.com / admin123 |
+| **Staff test account** | sara@goldenpearl.com / staff123 |
+| **User roles** | admin (full access), staff (permission-gated), user (customer) |
 | **L10n** | `synthetic-package: false`, generated at `lib/l10n/generated/` |
 | **Build command** | `cd golden_pearl && flutter gen-l10n && flutter build web --release` then `cp -r assets/images assets/videos build/web/` |
 | **Port issue** | `fuser -k 5000/tcp` before restart if port stuck |
 | **Error format** | `{success: false, message: string, code: string}` |
+
+## Staff & Permissions (RBAC)
+- **Roles**: `admin` (full implicit access), `staff` (permission-gated), `user` (customer)
+- **Users table**: `isActive` (boolean), `permissions` (JSONB) fields added
+- **Middleware chain**: `isStaffOrAdmin` → `requirePermission("module.action")`
+- **Admin always passes** all permission checks; staff must have explicit grants
+- **Modules**: dashboard, orders, products, categories, banners, customers, notifications, discountCodes
+- **Staff management**: Admin-only screen with create/edit/permissions/disable
+- **Frontend**: Admin dashboard shows only permitted modules in drawer + bottom nav
+- **Disabled accounts**: Login returns 403 "Account disabled"
+- **Staff endpoints**: `POST/GET /api/admin/staff`, `PATCH /api/admin/staff/:id`, `PATCH /api/admin/staff/:id/permissions`, `DELETE /api/admin/staff/:id`
 
 ## Security
 - **Helmet**: Secure HTTP headers (HSTS, X-Content-Type-Options, X-Frame-Options)
