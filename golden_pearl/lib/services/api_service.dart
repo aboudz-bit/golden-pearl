@@ -8,7 +8,10 @@ import '../models/cart_item.dart';
 import '../models/order.dart';
 
 class ApiService {
+  static const String _productionUrl = String.fromEnvironment('API_URL', defaultValue: '');
+
   static String get baseUrl {
+    if (_productionUrl.isNotEmpty) return _productionUrl;
     if (kIsWeb) {
       final uri = Uri.base;
       return '${uri.scheme}://${uri.host}:${uri.port}';
@@ -96,6 +99,12 @@ class ApiService {
   Future<void> mergeCart() async {
     final response = await _client.post(Uri.parse('$baseUrl/api/auth/merge'), headers: _headers);
     _updateCookie(response);
+  }
+
+  Future<void> deleteAccount() async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/auth/account'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<List<Product>> getProducts({String? category, String? search, bool? featured}) async {

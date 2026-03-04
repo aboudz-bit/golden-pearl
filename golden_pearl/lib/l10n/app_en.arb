@@ -236,5 +236,12 @@
   "confirm": "Confirm",
   "rememberMe": "Remember me",
   "useAnotherAccount": "Use another account",
-  "confirmLogout": "Confirm Logout"
+  "confirmLogout": "Confirm Logout",
+  "deleteAccount": "Delete Account",
+  "deleteAccountConfirm": "Are you sure you want to delete your account? All your data including orders, cart, and favorites will be permanently removed. This action cannot be undone.",
+  "deleteAccountTitle": "Delete Account",
+  "accountDeleted": "Account deleted successfully",
+  "privacyPolicy": "Privacy Policy",
+  "typeDeleteToConfirm": "Type DELETE to confirm",
+  "deleteWord": "DELETE"
 }

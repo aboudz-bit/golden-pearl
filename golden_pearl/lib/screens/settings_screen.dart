@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
+import '../services/api_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/auth_provider.dart';
@@ -186,6 +189,16 @@ class SettingsScreen extends StatelessWidget {
                   leading: const Icon(Icons.lock_outline, color: kGoldPrimary),
                   title: Text(l10n.securePayment),
                 ),
+                Divider(height: 0, color: kDivider),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined, color: kGoldPrimary),
+                  title: Text(l10n.privacyPolicy),
+                  trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                  onTap: () {
+                    final url = '${ApiService.baseUrl}/privacy-policy';
+                    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                  },
+                ),
                 if (auth.isLoggedIn) ...[
                   Divider(height: 0, color: kDivider),
                   ListTile(
@@ -209,6 +222,23 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (auth.isLoggedIn && !auth.isAdmin) ...[
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.2)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: Text(l10n.deleteAccount, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+                trailing: const Icon(Icons.chevron_right, color: Colors.red),
+                onTap: () => _showDeleteAccountDialog(context, auth, l10n),
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
           Center(
             child: Container(
@@ -229,6 +259,91 @@ class SettingsScreen extends StatelessWidget {
             child: Text('v1.0.0', style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context, AuthProvider auth, AppLocalizations l10n) {
+    final confirmController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: kCardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+              const SizedBox(width: 8),
+              Text(l10n.deleteAccountTitle, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.deleteAccountConfirm, style: const TextStyle(fontSize: 14, color: kSecondaryText, height: 1.5)),
+              const SizedBox(height: 20),
+              Text(l10n.typeDeleteToConfirm, style: const TextStyle(fontSize: 13, color: kCharcoal, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirmController,
+                onChanged: (_) => setDialogState(() {}),
+                decoration: InputDecoration(
+                  hintText: l10n.deleteWord,
+                  hintStyle: const TextStyle(color: kSecondaryText, fontSize: 14),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kDivider)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.red)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancel, style: const TextStyle(color: kSecondaryText)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: confirmController.text.trim() == l10n.deleteWord
+                  ? () async {
+                      Navigator.pop(ctx);
+                      final error = await auth.deleteAccount();
+                      if (context.mounted) {
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error),
+                              backgroundColor: Colors.red.shade400,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        } else {
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.remove('rememberAccount');
+                          await prefs.remove('savedIdentifier');
+                          await prefs.remove('savedLanguage');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l10n.accountDeleted),
+                                backgroundColor: kGoldPrimary,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    }
+                  : null,
+              child: Text(l10n.deleteAccount),
+            ),
+          ],
+        ),
       ),
     );
   }

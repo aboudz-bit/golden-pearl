@@ -641,4 +641,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmLogout => 'Confirm Logout';
+
+  @override
+  String get deleteAccount => 'Delete Account';
+
+  @override
+  String get deleteAccountConfirm =>
+      'Are you sure you want to delete your account? All your data including orders, cart, and favorites will be permanently removed. This action cannot be undone.';
+
+  @override
+  String get deleteAccountTitle => 'Delete Account';
+
+  @override
+  String get accountDeleted => 'Account deleted successfully';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get typeDeleteToConfirm => 'Type DELETE to confirm';
+
+  @override
+  String get deleteWord => 'DELETE';
 }

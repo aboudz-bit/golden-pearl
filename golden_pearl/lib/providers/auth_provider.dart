@@ -88,4 +88,15 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = null;
     notifyListeners();
   }
+
+  Future<String?> deleteAccount() async {
+    try {
+      await _api.deleteAccount();
+      _currentUser = null;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
 }

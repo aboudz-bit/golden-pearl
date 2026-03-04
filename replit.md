@@ -19,7 +19,7 @@ server/
 ├── db.ts                    # Database connection
 ├── seed.ts                  # Database seeding
 ├── vite.ts                  # Vite dev server integration
-├── payments.ts              # Payment gateway stubs (Moyasar)
+├── payments.ts              # Payment abstraction layer (Moyasar prod, Mock dev)
 ├── shipping.ts              # Shipping provider stubs (Aramex/SMSA)
 ├── controllers/
 │   ├── auth.controller.ts       # Register, login, logout, me, merge cart
@@ -31,7 +31,7 @@ server/
 │   ├── customers.controller.ts  # Customer list, detail, export (XLSX), cart notifications
 │   ├── uploads.controller.ts    # Unified file upload (images+videos) with sharp compression
 │   ├── public.controller.ts     # Public endpoints: banners, categories, notifications, settings, pageviews
-│   ├── payments.controller.ts   # Payment session stubs
+│   ├── payments.controller.ts   # Payment sessions + Moyasar webhook
 │   └── shipping.controller.ts   # Shipping quote/tracking stubs
 ├── middleware/
 │   ├── auth.ts              # isAdmin, isStaffOrAdmin, requirePermission middleware
@@ -133,4 +133,13 @@ Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for 
 - bcrypt, express-session, memorystore, helmet, express-rate-limit, compression
 - multer, sharp, exceljs (XLSX export)
 - flutter_localizations, intl, provider, http, video_player
-- Moyasar (payment, pending credentials), Aramex/SMSA (shipping, pending)
+- Moyasar (payment — auto-selects real provider when MOYASAR_API_KEY env var set), Aramex/SMSA (shipping, pending)
+
+## Payment Integration
+- **Provider**: Moyasar (KSA-focused PSP, supports Apple Pay, Mada, Visa/MC)
+- **Auto-detection**: Sets `MoyasarProvider` when `MOYASAR_API_KEY` env var exists, otherwise `MockPaymentProvider`
+- **Webhook**: `POST /api/webhooks/moyasar` — auto-confirms orders on `paid` status
+- **API**: `POST /api/payments/session`, `POST /api/payments/:sessionId/confirm`, `POST /api/payments/:sessionId/refund`
+- **Flutter**: `ApiService.deleteAccount()` + `AuthProvider.deleteAccount()` for account deletion
+- **Privacy Policy**: Served at `/privacy-policy` (bilingual EN/AR HTML)
+- **Settings screen**: Privacy Policy link, Delete Account (non-admin users)

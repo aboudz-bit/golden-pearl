@@ -63,3 +63,19 @@ export async function mergeCart(req: Request, res: Response) {
   const items = await storage.getCartItemsByUserId(userId);
   res.json({ success: true, cartItems: items });
 }
+
+export async function deleteAccount(req: Request, res: Response) {
+  const userId = req.session?.userId;
+  if (!userId) throw AppError.unauthorized("Must be logged in to delete account");
+
+  const user = await storage.getUserById(userId);
+  if (!user) throw AppError.notFound("User not found");
+
+  if (user.role === "admin") {
+    throw AppError.forbidden("Admin accounts cannot be self-deleted");
+  }
+
+  await storage.deleteUserAndData(userId);
+  delete req.session!.userId;
+  res.json({ success: true });
+}

@@ -236,5 +236,12 @@
   "confirm": "تأكيد",
   "rememberMe": "حفظ الحساب",
   "useAnotherAccount": "تسجيل بحساب آخر",
-  "confirmLogout": "تأكيد تسجيل الخروج"
+  "confirmLogout": "تأكيد تسجيل الخروج",
+  "deleteAccount": "حذف الحساب",
+  "deleteAccountConfirm": "هل أنتِ متأكدة من حذف حسابك؟ سيتم حذف جميع بياناتك بما في ذلك الطلبات والسلة والمفضلة بشكل دائم. لا يمكن التراجع عن هذا الإجراء.",
+  "deleteAccountTitle": "حذف الحساب",
+  "accountDeleted": "تم حذف الحساب بنجاح",
+  "privacyPolicy": "سياسة الخصوصية",
+  "typeDeleteToConfirm": "اكتبي DELETE للتأكيد",
+  "deleteWord": "DELETE"
 }

@@ -24,6 +24,7 @@ export async function registerRoutes(
   app.post("/api/auth/logout", asyncHandler(auth.logout));
   app.get("/api/auth/me", asyncHandler(auth.me));
   app.post("/api/auth/merge", asyncHandler(auth.mergeCart));
+  app.delete("/api/auth/account", asyncHandler(auth.deleteAccount));
 
   app.post("/api/admin/upload", isStaffOrAdmin, upload.single("file"), asyncHandler(uploadFile));
   app.delete("/api/admin/upload", isStaffOrAdmin, asyncHandler(deleteFile));

@@ -206,6 +206,10 @@ app.use((req, res, next) => {
   app.use("/videos", express.static(path.resolve(flutterBuildPath, "videos"), cacheOptions));
   app.use(express.static(flutterBuildPath));
 
+  app.get("/privacy-policy", (_req, res) => {
+    res.sendFile(path.resolve(process.cwd(), "server", "privacy-policy.html"));
+  });
+
   app.all("/api/{*path}", (_req, res) => {
     res.status(404).json({ success: false, message: "Not found", code: "NOT_FOUND" });
   });
