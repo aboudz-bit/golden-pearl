@@ -28,8 +28,16 @@ app.use(helmet({
 
 app.use(compression());
 
+const sessionSecret = process.env.SESSION_SECRET;
+if (isProd && !sessionSecret) {
+  console.error("FATAL: SESSION_SECRET environment variable is required in production");
+  process.exit(1);
+}
+
 app.use(cors({
-  origin: isProd ? (process.env.CORS_ORIGIN || true) : true,
+  origin: isProd
+    ? (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : false)
+    : true,
   credentials: true,
 }));
 
@@ -37,7 +45,7 @@ app.use(express.json({ limit: "10mb", verify: (req: any, _res, buf) => { req.raw
 app.use(express.urlencoded({ extended: false }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || "golden-pearl-secret",
+  secret: sessionSecret || "golden-pearl-dev-secret",
   resave: false,
   saveUninitialized: true,
   store: new SessionStore({ checkPeriod: 86400000 }),

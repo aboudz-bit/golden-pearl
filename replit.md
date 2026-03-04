@@ -1,48 +1,115 @@
 # Golden Pearl — Luxury Fashion House
 
 ## Overview
-Golden Pearl is a bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile application built with Flutter, supported by an Express.js and PostgreSQL API server. The platform specializes in handcrafted embroidered dresses, jalabiyas, kids' collections, and exquisite gift packaging, aiming to offer a premium online shopping experience for high-end fashion.
+Golden Pearl is a bilingual (Arabic RTL + English LTR) luxury fashion e-commerce application built with Flutter (iOS/Android/Web), supported by an Express.js + TypeScript backend and PostgreSQL database. The platform specializes in handcrafted embroidered dresses, jalabiyas, kids' collections, and gift packaging, offering a premium online shopping experience.
 
 ## User Preferences
-I prefer clear, concise summaries and explanations. When making changes, prioritize modularity and reusability. For UI components, favor a consistent luxury soft neutral design aesthetic. I value iterative development and would like to be consulted before any major architectural changes or significant feature implementations.
+Clear, concise summaries. Prioritize modularity and reusability. Consistent luxury soft neutral design aesthetic. Iterative development with consultation before major changes.
 
-## System Architecture
-The application features a Flutter-based mobile app targeting iOS, Android, and Web, with an Express.js backend using TypeScript and PostgreSQL with Drizzle ORM.
+## Architecture
 
-**UI/UX Design:**
-- **Theme**: Custom luxury soft neutral theme with a focus on elegance.
-- **Typography**: PlayfairDisplay for headings, Material Design 3 for overall styling.
-- **Color Palette**: Primary Gold (#B89B5E), Dark Gold (#9C7F42), soft neutral Background (#F4F4F4), Charcoal Text (#1C1C1C).
-- **Components**: Product cards with 4:5 aspect ratio and full-bleed images, circular category highlights with subtle gold accents, consistent motion (fade + vertical lift, button press scale).
-- **Localization**: Full bilingual support (Arabic default RTL, English LTR toggle) with ARB files, including Arabic-Indic digits and specific currency formatting.
+### Backend — `server/`
+Clean architecture with separation of concerns:
 
-**Technical Implementations:**
-- **State Management**: Provider (ChangeNotifier) for client-side state.
-- **Authentication**: bcrypt for password hashing, express-session for session management. Guest browsing is allowed, with a login-on-checkout mechanism that merges guest carts.
-- **Security**: Helmet for secure headers, express-rate-limit for API protection, compression middleware.
-- **Admin Panel**: A comprehensive, Shopify-like CMS for managing products, orders, banners, categories, promotions, notifications, customers, and site settings. Features include multi-image upload with compression, dynamic text overlays for banners with live preview, and customer data export.
-- **Currency Handling**: All monetary values are stored as integer halalas (1 SAR = 100 halalas) to prevent floating-point inaccuracies.
-- **Performance**: Utilizes DB indexing, in-memory caching for frequently accessed public data (banners, categories), gzip/brotli compression, and static asset caching.
-- **Media**: Unified upload endpoint for images (with `sharp` compression) and videos, supporting range requests for video streaming.
+```
+server/
+├── index.ts                 # Express app setup, middleware, static serving
+├── routes.ts                # Thin route registration (~100 lines)
+├── storage.ts               # Database access layer (Drizzle ORM)
+├── db.ts                    # Database connection
+├── seed.ts                  # Database seeding
+├── vite.ts                  # Vite dev server integration
+├── payments.ts              # Payment gateway stubs (Moyasar)
+├── shipping.ts              # Shipping provider stubs (Aramex/SMSA)
+├── controllers/
+│   ├── auth.controller.ts       # Register, login, logout, me, merge cart
+│   ├── products.controller.ts   # Product CRUD + reorder
+│   ├── cart.controller.ts       # Cart CRUD
+│   ├── orders.controller.ts     # Order create, list, admin status updates
+│   ├── admin.controller.ts      # Banners, categories, discounts, notifications, settings, analytics
+│   ├── customers.controller.ts  # Customer list, detail, export (XLSX), cart notifications
+│   ├── uploads.controller.ts    # Unified file upload (images+videos) with sharp compression
+│   ├── public.controller.ts     # Public endpoints: banners, categories, notifications, settings, pageviews
+│   ├── payments.controller.ts   # Payment session stubs
+│   └── shipping.controller.ts   # Shipping quote/tracking stubs
+├── middleware/
+│   ├── auth.ts              # isAdmin middleware (session-based)
+│   ├── asyncHandler.ts      # Async error wrapper for route handlers
+│   ├── errorHandler.ts      # Centralized error handler (AppError + generic)
+│   └── cache.ts             # In-memory TTL cache (banners, categories)
+└── utils/
+    ├── AppError.ts          # Typed error class (badRequest, notFound, unauthorized, conflict, forbidden)
+    └── response.ts          # Standardized response helpers
+```
 
-**System Design Choices:**
-- **Clean Architecture**: The backend is structured with clear separation of concerns, utilizing controllers for business logic, a storage layer for database interactions, and middleware for cross-cutting concerns.
-- **Error Handling**: Centralized error handling using a custom `AppError` class to provide consistent and informative error responses without leaking sensitive information.
-- **Modularity**: Services and utilities are designed for reusability, with clear abstractions for payment and shipping gateways to facilitate future integrations.
+### Frontend — `golden_pearl/lib/`
+```
+lib/
+├── main.dart                # App entry, theme, routing, providers
+├── data/locations.dart      # Store location data
+├── l10n/                    # Localization (app_en.arb, app_ar.arb, generated/)
+├── models/
+│   ├── cart_item.dart, order.dart, product.dart, store.dart
+├── providers/
+│   ├── auth_provider.dart, cart_provider.dart, favorites_provider.dart, language_provider.dart
+├── screens/
+│   ├── admin/
+│   │   ├── admin_dashboard.dart        # Admin shell with drawer navigation
+│   │   ├── admin_products.dart         # Product list + search
+│   │   ├── admin_product_form.dart     # Product create/edit form
+│   │   ├── admin_orders.dart           # Order management
+│   │   ├── admin_hero_page.dart        # Banners/hero management (unified)
+│   │   ├── admin_categories.dart       # Category management
+│   │   ├── admin_promotions.dart       # Discount code management
+│   │   ├── admin_notifications.dart    # Broadcast notification sending
+│   │   ├── admin_customers.dart        # Customer list with search/filter/export
+│   │   └── admin_customer_detail.dart  # Customer detail + cart notification
+│   ├── home_screen.dart, shop_screen.dart, product_detail_screen.dart
+│   ├── cart_screen.dart, checkout_screen.dart, order_confirmation_screen.dart
+│   ├── login_screen.dart, orders_screen.dart, notifications_screen.dart
+│   ├── category_screen.dart, settings_screen.dart
+├── services/
+│   └── api_service.dart     # HTTP client (cookie-based auth, all API calls)
+├── utils/
+│   ├── money_formatter.dart # SAR formatting (halalas → display)
+│   └── arabic_digits.dart   # Arabic-Indic digit conversion
+└── widgets/
+    ├── product_card.dart, category_icons.dart
+    ├── hero_video_background.dart, luxury_video_player.dart
+    └── shimmer_placeholder.dart
+```
+
+### Shared — `shared/schema.ts`
+Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for all 10 tables: users, products, cartItems, orders, discountCodes, notifications, adminUsers, siteSettings, pageViews, banners, categories.
+
+## Key Technical Details
+
+| Aspect | Detail |
+|---|---|
+| **Currency** | Integer halalas (1 SAR = 100 halalas). Use `MoneyFormatter.format(amount, lang)` |
+| **Color palette** | Gold #B89B5E, Cream BG #F4F4F4, Card BG #FFFFFF, Charcoal #1C1C1C |
+| **Admin credentials** | admin@goldenpearl.com / admin123 |
+| **L10n** | `synthetic-package: false`, generated at `lib/l10n/generated/` |
+| **Build command** | `cd golden_pearl && flutter gen-l10n && flutter build web --release` then `cp -r assets/images assets/videos build/web/` |
+| **Port issue** | `fuser -k 5000/tcp` before restart if port stuck |
+| **Error format** | `{success: false, message: string, code: string}` |
+
+## Security
+- **Helmet**: Secure HTTP headers (HSTS, X-Content-Type-Options, X-Frame-Options)
+- **Rate limiting**: Auth 10/min, Upload 30/min, General API 200/min
+- **Session**: httpOnly, sameSite: lax, secure in production
+- **Uploads**: UUID filenames, dual MIME+extension validation, path traversal protection, 50MB limit, sharp image compression
+- **Error handling**: Centralized via AppError — no stack traces leaked
+
+## Performance
+- **DB indexes**: products(category, orderIndex), orders(createdAt, userId), banners(active, sortOrder), categories(sortOrder)
+- **Caching**: In-memory TTL cache (60s) for banners and categories, invalidated on admin writes
+- **Compression**: gzip/brotli via `compression` middleware
+- **Static assets**: 7-day cache headers for images/videos/uploads
 
 ## External Dependencies
-- **PostgreSQL**: Primary database for all application data.
-- **Drizzle ORM**: Used for interacting with the PostgreSQL database from the Express.js backend.
-- **Flutter (Dart)**: Framework for the mobile and web client applications.
-- **Express.js (TypeScript)**: Backend web application framework.
-- **`flutter_localizations` + `intl` + ARB files**: For internationalization and localization within the Flutter app.
-- **`bcrypt`**: For secure password hashing.
-- **`express-session`**: For session management in the backend.
-- **`helmet`**: For securing HTTP headers in the Express.js application.
-- **`express-rate-limit`**: For applying rate limiting to API endpoints.
-- **`compression`**: Middleware for response compression.
-- **`multer`**: For handling multipart/form-data, primarily for file uploads.
-- **`sharp`**: For image processing and compression on the backend.
-- **Moyasar**: Payment gateway (integration pending credentials).
-- **Aramex/SMSA**: Shipping providers (integration pending).
-- **Firebase Cloud Messaging**: For push notifications (integration pending credentials).
+- PostgreSQL, Drizzle ORM, Express.js (TypeScript), Flutter (Dart)
+- bcrypt, express-session, memorystore, helmet, express-rate-limit, compression
+- multer, sharp, exceljs (XLSX export)
+- flutter_localizations, intl, provider, http, video_player
+- Moyasar (payment, pending credentials), Aramex/SMSA (shipping, pending)

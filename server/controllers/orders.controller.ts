@@ -11,7 +11,7 @@ export async function createOrder(req: Request, res: Response) {
   if (userId) orderData.userId = userId;
 
   const result = insertOrderSchema.safeParse(orderData);
-  if (!result.success) return res.status(400).json({ success: false, message: "Invalid order", code: "VALIDATION_ERROR", errors: result.error.flatten() });
+  if (!result.success) throw AppError.badRequest("Invalid order data");
 
   const items = req.body.items as any[];
   if (items && Array.isArray(items)) {

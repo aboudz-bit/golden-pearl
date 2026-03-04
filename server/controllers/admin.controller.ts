@@ -24,7 +24,7 @@ export async function listBanners(_req: Request, res: Response) {
 
 export async function createBanner(req: Request, res: Response) {
   const result = insertBannerSchema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ success: false, message: "Invalid banner", code: "VALIDATION_ERROR", errors: result.error.flatten() });
+  if (!result.success) throw AppError.badRequest("Invalid banner data");
   const banner = await storage.createBanner(result.data);
   invalidateCache("banners");
   res.json(banner);
@@ -78,7 +78,7 @@ export async function updateCategory(req: Request, res: Response) {
 
 export async function createDiscount(req: Request, res: Response) {
   const result = insertDiscountCodeSchema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ success: false, message: "Invalid discount", code: "VALIDATION_ERROR", errors: result.error.flatten() });
+  if (!result.success) throw AppError.badRequest("Invalid discount data");
   res.json(await storage.createDiscountCode(result.data));
 }
 

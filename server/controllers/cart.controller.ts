@@ -25,7 +25,7 @@ export async function addToCart(req: Request, res: Response) {
   if (userId) itemData.userId = userId;
 
   const result = insertCartItemSchema.safeParse(itemData);
-  if (!result.success) return res.status(400).json({ success: false, message: "Invalid cart item", code: "VALIDATION_ERROR", errors: result.error.flatten() });
+  if (!result.success) throw AppError.badRequest("Invalid cart item data");
   res.json(await storage.addCartItem(result.data));
 }
 
