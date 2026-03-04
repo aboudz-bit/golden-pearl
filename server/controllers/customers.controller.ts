@@ -15,10 +15,13 @@ interface CustomerSummary {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate: Date | null;
+  cartTotal: number;
+  cartItemCount: number;
+  cartUpdatedAt: Date | null;
 }
 
 async function buildCustomerQuery(query: Request["query"]) {
-  const { search, sort, hasOrders, from, to } = query;
+  const { search, sort, hasOrders, hasCart, from, to } = query;
 
   const allUsers = await db.select().from(users).where(
     (() => {
@@ -58,10 +61,24 @@ async function buildCustomerQuery(query: Request["query"]) {
     .where(sql`${orders.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`)
     .groupBy(orders.userId);
 
+  const cartStats = await db
+    .select({
+      userId: cartItems.userId,
+      cartItemCount: sql<number>`SUM(${cartItems.quantity})`,
+      cartTotal: sql<number>`SUM(${cartItems.quantity} * ${products.price})`,
+      cartUpdatedAt: sql<Date>`MAX(${cartItems.updatedAt})`,
+    })
+    .from(cartItems)
+    .leftJoin(products, eq(cartItems.productId, products.id))
+    .where(sql`${cartItems.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`)
+    .groupBy(cartItems.userId);
+
   const statsMap = new Map(orderStats.map(s => [s.userId, s]));
+  const cartMap = new Map(cartStats.map(s => [s.userId, s]));
 
   let result: CustomerSummary[] = allUsers.map(u => {
     const stats = statsMap.get(u.id);
+    const cart = cartMap.get(u.id);
     return {
       id: u.id,
       name: u.name,
@@ -72,6 +89,9 @@ async function buildCustomerQuery(query: Request["query"]) {
       totalOrders: Number(stats?.totalOrders ?? 0),
       totalSpent: Number(stats?.totalSpent ?? 0),
       lastOrderDate: stats?.lastOrderDate ?? null,
+      cartTotal: Number(cart?.cartTotal ?? 0),
+      cartItemCount: Number(cart?.cartItemCount ?? 0),
+      cartUpdatedAt: cart?.cartUpdatedAt ?? null,
     };
   });
 
@@ -79,6 +99,10 @@ async function buildCustomerQuery(query: Request["query"]) {
     result = result.filter(c => c.totalOrders > 0);
   } else if (hasOrders === "false") {
     result = result.filter(c => c.totalOrders === 0);
+  }
+
+  if (hasCart === "true") {
+    result = result.filter(c => c.cartItemCount > 0);
   }
 
   const sortBy = typeof sort === "string" ? sort : "newest";
@@ -96,6 +120,12 @@ async function buildCustomerQuery(query: Request["query"]) {
         if (!b.lastOrderDate) return -1;
         return new Date(b.lastOrderDate).getTime() - new Date(a.lastOrderDate).getTime();
       });
+      break;
+    case "highest_cart":
+      result.sort((a, b) => b.cartTotal - a.cartTotal);
+      break;
+    case "lowest_cart":
+      result.sort((a, b) => a.cartTotal - b.cartTotal);
       break;
     case "newest":
     default:
@@ -151,6 +181,7 @@ export async function getCustomer(req: Request, res: Response) {
       quantity: cartItems.quantity,
       size: cartItems.size,
       color: cartItems.color,
+      updatedAt: cartItems.updatedAt,
       productNameEn: products.nameEn,
       productNameAr: products.nameAr,
       productPrice: products.price,
@@ -159,6 +190,10 @@ export async function getCustomer(req: Request, res: Response) {
     .from(cartItems)
     .leftJoin(products, eq(cartItems.productId, products.id))
     .where(eq(cartItems.userId, id));
+
+  const cartUpdatedAt = cartRows.length > 0 
+    ? new Date(Math.max(...cartRows.map(r => r.updatedAt ? new Date(r.updatedAt).getTime() : 0)))
+    : null;
 
   res.json({
     success: true,
@@ -174,6 +209,7 @@ export async function getCustomer(req: Request, res: Response) {
       lastOrderDate: customerOrders[0]?.createdAt ?? null,
       orders: customerOrders,
       cart: cartRows,
+      cartUpdatedAt,
     },
   });
 }

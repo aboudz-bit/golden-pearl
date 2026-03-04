@@ -50,6 +50,7 @@ export const cartItems = pgTable("cart_items", {
   quantity: integer("quantity").notNull().default(1),
   size: text("size").notNull(),
   color: text("color").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const orders = pgTable("orders", {

@@ -23,6 +23,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
   String _search = '';
   String _sort = 'newest';
   String? _hasOrders;
+  String? _hasCart;
   final _searchCtrl = TextEditingController();
 
   @override
@@ -44,6 +45,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
         search: _search.isNotEmpty ? _search : null,
         sort: _sort,
         hasOrders: _hasOrders,
+        hasCart: _hasCart,
         page: _page,
         limit: 20,
       );
@@ -70,6 +72,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
       search: _search.isNotEmpty ? _search : null,
       sort: _sort,
       hasOrders: _hasOrders,
+      hasCart: _hasCart,
     );
     html.window.open(url, '_blank');
   }
@@ -111,7 +114,9 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
               const SizedBox(width: 6),
               _filterChip(l10n.hasOrders, _hasOrders == 'true', () { setState(() { _hasOrders = 'true'; _page = 1; }); _load(); }),
               const SizedBox(width: 6),
-              _filterChip(l10n.noOrders, _hasOrders == 'false', () { setState(() { _hasOrders = 'false'; _page = 1; }); _load(); }),
+              _filterChip(l10n.noOrders, _hasOrders == 'false', () { setState(() { _hasOrders = 'false'; _hasCart = null; _page = 1; }); _load(); }),
+              const SizedBox(width: 6),
+              _filterChip('Cart', _hasCart == 'true', () { setState(() { _hasCart = 'true'; _hasOrders = null; _page = 1; }); _load(); }),
               const Spacer(),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.sort, color: kSecondaryText, size: 20),
@@ -122,6 +127,8 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
                   PopupMenuItem(value: 'highest_spent', child: Text(l10n.highestSpent)),
                   PopupMenuItem(value: 'most_orders', child: Text(l10n.mostOrders)),
                   PopupMenuItem(value: 'last_order', child: Text(l10n.lastOrderDate)),
+                  PopupMenuItem(value: 'highest_cart', child: Text('Highest Cart')),
+                  PopupMenuItem(value: 'lowest_cart', child: Text('Lowest Cart')),
                 ],
               ),
               IconButton(
@@ -185,6 +192,8 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
       case 'highest_spent': return l10n.highestSpent;
       case 'most_orders': return l10n.mostOrders;
       case 'last_order': return l10n.lastOrderDate;
+      case 'highest_cart': return 'Highest Cart';
+      case 'lowest_cart': return 'Lowest Cart';
       default: return l10n.newestFirst;
     }
   }
@@ -242,6 +251,16 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
                     const SizedBox(height: 2),
                     Text(email, style: const TextStyle(fontSize: 12, color: kSecondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                     if (phone.isNotEmpty) Text(phone, style: const TextStyle(fontSize: 11, color: kSecondaryText)),
+                    if (c['cartUpdatedAt'] != null) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.shopping_cart_outlined, size: 10, color: kGoldPrimary),
+                          const SizedBox(width: 4),
+                          Text('Cart: ${_formatDateTime(c['cartUpdatedAt'])}', style: const TextStyle(fontSize: 10, color: kGoldPrimary, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -265,6 +284,13 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
         ),
       ),
     );
+  }
+
+  String _formatDateTime(dynamic d) {
+    if (d == null) return '';
+    final dt = DateTime.tryParse(d.toString());
+    if (dt == null) return '';
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatDate(dynamic d) {

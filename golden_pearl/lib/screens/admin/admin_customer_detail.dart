@@ -435,6 +435,9 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
               const Icon(Icons.shopping_cart_outlined, color: kGoldPrimary, size: 20),
               const SizedBox(width: 8),
               Expanded(child: Text(l10n.currentCart, style: playfairDisplay(fontSize: 16, fontWeight: FontWeight.w600, color: kCharcoal))),
+              if (_customer!['cartUpdatedAt'] != null)
+                Text(_formatDateTime(_customer!['cartUpdatedAt']), style: const TextStyle(fontSize: 11, color: kSecondaryText)),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () => _showNotifyDialog(l10n),
                 borderRadius: BorderRadius.circular(8),
@@ -517,6 +520,13 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
 
   Widget _placeholderThumb() {
     return Container(width: 40, height: 40, color: kDivider, child: const Icon(Icons.image, size: 18, color: kSecondaryText));
+  }
+
+  String _formatDateTime(dynamic d) {
+    if (d == null) return '-';
+    final dt = DateTime.tryParse(d.toString());
+    if (dt == null) return '-';
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatDate(dynamic d) {

@@ -26,7 +26,7 @@ export async function addToCart(req: Request, res: Response) {
 
   const result = insertCartItemSchema.safeParse(itemData);
   if (!result.success) throw AppError.badRequest("Invalid cart item data");
-  res.json(await storage.addCartItem(result.data));
+  res.json(await storage.addCartItem({ ...result.data, updatedAt: new Date() }));
 }
 
 export async function updateCartItem(req: Request, res: Response) {
@@ -36,6 +36,9 @@ export async function updateCartItem(req: Request, res: Response) {
   }
   const item = await storage.updateCartItem(parseInt(req.params.id), quantity);
   if (!item) throw AppError.notFound("Cart item not found");
+  
+  await db.update(cartItems).set({ updatedAt: new Date() }).where(eq(cartItems.id, item.id));
+
   res.json(item);
 }
 
