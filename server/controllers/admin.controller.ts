@@ -77,8 +77,15 @@ export async function updateCategory(req: Request, res: Response) {
 }
 
 export async function createDiscount(req: Request, res: Response) {
-  const result = insertDiscountCodeSchema.safeParse(req.body);
-  if (!result.success) throw AppError.badRequest("Invalid discount data");
+  const data = {
+    ...req.body,
+    minOrder: req.body.minOrderAmount // Map from minOrderAmount in request to minOrder in DB
+  };
+  const result = insertDiscountCodeSchema.safeParse(data);
+  if (!result.success) {
+    console.error("Discount validation failed:", result.error.format());
+    throw AppError.badRequest("Invalid discount data");
+  }
   res.json(await storage.createDiscountCode(result.data));
 }
 
@@ -87,7 +94,13 @@ export async function listDiscounts(_req: Request, res: Response) {
 }
 
 export async function updateDiscount(req: Request, res: Response) {
-  const discount = await storage.updateDiscountCode(parseInt(req.params.id), req.body);
+  const data = {
+    ...req.body
+  };
+  if (req.body.minOrderAmount !== undefined) {
+    data.minOrder = req.body.minOrderAmount;
+  }
+  const discount = await storage.updateDiscountCode(parseInt(req.params.id), data);
   if (!discount) throw AppError.notFound("Discount not found");
   res.json(discount);
 }

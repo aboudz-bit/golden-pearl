@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import { storage } from "../storage";
-import { insertCartItemSchema } from "@shared/schema";
+import { insertCartItemSchema, cartItems } from "@shared/schema";
 import { AppError } from "../utils/AppError";
+import { db } from "../db";
+import { eq } from "drizzle-orm";
 
 export async function getCart(req: Request, res: Response) {
   const userId = req.session?.userId;
