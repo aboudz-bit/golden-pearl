@@ -117,7 +117,7 @@ class _AdminPromotionsState extends State<AdminPromotions> {
       text: existing != null ? ((existing['value'] as num?) ?? 0).toString() : '',
     );
     final minOrderController = TextEditingController(
-      text: existing != null ? ((existing['minOrderAmount'] as num?) ?? 0).toString() : '',
+      text: existing != null ? ((existing['minOrder'] as num?) ?? (existing['minOrderAmount'] as num?) ?? 0).toString() : '',
     );
     final maxUsesController = TextEditingController(
       text: existing != null ? ((existing['maxUses'] as num?) ?? 0).toString() : '',
@@ -317,7 +317,7 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                           'code': code,
                           'type': selectedType,
                           'value': value,
-                          'minOrderAmount': minOrder,
+                          'minOrder': minOrder,
                           'maxUses': maxUses,
                         };
                         if (expiresAt != null) {
@@ -553,10 +553,10 @@ class _AdminPromotionsState extends State<AdminPromotions> {
                     ),
                   ],
                 ),
-                if (discount['minOrderAmount'] != null && (discount['minOrderAmount'] as num) > 0) ...[
+                if ((discount['minOrder'] ?? discount['minOrderAmount']) != null && ((discount['minOrder'] as num?) ?? (discount['minOrderAmount'] as num?) ?? 0) > 0) ...[
                   const SizedBox(height: 6),
                   Text(
-                    'Min order: ${((discount['minOrderAmount'] as num) / 100).toStringAsFixed(2)} SAR',
+                    'Min order: ${(((discount['minOrder'] as num?) ?? (discount['minOrderAmount'] as num?) ?? 0) / 100).toStringAsFixed(2)} SAR',
                     style: TextStyle(fontSize: 12, color: kSecondaryText),
                   ),
                 ],

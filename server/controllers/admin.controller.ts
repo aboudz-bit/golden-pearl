@@ -77,10 +77,14 @@ export async function updateCategory(req: Request, res: Response) {
 }
 
 export async function createDiscount(req: Request, res: Response) {
-  const data = {
-    ...req.body,
-    minOrder: req.body.minOrderAmount // Map from minOrderAmount in request to minOrder in DB
+  const { minOrderAmount, expiresAt, ...rest } = req.body;
+  const data: any = {
+    ...rest,
+    minOrder: minOrderAmount ?? rest.minOrder ?? 0,
   };
+  if (expiresAt) {
+    data.expiresAt = new Date(expiresAt);
+  }
   const result = insertDiscountCodeSchema.safeParse(data);
   if (!result.success) {
     console.error("Discount validation failed:", result.error.format());
@@ -94,11 +98,13 @@ export async function listDiscounts(_req: Request, res: Response) {
 }
 
 export async function updateDiscount(req: Request, res: Response) {
-  const data = {
-    ...req.body
-  };
-  if (req.body.minOrderAmount !== undefined) {
-    data.minOrder = req.body.minOrderAmount;
+  const { minOrderAmount, expiresAt, ...rest } = req.body;
+  const data: any = { ...rest };
+  if (minOrderAmount !== undefined) {
+    data.minOrder = minOrderAmount;
+  }
+  if (expiresAt !== undefined) {
+    data.expiresAt = expiresAt ? new Date(expiresAt) : null;
   }
   const discount = await storage.updateDiscountCode(parseInt(req.params.id), data);
   if (!discount) throw AppError.notFound("Discount not found");
