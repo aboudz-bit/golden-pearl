@@ -190,9 +190,19 @@ class _CartScreenState extends State<CartScreen> with SingleTickerProviderStateM
                                     ],
                                   ),
                                 ),
-                                Text(
-                                  MoneyFormatter.format(product.price * item.quantity, lang),
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: kGoldPrimary),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      MoneyFormatter.format(product.effectivePrice * item.quantity, lang),
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: kGoldPrimary),
+                                    ),
+                                    if (product.hasActiveDiscount)
+                                      Text(
+                                        MoneyFormatter.format(product.price * item.quantity, lang),
+                                        style: const TextStyle(fontSize: 11, decoration: TextDecoration.lineThrough, color: Color(0xFF999999)),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -308,7 +318,7 @@ class _CartScreenState extends State<CartScreen> with SingleTickerProviderStateM
                     children: [
                       Text(product.name(lang), style: playfairDisplay(fontSize: 14, fontWeight: FontWeight.w600, color: kCharcoal), maxLines: 2, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 6),
-                      Text(MoneyFormatter.format(product.price, lang), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: kGoldPrimary)),
+                      Text(MoneyFormatter.format(product.effectivePrice, lang), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: kGoldPrimary)),
                       const SizedBox(height: 10),
                       Row(
                         children: [

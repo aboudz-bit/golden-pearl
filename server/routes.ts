@@ -13,6 +13,7 @@ import * as pay from "./controllers/payments.controller";
 import * as ship from "./controllers/shipping.controller";
 import * as customers from "./controllers/customers.controller";
 import * as staff from "./controllers/staff.controller";
+import * as prodDisc from "./controllers/product-discounts.controller";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -97,6 +98,11 @@ export async function registerRoutes(
   app.post("/api/admin/customers/:id/notify-cart", isStaffOrAdmin, requirePermission("customers.view"), asyncHandler(customers.notifyCart));
   app.get("/api/admin/customers/:id", isStaffOrAdmin, requirePermission("customers.view"), asyncHandler(customers.getCustomer));
   app.get("/api/admin/customers", isStaffOrAdmin, requirePermission("customers.view"), asyncHandler(customers.listCustomers));
+
+  app.post("/api/admin/product-discounts", isStaffOrAdmin, requirePermission("products.edit"), asyncHandler(prodDisc.createProductDiscounts));
+  app.delete("/api/admin/product-discounts", isStaffOrAdmin, requirePermission("products.edit"), asyncHandler(prodDisc.removeProductDiscounts));
+  app.get("/api/admin/product-discounts", isStaffOrAdmin, requirePermission("products.view"), asyncHandler(prodDisc.listProductDiscounts));
+  app.get("/api/admin/product-discounts/:productId", isStaffOrAdmin, requirePermission("products.view"), asyncHandler(prodDisc.getProductDiscount));
 
   app.post("/api/payments/create", asyncHandler(pay.createPaymentStub));
   app.post("/api/webhooks/moyasar", asyncHandler(pay.moyasarWebhook));

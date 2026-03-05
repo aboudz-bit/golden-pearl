@@ -663,4 +663,61 @@ class ApiService {
     _checkResponse(response);
     return jsonDecode(response.body);
   }
+
+  Future<Map<String, dynamic>> createProductDiscount({
+    required int productId,
+    required String type,
+    required int value,
+    required String startsAt,
+    required String endsAt,
+    String? label,
+  }) async {
+    final body = <String, dynamic>{
+      'productIds': [productId],
+      'type': type,
+      'value': value,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+    };
+    if (label != null && label.isNotEmpty) body['label'] = label;
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/product-discounts'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> removeProductDiscount(int productId) async {
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/api/admin/product-discounts'),
+      headers: {..._headers},
+      body: jsonEncode({'productIds': [productId]}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<dynamic>> listProductDiscounts() async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/admin/product-discounts'),
+      headers: _headers,
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>?> getProductDiscount(int productId) async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/admin/product-discounts/$productId'),
+      headers: _headers,
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    final data = jsonDecode(response.body);
+    return data;
+  }
 }

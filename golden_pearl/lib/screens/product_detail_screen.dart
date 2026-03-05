@@ -161,7 +161,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     final p = _product!;
-    final hasDiscount = p.originalPrice != null && p.originalPrice! > p.price;
+    final hasTimeDiscount = p.hasActiveDiscount;
+    final hasStaticDiscount = !hasTimeDiscount && p.originalPrice != null && p.originalPrice! > p.price;
+    final hasDiscount = hasTimeDiscount || hasStaticDiscount;
 
     return Scaffold(
       body: CustomScrollView(
@@ -301,10 +303,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        MoneyFormatter.format(p.price, lang),
+                        MoneyFormatter.format(p.effectivePrice, lang),
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: kGoldPrimary),
                       ),
-                      if (hasDiscount) ...[
+                      if (hasTimeDiscount) ...[
+                        const SizedBox(width: 12),
+                        Text(
+                          MoneyFormatter.format(p.price, lang),
+                          style: const TextStyle(fontSize: 15, decoration: TextDecoration.lineThrough, color: kSecondaryText),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            p.discountBadgeText ?? '',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red.shade600),
+                          ),
+                        ),
+                      ] else if (hasStaticDiscount) ...[
                         const SizedBox(width: 12),
                         Text(
                           MoneyFormatter.format(p.originalPrice!, lang),
@@ -445,7 +465,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               icon: _adding
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.shopping_bag_outlined, size: 20),
-              label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
+              label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.effectivePrice * _quantity, lang)}'),
             ),
           ),
         ),

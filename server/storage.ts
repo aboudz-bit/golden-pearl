@@ -2,13 +2,14 @@ import { db } from "./db";
 import { eq, and, ilike, or, desc, asc, count, sql, gte } from "drizzle-orm";
 import {
   products, cartItems, orders, discountCodes, adminUsers, notifications,
-  users, siteSettings, pageViews, banners, categories,
+  users, siteSettings, pageViews, banners, categories, productDiscounts,
   type Product, type CartItem, type CartItemWithProduct,
   type InsertCartItem, type InsertProduct, type Order,
   type InsertOrder, type DiscountCode, type InsertDiscountCode,
   type Notification, type InsertNotification,
   type User, type InsertUser, type SiteSetting, type PageView, type InsertPageView,
-  type Banner, type InsertBanner, type Category, type InsertCategory
+  type Banner, type InsertBanner, type Category, type InsertCategory,
+  type ProductDiscount, type InsertProductDiscount
 } from "@shared/schema";
 
 export interface IStorage {
@@ -81,6 +82,12 @@ export interface IStorage {
   reorderCategories(items: { id: number; sortOrder: number }[]): Promise<void>;
 
   getAdminByUsername(username: string): Promise<typeof adminUsers.$inferSelect | undefined>;
+
+  getActiveDiscountForProduct(productId: number): Promise<ProductDiscount | undefined>;
+  getActiveDiscountsForProducts(productIds: number[]): Promise<ProductDiscount[]>;
+  getAllProductDiscounts(): Promise<ProductDiscount[]>;
+  createProductDiscount(discount: InsertProductDiscount): Promise<ProductDiscount>;
+  deleteProductDiscounts(productIds: number[]): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -464,6 +471,59 @@ export class DatabaseStorage implements IStorage {
   async getAdminByUsername(username: string) {
     const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.username, username));
     return admin;
+  }
+
+  async getActiveDiscountForProduct(productId: number): Promise<ProductDiscount | undefined> {
+    const now = new Date();
+    const [discount] = await db
+      .select()
+      .from(productDiscounts)
+      .where(
+        and(
+          eq(productDiscounts.productId, productId),
+          sql`${productDiscounts.startsAt} <= ${now}`,
+          sql`${productDiscounts.endsAt} > ${now}`
+        )
+      )
+      .orderBy(desc(productDiscounts.createdAt))
+      .limit(1);
+    return discount;
+  }
+
+  async getActiveDiscountsForProducts(productIds: number[]): Promise<ProductDiscount[]> {
+    if (productIds.length === 0) return [];
+    const now = new Date();
+    return db
+      .select()
+      .from(productDiscounts)
+      .where(
+        and(
+          sql`${productDiscounts.productId} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`,
+          sql`${productDiscounts.startsAt} <= ${now}`,
+          sql`${productDiscounts.endsAt} > ${now}`
+        )
+      )
+      .orderBy(desc(productDiscounts.createdAt));
+  }
+
+  async getAllProductDiscounts(): Promise<ProductDiscount[]> {
+    return db.select().from(productDiscounts).orderBy(desc(productDiscounts.createdAt));
+  }
+
+  async createProductDiscount(discount: InsertProductDiscount): Promise<ProductDiscount> {
+    const [created] = await db.insert(productDiscounts).values(discount).returning();
+    return created;
+  }
+
+  async deleteProductDiscounts(productIds: number[]): Promise<number> {
+    if (productIds.length === 0) return 0;
+    const result = await db
+      .delete(productDiscounts)
+      .where(
+        sql`${productDiscounts.productId} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`
+      )
+      .returning();
+    return result.length;
   }
 }
 

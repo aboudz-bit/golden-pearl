@@ -169,7 +169,8 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final product = widget.product;
     final locale = widget.locale;
-    final hasDiscount = product.originalPrice != null && product.originalPrice! > product.price;
+    final hasTimeDiscount = product.hasActiveDiscount;
+    final hasStaticDiscount = !hasTimeDiscount && product.originalPrice != null && product.originalPrice! > product.price;
     final favs = Provider.of<FavoritesProvider>(context);
     final isFav = favs.isFavorite(product.id);
 
@@ -290,7 +291,23 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                           child: const Icon(Icons.play_arrow, color: Colors.white, size: 18),
                         ),
                       ),
-                    if (product.badge != null)
+                    if (hasTimeDiscount)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade600,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            product.discountBadgeText ?? '',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                          ),
+                        ),
+                      )
+                    else if (product.badge != null)
                       Positioned(
                         top: 8,
                         left: 8,
@@ -325,10 +342,16 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          MoneyFormatter.format(product.price, locale),
+                          MoneyFormatter.format(product.effectivePrice, locale),
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kGoldPrimary),
                         ),
-                        if (hasDiscount) ...[
+                        if (hasTimeDiscount) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            MoneyFormatter.format(product.price, locale),
+                            style: const TextStyle(fontSize: 11, decoration: TextDecoration.lineThrough, color: Color(0xFF999999)),
+                          ),
+                        ] else if (hasStaticDiscount) ...[
                           const SizedBox(width: 6),
                           Text(
                             MoneyFormatter.format(product.originalPrice!, locale),

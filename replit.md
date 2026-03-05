@@ -82,7 +82,16 @@ lib/
 ```
 
 ### Shared — `shared/schema.ts`
-Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for all 10 tables: users, products, cartItems, orders, discountCodes, notifications, adminUsers, siteSettings, pageViews, banners, categories.
+Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for all tables: users, products, cartItems, orders, discountCodes, notifications, adminUsers, siteSettings, pageViews, banners, categories, productDiscounts.
+
+## Product Discounts
+- **Table**: `product_discounts` — productId, type (percent/fixed), value (int: percent 1-95, or halalas for fixed), startsAt, endsAt, label, createdByUserId
+- **Backend**: `product-discounts.controller.ts` — create (bulk productIds), remove (by productIds), list, get by productId
+- **Product enrichment**: All product endpoints return `activeDiscount`, `priceFinal`, `discountBadgeText` fields; cart items also enriched
+- **Flutter model**: `ActiveDiscount` class in `product.dart`; `Product.effectivePrice`, `Product.hasActiveDiscount`, `Product.discountBadgeText`
+- **Frontend display**: product_card.dart shows red discount badge + strikethrough price; product_detail_screen.dart shows badge+prices; cart_screen.dart uses effectivePrice; checkout uses effectivePrice for order items
+- **Admin UI**: `admin_products.dart` popup menu → "Add Discount" dialog (type, value, dates, label) or "Manage Discount" (view+remove)
+- **API routes**: POST/DELETE/GET `/api/admin/product-discounts`, GET `/api/admin/product-discounts/:productId` — requires `products.edit` or `products.view` permission
 
 ## Key Technical Details
 

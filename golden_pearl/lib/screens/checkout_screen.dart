@@ -121,7 +121,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'quantity': item.quantity,
         'size': item.size,
         'color': item.color,
-        'price': item.product?.price ?? 0,
+        'price': item.product?.effectivePrice ?? item.product?.price ?? 0,
         'name': item.product?.nameEn ?? '',
         'image': (item.product?.images != null && item.product!.images.isNotEmpty) ? item.product!.images.first : null,
       }).toList();

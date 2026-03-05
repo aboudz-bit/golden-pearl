@@ -1,0 +1,126 @@
+Add “Product Discounts” feature that the Admin can create directly from the Admin → Products screen (the page shown in screenshot) and customers will see old price + discounted price.
+
+SCOPE (ONLY this feature)
+- Admin can add a discount to ONE product or MULTIPLE products.
+- Admin can set:
+  - Discount type: Percentage (%) OR Fixed amount (SAR)
+  - Discount value
+  - Start date/time
+  - End date/time
+  - Optional note/internal label
+- Discount must be time-based (active only between startAt and endAt).
+- Customer must see:
+  - Old price (strikethrough)
+  - New price (calculated)
+  - Discount badge (e.g., “-20%” or “-50 SAR”)
+- Admin must manage it from the Products page (same screen as the 3-dot menu actions).
+
+ADMIN UI/UX (Flutter)
+1) Add a new action in the product 3-dot menu:
+   - “Add/Manage Discount”
+2) Tapping opens a bottom sheet / modal with:
+   - Apply to: [This product] or [Select multiple products]
+     - If multi-select: open a searchable list with checkboxes + “Select All in current category tab”
+   - Discount type selector: Percentage | Fixed Amount (SAR)
+   - Value input
+   - StartAt picker (date + time)
+   - EndAt picker (date + time)
+   - Preview row:
+     - Old price, new price, badge text
+   - Buttons:
+     - Save Discount (primary)
+     - Remove Discount (danger) (only if discount exists)
+3) Validation:
+   - Value > 0
+   - EndAt > StartAt
+   - Fixed discount must not exceed product price (prevent negative final)
+   - Percentage max 95% (configurable)
+4) After save:
+   - Show success snackbar
+   - Close modal
+   - Refresh products list so cards show badge and discounted price in admin too.
+
+CUSTOMER UI (Flutter)
+- Anywhere a product price is displayed (product card, product details, cart line item, checkout summary):
+  - If active discount exists:
+    - Show oldPrice (strikethrough)
+    - Show discountedPrice
+    - Show badge
+- Cart calculations must use discountedPrice when discount is active at the time of viewing/checkout.
+- Order should store the “final unit price” used at purchase time (so later discount changes don’t affect past orders).
+
+BACKEND (Express + DB)
+A) Database changes
+Option 1 (Recommended): new table product_discounts
+- id (uuid)
+- productId (int/uuid)
+- type ('percent' | 'fixed')
+- value (int in halalah for fixed; int percent for percent)
+- startsAt (timestamp)
+- endsAt (timestamp)
+- isActive (bool) [optional, can be derived]
+- createdByAdminId (int/uuid)
+- createdAt (timestamp)
+Indexes:
+- (productId)
+- (startsAt, endsAt)
+
+Option 2: store discount fields on product table (less flexible). Use Option 1.
+
+B) API endpoints (Admin)
+1) Create/Update discount (bulk supported)
+POST /admin/product-discounts
+Body:
+{
+  "productIds": [1,2,3],
+  "type": "percent" | "fixed",
+  "value": 20,
+  "startsAt": "2026-03-05T10:00:00Z",
+  "endsAt": "2026-03-10T10:00:00Z"
+}
+Behavior:
+- Validate admin/staff permission (new permission: manageDiscounts OR reuse productsWrite)
+- For each productId:
+  - Upsert a discount record (or create a new and expire previous for that product)
+- Return success
+
+2) Remove discount (bulk supported)
+DELETE /admin/product-discounts
+Body:
+{ "productIds": [1,2,3] }
+Behavior:
+- Delete active discount rows for those products OR mark as ended now.
+- Return success
+
+C) Public/customer product fetching
+- When returning products (GET /products, /products/:id, search, category listing):
+  - Include activeDiscount if exists NOW (server time):
+    activeDiscount: { type, value, startsAt, endsAt }
+  - Also include computed fields:
+    priceOriginal (existing)
+    priceFinal (computed)
+    discountBadgeText (computed, optional)
+
+Discount calculation rules:
+- If no active discount: priceFinal = priceOriginal
+- Percent: priceFinal = round(priceOriginal * (100 - percent) / 100)
+- Fixed: priceFinal = max(0, priceOriginal - fixedAmount)
+
+D) Orders integrity
+- When creating order items, store:
+  - unitPriceOriginal
+  - unitPriceFinal
+  - discountType (nullable)
+  - discountValue (nullable)
+So invoices/receipts always reflect what the customer paid.
+
+E) Permission for staff
+- Add permission key: manageDiscounts (bool)
+- If staff doesn’t have it, hide “Add/Manage Discount” action.
+
+ACCEPTANCE
+- Admin can create discount from the Products page (single or multi-product).
+- Discount automatically activates/deactivates by time.
+- Customer sees old + new price everywhere.
+- Cart/checkout/order uses discounted price when active.
+- Removing discount immediately reverts customer price display.

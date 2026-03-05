@@ -149,6 +149,21 @@ export const categories = pgTable("categories", {
   index("idx_categories_sort_order").on(table.sortOrder),
 ]);
 
+export const productDiscounts = pgTable("product_discounts", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull(),
+  type: text("type").notNull(), // 'percent' | 'fixed'
+  value: integer("value").notNull(), // percent (1-95) or halalas for fixed
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  label: text("label"),
+  createdByUserId: integer("created_by_user_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_product_discounts_product").on(table.productId),
+  index("idx_product_discounts_time").on(table.startsAt, table.endsAt),
+]);
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
@@ -159,6 +174,7 @@ export const insertSiteSettingSchema = createInsertSchema(siteSettings).omit({ i
 export const insertPageViewSchema = createInsertSchema(pageViews).omit({ id: true, createdAt: true });
 export const insertBannerSchema = createInsertSchema(banners).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
+export const insertProductDiscountSchema = createInsertSchema(productDiscounts).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
@@ -181,5 +197,8 @@ export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
 export type InsertPageView = z.infer<typeof insertPageViewSchema>;
 export type InsertBanner = z.infer<typeof insertBannerSchema>;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
+
+export type ProductDiscount = typeof productDiscounts.$inferSelect;
+export type InsertProductDiscount = z.infer<typeof insertProductDiscountSchema>;
 
 export type CartItemWithProduct = CartItem & { product: Product };

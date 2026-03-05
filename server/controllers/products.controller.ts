@@ -3,6 +3,7 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { insertProductSchema } from "@shared/schema";
 import { AppError } from "../utils/AppError";
+import { computeDiscountedPrice, computeBadgeText } from "./product-discounts.controller";
 
 const updateProductSchema = insertProductSchema.partial();
 
@@ -11,28 +12,51 @@ const reorderItemSchema = z.object({
   orderIndex: z.number().int().min(0),
 });
 
+async function enrichWithDiscounts(products: any[]) {
+  if (products.length === 0) return products;
+  const ids = products.map(p => p.id);
+  const discounts = await storage.getActiveDiscountsForProducts(ids);
+  const discountMap = new Map<number, typeof discounts[0]>();
+  for (const d of discounts) {
+    if (!discountMap.has(d.productId)) {
+      discountMap.set(d.productId, d);
+    }
+  }
+  return products.map(p => {
+    const d = discountMap.get(p.id);
+    if (!d) return { ...p, activeDiscount: null, priceFinal: p.price, discountBadgeText: null };
+    return {
+      ...p,
+      activeDiscount: { id: d.id, type: d.type, value: d.value, startsAt: d.startsAt, endsAt: d.endsAt },
+      priceFinal: computeDiscountedPrice(p.price, d.type, d.value),
+      discountBadgeText: computeBadgeText(d.type, d.value),
+    };
+  });
+}
+
 export async function listProducts(req: Request, res: Response) {
   const { category, search, featured } = req.query;
+  let products;
   if (search && typeof search === "string") {
-    let results = await storage.searchProducts(search);
+    products = await storage.searchProducts(search);
     if (category && typeof category === "string") {
-      results = results.filter(p => p.category === category);
+      products = products.filter(p => p.category === category);
     }
-    return res.json(results);
+  } else if (featured === "true") {
+    products = await storage.getFeaturedProducts();
+  } else if (category && typeof category === "string") {
+    products = await storage.getProductsByCategory(category);
+  } else {
+    products = await storage.getProducts();
   }
-  if (featured === "true") {
-    return res.json(await storage.getFeaturedProducts());
-  }
-  if (category && typeof category === "string") {
-    return res.json(await storage.getProductsByCategory(category));
-  }
-  res.json(await storage.getProducts());
+  res.json(await enrichWithDiscounts(products));
 }
 
 export async function getProduct(req: Request, res: Response) {
   const product = await storage.getProduct(parseInt(req.params.id));
   if (!product) throw AppError.notFound("Product not found");
-  res.json(product);
+  const [enriched] = await enrichWithDiscounts([product]);
+  res.json(enriched);
 }
 
 export async function createProduct(req: Request, res: Response) {

@@ -1,3 +1,29 @@
+class ActiveDiscount {
+  final int id;
+  final String type;
+  final int value;
+  final DateTime startsAt;
+  final DateTime endsAt;
+
+  ActiveDiscount({
+    required this.id,
+    required this.type,
+    required this.value,
+    required this.startsAt,
+    required this.endsAt,
+  });
+
+  factory ActiveDiscount.fromJson(Map<String, dynamic> json) {
+    return ActiveDiscount(
+      id: (json['id'] as num).toInt(),
+      type: json['type'] ?? 'percent',
+      value: (json['value'] as num).toInt(),
+      startsAt: DateTime.parse(json['startsAt']),
+      endsAt: DateTime.parse(json['endsAt']),
+    );
+  }
+}
+
 class Product {
   final int id;
   final String nameEn;
@@ -20,6 +46,9 @@ class Product {
   final double rating;
   final int reviewCount;
   final int stock;
+  final ActiveDiscount? activeDiscount;
+  final int? priceFinal;
+  final String? discountBadgeText;
 
   Product({
     required this.id,
@@ -43,7 +72,13 @@ class Product {
     required this.rating,
     required this.reviewCount,
     this.stock = 100,
+    this.activeDiscount,
+    this.priceFinal,
+    this.discountBadgeText,
   });
+
+  int get effectivePrice => priceFinal ?? price;
+  bool get hasActiveDiscount => activeDiscount != null && priceFinal != null && priceFinal! < price;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -68,6 +103,11 @@ class Product {
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
       reviewCount: json['reviewCount'] ?? 0,
       stock: (json['stock'] as num?)?.toInt() ?? 100,
+      activeDiscount: json['activeDiscount'] != null
+          ? ActiveDiscount.fromJson(json['activeDiscount'])
+          : null,
+      priceFinal: json['priceFinal'] != null ? (json['priceFinal'] as num).toInt() : null,
+      discountBadgeText: json['discountBadgeText'],
     );
   }
 
