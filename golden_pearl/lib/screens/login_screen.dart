@@ -223,26 +223,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              if (!_isRegister) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      l10n.forgotPassword,
-                      style: const TextStyle(fontSize: 13, color: kGoldPrimary, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ),
-              ],
               if (!_isRegister && _prefsLoaded) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 InkWell(
                   onTap: () => setState(() => _rememberMe = !_rememberMe),
                   borderRadius: BorderRadius.circular(8),

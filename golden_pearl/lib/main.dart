@@ -18,7 +18,6 @@ import 'screens/order_confirmation_screen.dart';
 import 'screens/category_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/forgot_password_screen.dart';
 import 'screens/admin/admin_dashboard.dart';
 import 'utils/arabic_digits.dart';
 
@@ -157,8 +156,6 @@ class GoldenPearlApp extends StatelessWidget {
           page = OrderConfirmationScreen(order: settings.arguments);
         } else if (settings.name == '/login') {
           page = const LoginScreen();
-        } else if (settings.name == '/forgot-password') {
-          page = const ForgotPasswordScreen();
         } else if (settings.name == '/admin') {
           page = const AdminDashboard();
         }

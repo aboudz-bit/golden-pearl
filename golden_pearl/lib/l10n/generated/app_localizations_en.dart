@@ -187,7 +187,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apply => 'Apply';
 
   @override
-  String get invalidCode => 'Invalid or expired code';
+  String get invalidCode => 'Invalid discount code';
 
   @override
   String get placeOrder => 'Place Order';
@@ -663,70 +663,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteWord => 'DELETE';
-
-  @override
-  String get forgotPassword => 'Forgot password?';
-
-  @override
-  String get resetPassword => 'Reset Password';
-
-  @override
-  String get sendCode => 'Send Code';
-
-  @override
-  String get verifyCode => 'Verify';
-
-  @override
-  String get enterEmail => 'Enter your email address';
-
-  @override
-  String get enterPhone => 'Enter your phone number';
-
-  @override
-  String get otpSent => 'A verification code has been sent';
-
-  @override
-  String get enterOtp => 'Enter the 6-digit code';
-
-  @override
-  String get newPassword => 'New Password';
-
-  @override
-  String get confirmPassword => 'Confirm Password';
-
-  @override
-  String get passwordsDoNotMatch => 'Passwords do not match';
-
-  @override
-  String get passwordResetSuccess =>
-      'Password reset successfully. You can now log in.';
-
-  @override
-  String get resendCode => 'Resend Code';
-
-  @override
-  String resendCodeIn(Object seconds) {
-    return 'Resend code in ${seconds}s';
-  }
-
-  @override
-  String get chooseResetMethod => 'Choose how to reset your password';
-
-  @override
-  String get viaEmail => 'Via Email';
-
-  @override
-  String get viaPhone => 'Via Phone';
-
-  @override
-  String get codeSentToEmail => 'Code sent to your email';
-
-  @override
-  String get codeSentToPhone => 'Code sent to your phone';
-
-  @override
-  String get backToLogin => 'Back to Login';
-
-  @override
-  String get tooManyAttempts => 'Too many attempts. Please try again later.';
 }

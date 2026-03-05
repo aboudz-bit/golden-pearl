@@ -1,21 +1,7 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { z } from "zod";
 import { storage } from "../storage";
 import { AppError } from "../utils/AppError";
-import { sendSuccess, sendOk } from "../utils/response";
-
-const registerSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string().min(6).max(128),
-  name: z.string().min(1).max(100),
-  phone: z.string().max(20).optional(),
-});
-
-const loginSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string().min(1).max(128),
-});
 
 function safeUser(user: any) {
   const { passwordHash, ...safe } = user;
@@ -23,30 +9,25 @@ function safeUser(user: any) {
 }
 
 export async function register(req: Request, res: Response) {
-  const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw AppError.badRequest(parsed.error.issues.map(i => i.message).join(", "));
+  const { email, password, name, phone } = req.body;
+  if (!email || !password || !name) {
+    throw AppError.badRequest("Email, password, and name are required");
   }
-  const { email, password, name, phone } = parsed.data;
-
-  const existing = await storage.getUserByEmail(email.toLowerCase());
+  const existing = await storage.getUserByEmail(email);
   if (existing) throw AppError.conflict("Email already registered");
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await storage.createUser({ email: email.toLowerCase(), passwordHash, name, phone });
   req.session!.userId = user.id;
 
-  sendSuccess(res, { user: safeUser(user) }, 201);
+  res.json({ user: safeUser(user) });
 }
 
 export async function login(req: Request, res: Response) {
-  const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw AppError.badRequest("Email and password are required");
-  }
-  const { email, password } = parsed.data;
+  const { email, password } = req.body;
+  if (!email || !password) throw AppError.badRequest("Email and password are required");
 
-  const user = await storage.getUserByEmail(email.toLowerCase());
+  const user = await storage.getUserByEmail(email);
   if (!user) throw AppError.unauthorized("Invalid email or password");
 
   if (!user.isActive) {
@@ -57,21 +38,21 @@ export async function login(req: Request, res: Response) {
   if (!valid) throw AppError.unauthorized("Invalid email or password");
 
   req.session!.userId = user.id;
-  sendSuccess(res, { user: safeUser(user) });
+  res.json({ user: safeUser(user) });
 }
 
 export async function logout(req: Request, res: Response) {
   delete req.session!.userId;
-  sendOk(res);
+  res.json({ success: true });
 }
 
 export async function me(req: Request, res: Response) {
   const userId = req.session?.userId;
-  if (!userId) return sendSuccess(res, { user: null });
+  if (!userId) return res.json({ user: null });
   const user = await storage.getUserById(userId);
-  if (!user) return sendSuccess(res, { user: null });
-  if (!user.isActive) return sendSuccess(res, { user: null });
-  sendSuccess(res, { user: safeUser(user) });
+  if (!user) return res.json({ user: null });
+  if (!user.isActive) return res.json({ user: null });
+  res.json({ user: safeUser(user) });
 }
 
 export async function mergeCart(req: Request, res: Response) {
@@ -80,7 +61,7 @@ export async function mergeCart(req: Request, res: Response) {
   const sessionId = req.session!.id;
   await storage.migrateCartToUser(sessionId, userId);
   const items = await storage.getCartItemsByUserId(userId);
-  sendSuccess(res, { cartItems: items });
+  res.json({ success: true, cartItems: items });
 }
 
 export async function deleteAccount(req: Request, res: Response) {
@@ -96,5 +77,5 @@ export async function deleteAccount(req: Request, res: Response) {
 
   await storage.deleteUserAndData(userId);
   delete req.session!.userId;
-  sendOk(res);
+  res.json({ success: true });
 }

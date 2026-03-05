@@ -149,31 +149,6 @@ export const categories = pgTable("categories", {
   index("idx_categories_sort_order").on(table.sortOrder),
 ]);
 
-export const passwordResetOtps = pgTable("password_reset_otps", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  channel: text("channel").notNull(),
-  target: text("target").notNull(),
-  otpHash: text("otp_hash").notNull(),
-  attempts: integer("attempts").notNull().default(0),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  index("idx_otp_user_id").on(table.userId),
-  index("idx_otp_target").on(table.target),
-]);
-
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  tokenHash: text("token_hash").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  usedAt: timestamp("used_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  index("idx_reset_token_user_id").on(table.userId),
-]);
-
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
@@ -206,8 +181,5 @@ export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
 export type InsertPageView = z.infer<typeof insertPageViewSchema>;
 export type InsertBanner = z.infer<typeof insertBannerSchema>;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
-
-export type PasswordResetOtp = typeof passwordResetOtps.$inferSelect;
-export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 export type CartItemWithProduct = CartItem & { product: Product };

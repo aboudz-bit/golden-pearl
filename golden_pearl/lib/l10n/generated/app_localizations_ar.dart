@@ -187,7 +187,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get apply => 'تطبيق';
 
   @override
-  String get invalidCode => 'رمز غير صالح أو منتهي الصلاحية';
+  String get invalidCode => 'كود الخصم غير صالح';
 
   @override
   String get placeOrder => 'تأكيد الطلب';
@@ -660,70 +660,4 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get deleteWord => 'DELETE';
-
-  @override
-  String get forgotPassword => 'نسيتِ كلمة المرور؟';
-
-  @override
-  String get resetPassword => 'إعادة تعيين كلمة المرور';
-
-  @override
-  String get sendCode => 'إرسال الرمز';
-
-  @override
-  String get verifyCode => 'تحقق';
-
-  @override
-  String get enterEmail => 'أدخلي بريدك الإلكتروني';
-
-  @override
-  String get enterPhone => 'أدخلي رقم هاتفك';
-
-  @override
-  String get otpSent => 'تم إرسال رمز التحقق';
-
-  @override
-  String get enterOtp => 'أدخلي الرمز المكون من ٦ أرقام';
-
-  @override
-  String get newPassword => 'كلمة المرور الجديدة';
-
-  @override
-  String get confirmPassword => 'تأكيد كلمة المرور';
-
-  @override
-  String get passwordsDoNotMatch => 'كلمات المرور غير متطابقة';
-
-  @override
-  String get passwordResetSuccess =>
-      'تم إعادة تعيين كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.';
-
-  @override
-  String get resendCode => 'إعادة إرسال الرمز';
-
-  @override
-  String resendCodeIn(Object seconds) {
-    return 'إعادة إرسال خلال $seconds ثانية';
-  }
-
-  @override
-  String get chooseResetMethod => 'اختاري طريقة إعادة تعيين كلمة المرور';
-
-  @override
-  String get viaEmail => 'عبر البريد الإلكتروني';
-
-  @override
-  String get viaPhone => 'عبر الهاتف';
-
-  @override
-  String get codeSentToEmail => 'تم إرسال الرمز إلى بريدك الإلكتروني';
-
-  @override
-  String get codeSentToPhone => 'تم إرسال الرمز إلى هاتفك';
-
-  @override
-  String get backToLogin => 'العودة لتسجيل الدخول';
-
-  @override
-  String get tooManyAttempts => 'محاولات كثيرة. يرجى المحاولة لاحقاً.';
 }

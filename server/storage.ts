@@ -3,14 +3,12 @@ import { eq, and, ilike, or, desc, asc, count, sql, gte } from "drizzle-orm";
 import {
   products, cartItems, orders, discountCodes, adminUsers, notifications,
   users, siteSettings, pageViews, banners, categories,
-  passwordResetOtps, passwordResetTokens,
   type Product, type CartItem, type CartItemWithProduct,
   type InsertCartItem, type InsertProduct, type Order,
   type InsertOrder, type DiscountCode, type InsertDiscountCode,
   type Notification, type InsertNotification,
   type User, type InsertUser, type SiteSetting, type PageView, type InsertPageView,
-  type Banner, type InsertBanner, type Category, type InsertCategory,
-  type PasswordResetOtp, type PasswordResetToken
+  type Banner, type InsertBanner, type Category, type InsertCategory
 } from "@shared/schema";
 
 export interface IStorage {
@@ -83,17 +81,6 @@ export interface IStorage {
   reorderCategories(items: { id: number; sortOrder: number }[]): Promise<void>;
 
   getAdminByUsername(username: string): Promise<typeof adminUsers.$inferSelect | undefined>;
-
-  getUserByPhone(phone: string): Promise<User | undefined>;
-  createOtp(data: { userId: number; channel: string; target: string; otpHash: string; expiresAt: Date }): Promise<PasswordResetOtp>;
-  getActiveOtp(userId: number, channel: string): Promise<PasswordResetOtp | undefined>;
-  incrementOtpAttempts(id: number): Promise<void>;
-  deleteOtpsForUser(userId: number): Promise<void>;
-  countRecentOtps(target: string, sinceMinutes: number): Promise<number>;
-  createResetToken(data: { userId: number; tokenHash: string; expiresAt: Date }): Promise<PasswordResetToken>;
-  getResetTokenByHash(tokenHash: string): Promise<PasswordResetToken | undefined>;
-  markResetTokenUsed(id: number): Promise<void>;
-  deleteResetTokensForUser(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -477,73 +464,6 @@ export class DatabaseStorage implements IStorage {
   async getAdminByUsername(username: string) {
     const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.username, username));
     return admin;
-  }
-
-  async getUserByPhone(phone: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.phone, phone));
-    return user;
-  }
-
-  async createOtp(data: { userId: number; channel: string; target: string; otpHash: string; expiresAt: Date }): Promise<PasswordResetOtp> {
-    await db.delete(passwordResetOtps).where(
-      and(eq(passwordResetOtps.userId, data.userId), eq(passwordResetOtps.channel, data.channel))
-    );
-    const [created] = await db.insert(passwordResetOtps).values(data).returning();
-    return created;
-  }
-
-  async getActiveOtp(userId: number, channel: string): Promise<PasswordResetOtp | undefined> {
-    const [otp] = await db.select().from(passwordResetOtps).where(
-      and(
-        eq(passwordResetOtps.userId, userId),
-        eq(passwordResetOtps.channel, channel),
-        gte(passwordResetOtps.expiresAt, new Date())
-      )
-    );
-    return otp;
-  }
-
-  async incrementOtpAttempts(id: number): Promise<void> {
-    await db.update(passwordResetOtps)
-      .set({ attempts: sql`${passwordResetOtps.attempts} + 1` })
-      .where(eq(passwordResetOtps.id, id));
-  }
-
-  async deleteOtpsForUser(userId: number): Promise<void> {
-    await db.delete(passwordResetOtps).where(eq(passwordResetOtps.userId, userId));
-  }
-
-  async countRecentOtps(target: string, sinceMinutes: number): Promise<number> {
-    const since = new Date(Date.now() - sinceMinutes * 60 * 1000);
-    const [result] = await db.select({ count: count() }).from(passwordResetOtps).where(
-      and(eq(passwordResetOtps.target, target), gte(passwordResetOtps.createdAt, since))
-    );
-    return result?.count ?? 0;
-  }
-
-  async createResetToken(data: { userId: number; tokenHash: string; expiresAt: Date }): Promise<PasswordResetToken> {
-    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, data.userId));
-    const [created] = await db.insert(passwordResetTokens).values(data).returning();
-    return created;
-  }
-
-  async getResetTokenByHash(tokenHash: string): Promise<PasswordResetToken | undefined> {
-    const [token] = await db.select().from(passwordResetTokens).where(
-      and(
-        eq(passwordResetTokens.tokenHash, tokenHash),
-        gte(passwordResetTokens.expiresAt, new Date()),
-        sql`${passwordResetTokens.usedAt} IS NULL`
-      )
-    );
-    return token;
-  }
-
-  async markResetTokenUsed(id: number): Promise<void> {
-    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, id));
-  }
-
-  async deleteResetTokensForUser(userId: number): Promise<void> {
-    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
   }
 }
 
