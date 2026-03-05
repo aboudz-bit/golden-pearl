@@ -11,6 +11,7 @@ import * as admin from "./controllers/admin.controller";
 import * as pub from "./controllers/public.controller";
 import * as pay from "./controllers/payments.controller";
 import * as ship from "./controllers/shipping.controller";
+import * as passwordReset from "./controllers/password-reset.controller";
 import * as customers from "./controllers/customers.controller";
 import * as staff from "./controllers/staff.controller";
 
@@ -25,6 +26,10 @@ export async function registerRoutes(
   app.get("/api/auth/me", asyncHandler(auth.me));
   app.post("/api/auth/merge", asyncHandler(auth.mergeCart));
   app.delete("/api/auth/account", asyncHandler(auth.deleteAccount));
+
+  app.post("/api/auth/password-reset/request", asyncHandler(passwordReset.requestOtp));
+  app.post("/api/auth/password-reset/verify", asyncHandler(passwordReset.verifyOtp));
+  app.post("/api/auth/password-reset/confirm", asyncHandler(passwordReset.confirmReset));
 
   app.post("/api/admin/upload", isStaffOrAdmin, upload.single("file"), asyncHandler(uploadFile));
   app.delete("/api/admin/upload", isStaffOrAdmin, asyncHandler(deleteFile));

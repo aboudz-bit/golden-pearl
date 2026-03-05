@@ -455,7 +455,7 @@ abstract class AppLocalizations {
   /// No description provided for @invalidCode.
   ///
   /// In en, this message translates to:
-  /// **'Invalid discount code'**
+  /// **'Invalid or expired code'**
   String get invalidCode;
 
   /// No description provided for @placeOrder.
@@ -1369,6 +1369,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'DELETE'**
   String get deleteWord;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPassword;
+
+  /// No description provided for @resetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get resetPassword;
+
+  /// No description provided for @sendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Code'**
+  String get sendCode;
+
+  /// No description provided for @verifyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verifyCode;
+
+  /// No description provided for @enterEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address'**
+  String get enterEmail;
+
+  /// No description provided for @enterPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number'**
+  String get enterPhone;
+
+  /// No description provided for @otpSent.
+  ///
+  /// In en, this message translates to:
+  /// **'A verification code has been sent'**
+  String get otpSent;
+
+  /// No description provided for @enterOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code'**
+  String get enterOtp;
+
+  /// No description provided for @newPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get newPassword;
+
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPassword;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get passwordsDoNotMatch;
+
+  /// No description provided for @passwordResetSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset successfully. You can now log in.'**
+  String get passwordResetSuccess;
+
+  /// No description provided for @resendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend Code'**
+  String get resendCode;
+
+  /// No description provided for @resendCodeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code in {seconds}s'**
+  String resendCodeIn(Object seconds);
+
+  /// No description provided for @chooseResetMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to reset your password'**
+  String get chooseResetMethod;
+
+  /// No description provided for @viaEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Via Email'**
+  String get viaEmail;
+
+  /// No description provided for @viaPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Via Phone'**
+  String get viaPhone;
+
+  /// No description provided for @codeSentToEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sent to your email'**
+  String get codeSentToEmail;
+
+  /// No description provided for @codeSentToPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sent to your phone'**
+  String get codeSentToPhone;
+
+  /// No description provided for @backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Login'**
+  String get backToLogin;
+
+  /// No description provided for @tooManyAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please try again later.'**
+  String get tooManyAttempts;
 }
 
 class _AppLocalizationsDelegate

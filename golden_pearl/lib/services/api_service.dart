@@ -67,7 +67,8 @@ class ApiService {
     _updateCookie(response);
     _checkResponse(response);
     final data = jsonDecode(response.body);
-    return data['user'];
+    final inner = data['data'] ?? data;
+    return inner['user'];
   }
 
   Future<Map<String, dynamic>?> register(String email, String password, String name, String? phone) async {
@@ -79,7 +80,8 @@ class ApiService {
     _updateCookie(response);
     _checkResponse(response);
     final data = jsonDecode(response.body);
-    return data['user'];
+    final inner = data['data'] ?? data;
+    return inner['user'];
   }
 
   Future<void> logout() async {
@@ -93,7 +95,8 @@ class ApiService {
     _updateCookie(response);
     _checkResponse(response);
     final data = jsonDecode(response.body);
-    return data['user'];
+    final inner = data['data'] ?? data;
+    return inner['user'];
   }
 
   Future<void> mergeCart() async {
@@ -103,6 +106,44 @@ class ApiService {
 
   Future<void> deleteAccount() async {
     final response = await _client.delete(Uri.parse('$baseUrl/api/auth/account'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<Map<String, dynamic>> requestPasswordReset({required String channel, String? email, String? phone}) async {
+    final body = <String, dynamic>{'channel': channel};
+    if (email != null) body['email'] = email;
+    if (phone != null) body['phone'] = phone;
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/auth/password-reset/request'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> verifyPasswordResetOtp({required String channel, String? email, String? phone, required String otp}) async {
+    final body = <String, dynamic>{'channel': channel, 'otp': otp};
+    if (email != null) body['email'] = email;
+    if (phone != null) body['phone'] = phone;
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/auth/password-reset/verify'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> confirmPasswordReset({required String resetToken, required String newPassword}) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/auth/password-reset/confirm'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({'resetToken': resetToken, 'newPassword': newPassword}),
+    );
     _updateCookie(response);
     _checkResponse(response);
   }

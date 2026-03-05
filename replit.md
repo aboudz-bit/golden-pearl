@@ -68,7 +68,8 @@ lib/
 │   │   └── admin_staff.dart            # Staff user management + permission editor (admin-only)
 │   ├── home_screen.dart, shop_screen.dart, product_detail_screen.dart
 │   ├── cart_screen.dart, checkout_screen.dart, order_confirmation_screen.dart
-│   ├── login_screen.dart, orders_screen.dart, notifications_screen.dart
+│   ├── login_screen.dart, forgot_password_screen.dart
+│   ├── orders_screen.dart, notifications_screen.dart
 │   ├── category_screen.dart, settings_screen.dart
 ├── services/
 │   └── api_service.dart     # HTTP client (cookie-based auth, all API calls)
@@ -110,7 +111,7 @@ Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for 
 - **Staff endpoints**: `POST/GET /api/admin/staff`, `PATCH /api/admin/staff/:id`, `PATCH /api/admin/staff/:id/permissions`, `DELETE /api/admin/staff/:id`
 
 ## Validation
-- **Zod schemas** used in all mutating controllers: createProduct, updateProduct, createBanner, updateBanner, createDiscount, createOrder, updateOrderStatus, updateCategory
+- **Zod schemas** used in all mutating controllers: register, login, createProduct, updateProduct, createBanner, updateBanner, createDiscount, createOrder, updateOrderStatus, updateCategory
 - **Reorder endpoints** validate item shapes (id + sortOrder/orderIndex)
 - **Order status** validated against enum: pending, confirmed, processing, shipped, delivered, ready_for_pickup, cancelled
 - **Partial schemas** (`insertSchema.partial()`) used for update operations
@@ -143,3 +144,14 @@ Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for 
 - **Flutter**: `ApiService.deleteAccount()` + `AuthProvider.deleteAccount()` for account deletion
 - **Privacy Policy**: Served at `/privacy-policy` (bilingual EN/AR HTML)
 - **Settings screen**: Privacy Policy link, Delete Account (non-admin users)
+
+## Password Recovery (Forgot Password)
+- **3-step flow**: Request OTP → Verify OTP → Set New Password
+- **Channels**: Email or Phone (segmented control)
+- **Endpoints**: `POST /api/auth/password-reset/request`, `/verify`, `/confirm`
+- **Security**: OTP hashed (SHA-256), reset tokens hashed, 10-min OTP expiry, 15-min token expiry, max 5 OTP attempts, rate limited (3 requests per 15 min per target + express rate limiter 10/min)
+- **Privacy**: Never reveals whether user exists (always returns success message)
+- **DB tables**: `password_reset_otps` (userId, channel, target, otpHash, attempts, expiresAt), `password_reset_tokens` (userId, tokenHash, expiresAt, usedAt)
+- **Delivery**: OTP logged to console in dev (plug in SendGrid/Mailgun for email, Twilio/Unifonic for SMS)
+- **Flutter**: `ForgotPasswordScreen` with step indicator, 60s cooldown timer, auto-verify on 6-digit input
+- **L10n**: All strings bilingual (EN/AR)
