@@ -31,6 +31,9 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
+  optimizeDeps: {
+    exclude: ["mind-ar"],
+  },
   server: {
     fs: {
       strict: true,

@@ -1,297 +1,452 @@
 import { db } from "./db";
-import { products, discountCodes, stores } from "@shared/schema";
+import crypto from "crypto";
+import {
+  companies, users, memberships, products, productAssets,
+  experiences, publishRecords, analyticsEvents,
+} from "@shared/schema";
 
-const SEED_PRODUCTS = [
+function hashPassword(pw: string): string {
+  return crypto.createHash("sha256").update(pw).digest("hex");
+}
+
+const DEMO_COMPANIES = [
   {
-    nameEn: "Royal Maroon Embroidered Gown",
-    nameAr: "فستان ماروني ملكي مطرز",
-    descriptionEn: "A breathtaking evening gown in deep maroon with intricate gold thread embroidery along the bodice and sleeves. Handcrafted by skilled artisans, this piece blends traditional luxury with modern elegance.",
-    descriptionAr: "فستان سهرة أخّاذ بلون الماروني العميق مع تطريز بخيوط ذهبية دقيقة على الصدر والأكمام. مصنوع يدوياً بواسطة حرفيين مهرة، تمزج هذه القطعة بين الفخامة التقليدية والأناقة العصرية.",
-    price: 108900,
-    originalPrice: 132000,
-    category: "dresses",
-    subcategory: "evening",
-    images: ["/images/hero3.png"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    colors: ["Maroon & Gold", "Black & Gold", "Burgundy & Silver"],
-    fabricEn: "Premium silk blend with hand embroidery",
-    fabricAr: "مزيج حرير فاخر مع تطريز يدوي",
-    inStock: true,
-    featured: true,
-    badge: "Bestseller",
-    rating: 4.9,
-    reviewCount: 187,
+    name: "Golden Pearl",
+    slug: "golden-pearl",
+    logo: "/images/logo.png",
+    brandPrimaryColor: "#c9a84c",
+    brandSecondaryColor: "#1a1a2e",
+    domain: "goldenpearl.com",
+    defaultArMode: "surface",
   },
   {
-    nameEn: "Teal Pearl Jalabiya",
-    nameAr: "جلابية لؤلؤة الفيروز",
-    descriptionEn: "Exquisitely crafted jalabiya in rich teal blue with pearl and gold bead detailing. The loose, flowing silhouette offers both comfort and sophistication.",
-    descriptionAr: "جلابية مصنوعة بدقة بلون الأزرق الفيروزي الغني مع تفاصيل من اللؤلؤ والخرز الذهبي. القصة الفضفاضة والانسيابية توفر الراحة والأناقة معاً.",
-    price: 92000,
-    originalPrice: null,
-    category: "jalabiyas",
-    subcategory: "embroidered",
-    images: ["/images/hero3.png"],
-    sizes: ["S", "M", "L", "XL", "XXL"],
-    colors: ["Teal & Gold", "Emerald & Silver", "Royal Blue & Gold"],
-    fabricEn: "Soft chiffon with handmade beadwork",
-    fabricAr: "شيفون ناعم مع أعمال خرز يدوية",
-    inStock: true,
-    featured: true,
-    badge: "New",
-    rating: 4.8,
-    reviewCount: 94,
+    name: "LuxeHome Interiors",
+    slug: "luxehome",
+    brandPrimaryColor: "#2563eb",
+    brandSecondaryColor: "#1e40af",
+    domain: "luxehome.co",
+    defaultArMode: "surface",
   },
   {
-    nameEn: "Sage Green Embroidered Ensemble",
-    nameAr: "طقم أخضر مريمية مطرز",
-    descriptionEn: "A sophisticated sage green ensemble featuring intricate floral embroidery with gold accents. The relaxed silhouette with layered skirt creates an effortlessly elegant look perfect for celebrations.",
-    descriptionAr: "طقم أنيق بلون الأخضر المريمية يتميز بتطريز زهري دقيق بلمسات ذهبية. القصة المريحة مع التنورة الطبقية تخلق إطلالة أنيقة مثالية للاحتفالات.",
-    price: 118000,
-    originalPrice: null,
-    category: "dresses",
-    subcategory: "couture",
-    images: ["/images/hero1.png"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    colors: ["Sage Green & Gold", "Mint & Silver", "Olive & Gold"],
-    fabricEn: "Premium linen with gold thread embroidery",
-    fabricAr: "كتان فاخر مع تطريز بخيوط ذهبية",
-    inStock: true,
-    featured: true,
-    badge: "Exclusive",
-    rating: 5.0,
-    reviewCount: 62,
-  },
-  {
-    nameEn: "Little Princess Party Dress",
-    nameAr: "فستان حفلات الأميرة الصغيرة",
-    descriptionEn: "An enchanting party dress for your little princess, crafted from the softest fabrics with delicate gold embroidery. Perfect for Eid celebrations, weddings, and birthday parties.",
-    descriptionAr: "فستان حفلات ساحر لأميرتك الصغيرة، مصنوع من أنعم الأقمشة مع تطريز ذهبي رقيق. مثالي لاحتفالات العيد وحفلات الزفاف وأعياد الميلاد.",
-    price: 47000,
-    originalPrice: 58000,
-    category: "kids",
-    subcategory: "party",
-    images: ["/images/hero1.png"],
-    sizes: ["2-3Y", "3-4Y", "4-5Y", "5-6Y", "6-7Y"],
-    colors: ["Pastel Pink & Gold", "Ivory & Gold", "Lavender & Silver"],
-    fabricEn: "Soft tulle and cotton blend",
-    fabricAr: "مزيج تول وقطن ناعم",
-    inStock: true,
-    featured: true,
-    badge: "Popular",
-    rating: 4.9,
-    reviewCount: 231,
-  },
-  {
-    nameEn: "Golden Pearl Luxury Gift Set",
-    nameAr: "طقم هدايا Golden Pearl الفاخر",
-    descriptionEn: "The ultimate luxury gift, beautifully presented in our signature golden packaging. This curated set includes a silk scarf with pearl-edge detailing, gold-tone accessories, and a personalized card.",
-    descriptionAr: "الهدية الفاخرة المثالية، مقدمة بشكل جميل في تغليفنا الذهبي المميز. يتضمن هذا الطقم المنسق وشاح حرير بتفاصيل لؤلؤية وإكسسوارات ذهبية وبطاقة شخصية.",
-    price: 73000,
-    originalPrice: null,
-    category: "gifts",
-    subcategory: "premium",
-    images: ["/images/logo.png"],
-    sizes: ["One Size"],
-    colors: ["Gold & Pearl", "Rose Gold & Pearl", "Silver & Pearl"],
-    fabricEn: "Pure silk scarf included",
-    fabricAr: "يتضمن وشاح حرير نقي",
-    inStock: true,
-    featured: true,
-    badge: "Gift",
-    rating: 5.0,
-    reviewCount: 156,
-  },
-  {
-    nameEn: "Blue Embroidered Tunic",
-    nameAr: "تونيك أزرق مطرز",
-    descriptionEn: "A stunning sky blue tunic with elaborate floral embroidery featuring birds, butterflies and blossom motifs. Paired with a flowing pale pink skirt for an ethereal look.",
-    descriptionAr: "تونيك أزرق سماوي مذهل مع تطريز زهري متقن يضم زخارف الطيور والفراشات والأزهار. مقترن بتنورة وردية فاتحة لإطلالة أثيرية.",
-    price: 103000,
-    originalPrice: 116000,
-    category: "dresses",
-    subcategory: "tunic",
-    images: ["/images/hero2.png"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    colors: ["Sky Blue & Pink", "Powder Blue & Ivory", "Periwinkle & Gold"],
-    fabricEn: "Crushed silk with detailed embroidery",
-    fabricAr: "حرير مجعد مع تطريز مفصل",
-    inStock: true,
-    featured: false,
-    badge: "Sale",
-    rating: 4.7,
-    reviewCount: 78,
-  },
-  {
-    nameEn: "Classic Olive Embroidered Tunic",
-    nameAr: "تونيك زيتوني كلاسيكي مطرز",
-    descriptionEn: "Timeless elegance in olive green with garden-inspired embroidery featuring hot air balloons, birdcages, and floral motifs. A unique conversation piece for any occasion.",
-    descriptionAr: "أناقة خالدة باللون الزيتوني مع تطريز مستوحى من الحدائق يضم مناطيد وأقفاص طيور وزخارف زهرية. قطعة فريدة لأي مناسبة.",
-    price: 99500,
-    originalPrice: null,
-    category: "jalabiyas",
-    subcategory: "classic",
-    images: ["/images/hero2.png"],
-    sizes: ["S", "M", "L", "XL", "XXL"],
-    colors: ["Olive & Multi", "Sage & Gold", "Forest Green & Silver"],
-    fabricEn: "Premium organza with metallic thread",
-    fabricAr: "أورجانزا فاخرة مع خيوط معدنية",
-    inStock: true,
-    featured: false,
-    badge: null,
-    rating: 4.8,
-    reviewCount: 145,
-  },
-  {
-    nameEn: "Eid Collection Kids Jalabiya",
-    nameAr: "جلابية أطفال مجموعة العيد",
-    descriptionEn: "Specially designed for Eid celebrations, this adorable kids' jalabiya features pastel tones with sparkling embroidery and a comfortable relaxed fit.",
-    descriptionAr: "مصممة خصيصاً لاحتفالات العيد، هذه الجلابية الرائعة للأطفال تتميز بألوان باستيل مع تطريز لامع وقصة مريحة.",
-    price: 33500,
-    originalPrice: null,
-    category: "kids",
-    subcategory: "jalabiya",
-    images: ["/images/hero1.png"],
-    sizes: ["2-3Y", "3-4Y", "4-5Y", "5-6Y", "6-7Y", "7-8Y"],
-    colors: ["Mint & Gold", "Baby Blue & Silver", "Peach & Gold"],
-    fabricEn: "Organic cotton with gentle embroidery",
-    fabricAr: "قطن عضوي مع تطريز ناعم",
-    inStock: true,
-    featured: false,
-    badge: "Eid",
-    rating: 4.9,
-    reviewCount: 198,
-  },
-  {
-    nameEn: "Luxury Bridal Gift Box",
-    nameAr: "صندوق هدايا عروس فاخر",
-    descriptionEn: "Celebrate the bride-to-be with this exquisite gift box featuring premium items hand-selected for her special journey. Includes a silk robe, pearl hair accessories, and scented candle.",
-    descriptionAr: "احتفلي بالعروس القادمة مع صندوق الهدايا الرائع هذا الذي يتضمن عناصر فاخرة مختارة يدوياً لرحلتها المميزة. يتضمن روب حرير وإكسسوارات شعر لؤلؤية وشمعة معطرة.",
-    price: 131000,
-    originalPrice: null,
-    category: "gifts",
-    subcategory: "bridal",
-    images: ["/images/logo.png"],
-    sizes: ["One Size"],
-    colors: ["Bridal White & Gold", "Blush Pink & Gold", "Classic Gold"],
-    fabricEn: "Silk robe included",
-    fabricAr: "يتضمن روب حرير",
-    inStock: true,
-    featured: false,
-    badge: "Luxury",
-    rating: 5.0,
-    reviewCount: 89,
-  },
-  {
-    nameEn: "Pastel Blush Embroidered Set",
-    nameAr: "طقم وردي باستيل مطرز",
-    descriptionEn: "A delicate blush pink ensemble with subtle gold embroidered borders and pearl detailing. The layered silhouette with flowing dupatta creates a graceful, feminine look.",
-    descriptionAr: "طقم وردي رقيق بحواف مطرزة بالذهب وتفاصيل لؤلؤية. القصة الطبقية مع الدوباتا الانسيابية تخلق إطلالة أنثوية رشيقة.",
-    price: 112000,
-    originalPrice: 128000,
-    category: "dresses",
-    subcategory: "formal",
-    images: ["/images/hero1.png"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    colors: ["Blush Pink & Gold", "Champagne & Pearl", "Rose & Silver"],
-    fabricEn: "Georgette with scalloped lace trim",
-    fabricAr: "جورجيت مع حواف دانتيل مسننة",
-    inStock: true,
-    featured: true,
-    badge: "New Arrival",
-    rating: 4.8,
-    reviewCount: 43,
+    name: "TechGear Pro",
+    slug: "techgear",
+    brandPrimaryColor: "#059669",
+    brandSecondaryColor: "#047857",
+    domain: "techgear.pro",
+    defaultArMode: "surface",
   },
 ];
 
-const SEED_DISCOUNTS = [
+const DEMO_USERS = [
   {
-    code: "WELCOME10",
-    type: "percentage",
-    value: 10,
-    minOrder: 10000,
-    maxUses: 1000,
-    active: true,
+    email: "admin@arcore7.com",
+    passwordHash: hashPassword("admin123"),
+    firstName: "Super",
+    lastName: "Admin",
+    role: "super_admin",
   },
   {
-    code: "EID25",
-    type: "percentage",
-    value: 25,
-    minOrder: 20000,
-    maxUses: 500,
-    active: true,
+    email: "sarah@goldenpearl.com",
+    passwordHash: hashPassword("demo123"),
+    firstName: "Sarah",
+    lastName: "Al-Rashid",
+    role: "company_admin",
   },
   {
-    code: "FREESHIP",
-    type: "fixed",
-    value: 1500,
-    minOrder: 15000,
-    maxUses: null,
-    active: true,
-  },
-];
-
-const SEED_STORES = [
-  {
-    nameEn: "Golden Pearl - The Avenues Mall",
-    nameAr: "Golden Pearl - مجمع الأفنيوز",
-    addressEn: "The Avenues Mall, Phase 2, Al Rai, Kuwait City",
-    addressAr: "مجمع الأفنيوز، المرحلة الثانية، الري، مدينة الكويت",
-    city: "Kuwait City",
-    phone: "+965 2225 0001",
-    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
-    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
-    mapUrl: "https://maps.google.com/?q=29.2577,47.9373",
-    isActive: true,
+    email: "omar@goldenpearl.com",
+    passwordHash: hashPassword("demo123"),
+    firstName: "Omar",
+    lastName: "Hassan",
+    role: "content_manager",
   },
   {
-    nameEn: "Golden Pearl - 360 Mall",
-    nameAr: "Golden Pearl - مجمع 360",
-    addressEn: "360 Mall, 6th Ring Road, Zahra, Kuwait",
-    addressAr: "مجمع 360، الطريق الدائري السادس، الزهراء، الكويت",
-    city: "Kuwait City",
-    phone: "+965 2530 0002",
-    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
-    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
-    mapUrl: "https://maps.google.com/?q=29.2892,48.0012",
-    isActive: true,
+    email: "james@luxehome.co",
+    passwordHash: hashPassword("demo123"),
+    firstName: "James",
+    lastName: "Mitchell",
+    role: "company_admin",
   },
   {
-    nameEn: "Golden Pearl - Marina Mall",
-    nameAr: "Golden Pearl - مجمع المارينا",
-    addressEn: "Marina Mall, Salmiya, Kuwait",
-    addressAr: "مجمع المارينا، السالمية، الكويت",
-    city: "Salmiya",
-    phone: "+965 2571 0003",
-    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
-    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
-    mapUrl: "https://maps.google.com/?q=29.3375,48.0821",
-    isActive: true,
+    email: "alex@techgear.pro",
+    passwordHash: hashPassword("demo123"),
+    firstName: "Alex",
+    lastName: "Chen",
+    role: "company_admin",
   },
 ];
 
 export async function seedDatabase() {
   try {
-    const existingProducts = await db.select().from(products);
-    if (existingProducts.length === 0) {
-      console.log("Seeding database with products...");
-      await db.insert(products).values(SEED_PRODUCTS);
-      console.log(`Seeded ${SEED_PRODUCTS.length} products`);
-
-      await db.insert(discountCodes).values(SEED_DISCOUNTS);
-      console.log(`Seeded ${SEED_DISCOUNTS.length} discount codes`);
-    } else {
-      console.log(`Database already has ${existingProducts.length} products, skipping seed`);
+    const existingCompanies = await db.select().from(companies);
+    if (existingCompanies.length > 0) {
+      console.log(`Database already seeded (${existingCompanies.length} companies). Skipping.`);
+      return;
     }
 
-    const existingStores = await db.select().from(stores);
-    if (existingStores.length === 0) {
-      console.log("Seeding database with stores...");
-      await db.insert(stores).values(SEED_STORES);
-      console.log(`Seeded ${SEED_STORES.length} stores`);
-    } else {
-      console.log(`Database already has ${existingStores.length} stores, skipping seed`);
+    console.log("Seeding AR-core-7 database...");
+
+    // Companies
+    const createdCompanies = await db.insert(companies).values(DEMO_COMPANIES).returning();
+    console.log(`  Created ${createdCompanies.length} companies`);
+
+    // Users
+    const createdUsers = await db.insert(users).values(DEMO_USERS).returning();
+    console.log(`  Created ${createdUsers.length} users`);
+
+    // Memberships
+    const membershipData = [
+      // Super admin gets access to all companies
+      { userId: createdUsers[0].id, companyId: createdCompanies[0].id, role: "company_admin" },
+      { userId: createdUsers[0].id, companyId: createdCompanies[1].id, role: "company_admin" },
+      { userId: createdUsers[0].id, companyId: createdCompanies[2].id, role: "company_admin" },
+      // Sarah & Omar -> Golden Pearl
+      { userId: createdUsers[1].id, companyId: createdCompanies[0].id, role: "company_admin" },
+      { userId: createdUsers[2].id, companyId: createdCompanies[0].id, role: "content_manager" },
+      // James -> LuxeHome
+      { userId: createdUsers[3].id, companyId: createdCompanies[1].id, role: "company_admin" },
+      // Alex -> TechGear
+      { userId: createdUsers[4].id, companyId: createdCompanies[2].id, role: "company_admin" },
+    ];
+    await db.insert(memberships).values(membershipData);
+    console.log(`  Created ${membershipData.length} memberships`);
+
+    // Products - Golden Pearl
+    const gpProducts = [
+      {
+        companyId: createdCompanies[0].id,
+        title: "Royal Maroon Embroidered Gown",
+        sku: "GP-GOWN-001",
+        category: "Fashion",
+        description: "A breathtaking evening gown in deep maroon with intricate gold thread embroidery. Handcrafted by skilled artisans, blending traditional luxury with modern elegance.",
+        brand: "Golden Pearl",
+        thumbnail: "/images/hero3.png",
+        status: "active",
+        tags: ["evening", "embroidered", "luxury"],
+        scalePreset: 1.0,
+        anchorType: "floor",
+        publishStatus: "published",
+        assetCompletenessScore: 85,
+        slug: "royal-maroon-gown",
+      },
+      {
+        companyId: createdCompanies[0].id,
+        title: "Sage Green Ensemble",
+        sku: "GP-ENS-002",
+        category: "Fashion",
+        description: "A sophisticated sage green ensemble featuring intricate floral embroidery with gold accents. The relaxed silhouette with layered skirt creates an effortlessly elegant look.",
+        brand: "Golden Pearl",
+        thumbnail: "/images/hero1.png",
+        status: "active",
+        tags: ["ensemble", "floral", "elegant"],
+        scalePreset: 1.0,
+        anchorType: "floor",
+        publishStatus: "published",
+        assetCompletenessScore: 90,
+        slug: "sage-green-ensemble",
+      },
+      {
+        companyId: createdCompanies[0].id,
+        title: "Blue Embroidered Tunic",
+        sku: "GP-TUN-003",
+        category: "Fashion",
+        description: "A stunning sky blue tunic with elaborate floral embroidery featuring birds, butterflies and blossom motifs.",
+        brand: "Golden Pearl",
+        thumbnail: "/images/hero2.png",
+        status: "active",
+        tags: ["tunic", "embroidered", "floral"],
+        scalePreset: 0.8,
+        anchorType: "floor",
+        publishStatus: "ready",
+        assetCompletenessScore: 70,
+        slug: "blue-embroidered-tunic",
+      },
+    ];
+
+    // Products - LuxeHome
+    const lhProducts = [
+      {
+        companyId: createdCompanies[1].id,
+        title: "Artisan Coffee Table",
+        sku: "LH-TBL-001",
+        category: "Furniture",
+        description: "Hand-crafted walnut coffee table with brass inlay details. Perfect for modern living spaces.",
+        brand: "LuxeHome",
+        status: "active",
+        tags: ["furniture", "table", "walnut"],
+        dimensionsWidth: 120,
+        dimensionsHeight: 45,
+        dimensionsDepth: 60,
+        dimensionsUnit: "cm",
+        scalePreset: 0.5,
+        anchorType: "floor",
+        publishStatus: "published",
+        assetCompletenessScore: 95,
+        slug: "artisan-coffee-table",
+      },
+      {
+        companyId: createdCompanies[1].id,
+        title: "Milano Lounge Chair",
+        sku: "LH-CHR-002",
+        category: "Furniture",
+        description: "Italian-designed lounge chair with premium leather upholstery and solid oak frame.",
+        brand: "LuxeHome",
+        status: "active",
+        tags: ["furniture", "chair", "leather"],
+        dimensionsWidth: 75,
+        dimensionsHeight: 90,
+        dimensionsDepth: 80,
+        dimensionsUnit: "cm",
+        scalePreset: 0.6,
+        anchorType: "floor",
+        publishStatus: "ready",
+        assetCompletenessScore: 80,
+        slug: "milano-lounge-chair",
+      },
+    ];
+
+    // Products - TechGear
+    const tgProducts = [
+      {
+        companyId: createdCompanies[2].id,
+        title: "ProVision VR Headset",
+        sku: "TG-VR-001",
+        category: "Electronics",
+        description: "Next-generation VR headset with 4K displays per eye, inside-out tracking, and lightweight ergonomic design.",
+        brand: "TechGear",
+        status: "active",
+        tags: ["vr", "headset", "electronics"],
+        dimensionsWidth: 18,
+        dimensionsHeight: 10,
+        dimensionsDepth: 20,
+        dimensionsUnit: "cm",
+        scalePreset: 2.0,
+        anchorType: "tabletop",
+        publishStatus: "published",
+        assetCompletenessScore: 100,
+        slug: "provision-vr-headset",
+      },
+      {
+        companyId: createdCompanies[2].id,
+        title: "AirDock Wireless Charger",
+        sku: "TG-CHG-002",
+        category: "Accessories",
+        description: "Premium wireless charging dock with magnetic alignment, fast-charge support, and ambient LED status ring.",
+        brand: "TechGear",
+        status: "active",
+        tags: ["charger", "wireless", "accessories"],
+        scalePreset: 3.0,
+        anchorType: "tabletop",
+        publishStatus: "draft",
+        assetCompletenessScore: 60,
+        slug: "airdock-wireless-charger",
+      },
+    ];
+
+    const allProducts = [...gpProducts, ...lhProducts, ...tgProducts];
+    const createdProducts = await db.insert(products).values(allProducts).returning();
+    console.log(`  Created ${createdProducts.length} products`);
+
+    // Assets for products (using sample model URLs)
+    const assetData = createdProducts.flatMap((p) => {
+      const assets = [
+        {
+          productId: p.id,
+          companyId: p.companyId,
+          assetType: "poster",
+          fileName: "poster.png",
+          filePath: p.thumbnail || "/images/logo.png",
+          fileSize: 250000,
+          mimeType: "image/png",
+          isValid: true,
+          sortOrder: 0,
+        },
+      ];
+      // Add GLB asset reference for demo
+      assets.push({
+        productId: p.id,
+        companyId: p.companyId,
+        assetType: "glb",
+        fileName: "model.glb",
+        filePath: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+        fileSize: 1500000,
+        mimeType: "model/gltf-binary",
+        isValid: true,
+        sortOrder: 1,
+      });
+      return assets;
+    });
+    await db.insert(productAssets).values(assetData);
+    console.log(`  Created ${assetData.length} product assets`);
+
+    // Experiences
+    const experienceData = [
+      // Golden Pearl experiences
+      {
+        companyId: createdCompanies[0].id,
+        productId: createdProducts[0].id,
+        name: "Royal Gown 3D Viewer",
+        slug: "gp-royal-gown-viewer",
+        experienceType: "product_viewer",
+        status: "published",
+        scale: 1.0,
+        lightingPreset: "studio",
+        backgroundMode: "gradient",
+        autoRotate: true,
+        ctaText: "Shop Now",
+        ctaLink: "https://goldenpearl.com/shop",
+        analyticsEnabled: true,
+      },
+      {
+        companyId: createdCompanies[0].id,
+        productId: createdProducts[0].id,
+        name: "Royal Gown Surface AR",
+        slug: "gp-royal-gown-ar",
+        experienceType: "surface_ar",
+        status: "published",
+        scale: 1.0,
+        lightingPreset: "outdoor",
+        backgroundMode: "transparent",
+        autoRotate: false,
+        ctaText: "View in Your Space",
+        analyticsEnabled: true,
+      },
+      {
+        companyId: createdCompanies[0].id,
+        productId: createdProducts[1].id,
+        name: "Sage Ensemble Image Target",
+        slug: "gp-sage-image-target",
+        experienceType: "image_target",
+        status: "ready",
+        scale: 0.8,
+        lightingPreset: "soft",
+        backgroundMode: "transparent",
+        analyticsEnabled: true,
+        targetImagePath: "/images/hero1.png",
+      },
+      // LuxeHome experiences
+      {
+        companyId: createdCompanies[1].id,
+        productId: createdProducts[3].id,
+        name: "Coffee Table AR Preview",
+        slug: "lh-coffee-table-ar",
+        experienceType: "surface_ar",
+        status: "published",
+        scale: 0.5,
+        lightingPreset: "studio",
+        backgroundMode: "transparent",
+        ctaText: "Order Now",
+        ctaLink: "https://luxehome.co/products/coffee-table",
+        analyticsEnabled: true,
+      },
+      {
+        companyId: createdCompanies[1].id,
+        productId: createdProducts[3].id,
+        name: "Coffee Table 3D Viewer",
+        slug: "lh-coffee-table-viewer",
+        experienceType: "product_viewer",
+        status: "published",
+        scale: 0.5,
+        lightingPreset: "studio",
+        backgroundMode: "white",
+        autoRotate: true,
+        analyticsEnabled: true,
+      },
+      // TechGear experiences
+      {
+        companyId: createdCompanies[2].id,
+        productId: createdProducts[5].id,
+        name: "VR Headset 360° View",
+        slug: "tg-vr-headset-viewer",
+        experienceType: "product_viewer",
+        status: "published",
+        scale: 2.0,
+        lightingPreset: "dramatic",
+        backgroundMode: "dark",
+        autoRotate: true,
+        ctaText: "Pre-Order",
+        ctaLink: "https://techgear.pro/vr-headset",
+        analyticsEnabled: true,
+      },
+      {
+        companyId: createdCompanies[2].id,
+        productId: createdProducts[5].id,
+        name: "VR Headset QR Launch",
+        slug: "tg-vr-headset-qr",
+        experienceType: "qr_launch",
+        status: "published",
+        scale: 2.0,
+        lightingPreset: "studio",
+        backgroundMode: "transparent",
+        analyticsEnabled: true,
+      },
+    ];
+
+    const createdExperiences = await db.insert(experiences).values(experienceData).returning();
+    console.log(`  Created ${createdExperiences.length} experiences`);
+
+    // Publish records for published experiences
+    const publishedExps = createdExperiences.filter(e => e.status === "published");
+    const publishData = publishedExps.map(e => ({
+      experienceId: e.id,
+      companyId: e.companyId,
+      publishedById: createdUsers[0].id,
+      publicUrl: `/ar/${e.slug}`,
+      qrTargetUrl: `/qr/${e.slug}`,
+      embedSnippet: `<iframe src="/ar/${e.slug}?embed=1" width="100%" height="500" frameborder="0" allow="camera;xr-spatial-tracking"></iframe>`,
+      isLive: true,
+    }));
+    if (publishData.length > 0) {
+      await db.insert(publishRecords).values(publishData);
+      console.log(`  Created ${publishData.length} publish records`);
     }
+
+    // Analytics events (sample data for the last 30 days)
+    const analyticsData: any[] = [];
+    const eventTypes = ["page_view", "viewer_open", "ar_launch", "camera_granted", "tracking_session"];
+    const devices = ["mobile", "desktop", "tablet"];
+    const browsers = ["Safari", "Chrome", "Firefox"];
+
+    for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+      const date = new Date();
+      date.setDate(date.getDate() - dayOffset);
+
+      for (const company of createdCompanies) {
+        const eventsPerDay = Math.floor(Math.random() * 15) + 5;
+        for (let i = 0; i < eventsPerDay; i++) {
+          const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+          const exp = createdExperiences.find(e => e.companyId === company.id);
+          const prod = createdProducts.find(p => p.companyId === company.id);
+
+          analyticsData.push({
+            companyId: company.id,
+            experienceId: exp?.id || null,
+            productId: prod?.id || null,
+            eventType,
+            sessionId: `sess-${Math.random().toString(36).slice(2, 10)}`,
+            deviceType: devices[Math.floor(Math.random() * devices.length)],
+            browser: browsers[Math.floor(Math.random() * browsers.length)],
+            duration: eventType === "tracking_session" ? Math.floor(Math.random() * 120) + 10 : null,
+            createdAt: date,
+          });
+        }
+      }
+    }
+
+    // Insert in batches
+    for (let i = 0; i < analyticsData.length; i += 100) {
+      const batch = analyticsData.slice(i, i + 100);
+      await db.insert(analyticsEvents).values(batch);
+    }
+    console.log(`  Created ${analyticsData.length} analytics events`);
+
+    console.log("AR-core-7 database seeded successfully!");
+    console.log("\n  Login credentials:");
+    console.log("  Super Admin: admin@arcore7.com / admin123");
+    console.log("  Company Admin (Golden Pearl): sarah@goldenpearl.com / demo123");
+    console.log("  Content Manager: omar@goldenpearl.com / demo123");
+    console.log("  Company Admin (LuxeHome): james@luxehome.co / demo123");
+    console.log("  Company Admin (TechGear): alex@techgear.pro / demo123\n");
+
   } catch (error) {
     console.error("Seed error:", error);
   }

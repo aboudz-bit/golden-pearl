@@ -7,6 +7,8 @@ import fs from "fs";
 import { registerRoutes } from "./routes";
 import { createServer } from "http";
 import { seedDatabase } from "./seed";
+import { setupVite } from "./vite";
+import { serveStatic } from "./static";
 
 const SessionStore = MemoryStore(session);
 
@@ -15,7 +17,9 @@ const httpServer = createServer(app);
 
 declare module "express-session" {
   interface SessionData {
-    id: string;
+    userId: number;
+    userRole: string;
+    companyId: number | null;
   }
 }
 
@@ -36,15 +40,15 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "golden-pearl-secret",
+    secret: process.env.SESSION_SECRET || "ar-core-7-secret-key",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     store: new SessionStore({ checkPeriod: 86400000 }),
     cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 },
   })
 );
 
-export function log(message: string, source = "express") {
+export function log(message: string, source = "ar-core-7") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -79,6 +83,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve uploaded files
+const uploadsDir = path.resolve(import.meta.dirname, "..", "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use("/uploads", express.static(uploadsDir));
+
+// Serve golden_pearl images for demo thumbnails
+const imagesDir = path.resolve(import.meta.dirname, "..", "golden_pearl", "assets", "images");
+if (fs.existsSync(imagesDir)) {
+  app.use("/images", express.static(imagesDir));
+}
+
 (async () => {
   await seedDatabase();
   await registerRoutes(httpServer, app);
@@ -91,29 +108,14 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  const flutterBuildPath = path.resolve(import.meta.dirname, "..", "golden_pearl", "build", "web");
-  if (fs.existsSync(flutterBuildPath)) {
-    app.use(express.static(flutterBuildPath));
-    app.use((_req, res) => {
-      res.sendFile(path.resolve(flutterBuildPath, "index.html"));
-    });
-    log("Serving Flutter web build");
+  if (process.env.NODE_ENV === "development" || !process.env.NODE_ENV) {
+    await setupVite(httpServer, app);
   } else {
-    app.get("/", (_req, res) => {
-      res.json({
-        message: "Golden Pearl API",
-        endpoints: {
-          products: "/api/products",
-          cart: "/api/cart",
-          orders: "/api/orders",
-        }
-      });
-    });
-    log("Flutter build not found, serving API only");
+    serveStatic(app);
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
-    log(`serving on port ${port}`);
+    log(`AR-core-7 platform running on port ${port}`);
   });
 })();
