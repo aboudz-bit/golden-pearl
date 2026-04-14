@@ -1,11 +1,12 @@
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
 import {
-  products, cartItems, orders, discountCodes, adminUsers, stores,
+  products, cartItems, orders, discountCodes, adminUsers, stores, notifications,
   type Product, type CartItem, type CartItemWithProduct,
   type InsertCartItem, type InsertProduct, type Order,
   type InsertOrder, type DiscountCode, type InsertDiscountCode,
-  type Store, type InsertStore
+  type Store, type InsertStore,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 
 export interface IStorage {
