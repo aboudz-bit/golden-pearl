@@ -1,10 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import '../../services/platform_io.dart';
 
 class AdminHeroPage extends StatefulWidget {
   const AdminHeroPage({super.key});
@@ -63,58 +62,51 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
   };
 
   Future<void> _pickAndUploadSlide() async {
-    final input = html.FileUploadInputElement();
-    input.accept = 'image/jpeg,image/png,image/webp,video/mp4';
-    input.click();
+    if (!kIsWeb) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Slide upload is available in the web admin panel.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+    final PickedMedia? picked = await pickMediaFile(
+      accept: 'image/jpeg,image/png,image/webp,video/mp4',
+    );
+    if (picked == null || !mounted) return;
 
-    input.onChange.listen((event) async {
-      final files = input.files;
-      if (files == null || files.isEmpty) return;
-      final file = files[0];
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onLoadEnd.listen((event) async {
-        if (!mounted) return;
-        setState(() => _uploading = true);
-        try {
-          final rawData = reader.result;
-          final Uint8List uint8list;
-          if (rawData is Uint8List) {
-            uint8list = rawData;
-          } else if (rawData is ByteBuffer) {
-            uint8list = rawData.asUint8List();
-          } else {
-            throw Exception('Unexpected file data type');
-          }
-          final bytes = uint8list.toList();
-          final uploadResult = await apiService.uploadFile(bytes, file.name);
-          final url = uploadResult['url'] as String;
-          final uploadType = uploadResult['type'] as String? ?? 'image';
+    setState(() => _uploading = true);
+    try {
+      final uploadResult = await apiService.uploadFile(picked.bytes.toList(), picked.name);
+      final url = uploadResult['url'] as String;
+      final uploadType = uploadResult['type'] as String? ?? 'image';
 
-          final overlay = _defaultOverlay();
-          await apiService.createBanner({
-            'url': url,
-            'type': uploadType,
-            'active': true,
-            'overlay': jsonEncode(overlay),
-          });
-          await _loadSlides();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: const Text('Slide added'), backgroundColor: kGoldPrimary, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-            );
-          }
-        } finally {
-          if (mounted) setState(() => _uploading = false);
-        }
+      final overlay = _defaultOverlay();
+      await apiService.createBanner({
+        'url': url,
+        'type': uploadType,
+        'active': true,
+        'overlay': jsonEncode(overlay),
       });
-    });
+      await _loadSlides();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Slide added'), backgroundColor: kGoldPrimary, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   Future<void> _duplicateSlide(Map<String, dynamic> slide) async {

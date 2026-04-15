@@ -1,10 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
 import '../../main.dart';
 import '../../services/api_service.dart';
+import '../../services/platform_io.dart';
 import '../../models/product.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 
 class AdminProductFormScreen extends StatefulWidget {
   final Product? product;
@@ -76,78 +75,55 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     super.dispose();
   }
 
+  bool _notifyAdminWebOnly() {
+    if (kIsWeb) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Media upload is available in the web admin panel.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return true;
+  }
+
   Future<void> _pickAndUploadImage() async {
-    final input = html.FileUploadInputElement()..accept = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
-    input.click();
-    input.onChange.listen((event) async {
-      final files = input.files;
-      if (files == null || files.isEmpty) return;
-      final file = files[0];
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onLoadEnd.listen((e) async {
-        if (!mounted) return;
-        setState(() => _uploading = true);
-        try {
-          final rawData = reader.result;
-          final Uint8List uint8list;
-          if (rawData is Uint8List) {
-            uint8list = rawData;
-          } else if (rawData is ByteBuffer) {
-            uint8list = rawData.asUint8List();
-          } else {
-            throw Exception('Unexpected file data type');
-          }
-          final bytes = uint8list.toList();
-          final uploaded = await apiService.uploadFile(bytes, file.name);
-          if (mounted) setState(() => _images.add(uploaded['url'] as String));
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
-            );
-          }
-        }
-        if (mounted) setState(() => _uploading = false);
-      });
-    });
+    if (_notifyAdminWebOnly()) return;
+    final PickedMedia? picked = await pickMediaFile(
+      accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _uploading = true);
+    try {
+      final uploaded = await apiService.uploadFile(picked.bytes.toList(), picked.name);
+      if (mounted) setState(() => _images.add(uploaded['url'] as String));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   Future<void> _pickAndUploadVideo() async {
-    final input = html.FileUploadInputElement()..accept = 'video/mp4';
-    input.click();
-    input.onChange.listen((event) async {
-      final files = input.files;
-      if (files == null || files.isEmpty) return;
-      final file = files[0];
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onLoadEnd.listen((e) async {
-        if (!mounted) return;
-        setState(() => _uploading = true);
-        try {
-          final rawData = reader.result;
-          final Uint8List uint8list;
-          if (rawData is Uint8List) {
-            uint8list = rawData;
-          } else if (rawData is ByteBuffer) {
-            uint8list = rawData.asUint8List();
-          } else {
-            throw Exception('Unexpected file data type');
-          }
-          final bytes = uint8list.toList();
-          final uploaded = await apiService.uploadFile(bytes, file.name);
-          if (mounted) setState(() => _videoUrl = uploaded['url'] as String);
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
-            );
-          }
-        }
-        if (mounted) setState(() => _uploading = false);
-      });
-    });
+    if (_notifyAdminWebOnly()) return;
+    final PickedMedia? picked = await pickMediaFile(accept: 'video/mp4');
+    if (picked == null || !mounted) return;
+    setState(() => _uploading = true);
+    try {
+      final uploaded = await apiService.uploadFile(picked.bytes.toList(), picked.name);
+      if (mounted) setState(() => _videoUrl = uploaded['url'] as String);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   void _removeImage(int index) {
