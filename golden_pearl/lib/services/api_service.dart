@@ -1,35 +1,46 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:http/browser_client.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
+// Conditional import: on web dart:html is available and we get the browser
+// implementation; on iOS/Android/desktop we get the default http.Client().
+// This removes the hard dart:html import that was breaking iOS compilation.
+import '_http_client_io.dart'
+    if (dart.library.html) '_http_client_web.dart';
 
 class ApiService {
+  // Production API URL is injected at build time via:
+  //   flutter build ios --release --dart-define=API_URL=https://your.api.host
+  // If unset, falls back to platform-appropriate local development defaults.
   static const String _productionUrl = String.fromEnvironment('API_URL', defaultValue: '');
 
   static String get baseUrl {
     if (_productionUrl.isNotEmpty) return _productionUrl;
     if (kIsWeb) {
       final uri = Uri.base;
-      return '${uri.scheme}://${uri.host}:${uri.port}';
+      final port = uri.hasPort ? ':${uri.port}' : '';
+      return '${uri.scheme}://${uri.host}$port';
     }
-    return 'http://10.0.2.2:5000';
+    // Local development loopbacks (never reached in release builds
+    // as long as --dart-define=API_URL is set).
+    try {
+      if (Platform.isAndroid) return 'http://10.0.2.2:5000';
+      if (Platform.isIOS) return 'http://localhost:5000';
+    } catch (_) {
+      // Platform unavailable (e.g. unit tests): fall through.
+    }
+    return 'http://localhost:5000';
   }
 
   late final http.Client _client;
   String? _cookie;
 
   ApiService() {
-    if (kIsWeb) {
-      final browserClient = BrowserClient();
-      browserClient.withCredentials = true;
-      _client = browserClient;
-    } else {
-      _client = http.Client();
-    }
+    _client = createPlatformHttpClient();
   }
 
   Map<String, String> get _headers => {
