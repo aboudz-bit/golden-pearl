@@ -34,5 +34,5 @@ packages = ["flutter"]
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "NODE_ENV=production node dist/index.cjs"]
+run = ["sh", "-c", "NODE_ENV=production node dist/index.cjs"]
 build = ["bash", "script/build.sh"]
