@@ -31,3 +31,8 @@ outputType = "webview"
 [nix]
 channel = "stable-25_05"
 packages = ["flutter"]
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
