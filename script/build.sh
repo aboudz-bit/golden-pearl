@@ -18,10 +18,18 @@ FLUTTER_BUILD="golden_pearl/build/web"
 
 if command -v flutter &> /dev/null; then
   echo "Building Flutter web..."
-  cd golden_pearl
-  flutter gen-l10n 2>/dev/null || true
-  flutter build web --release
-  cd ..
+  (
+    cd golden_pearl
+    # Force fresh dep resolution against THIS environment's pub cache.
+    # A committed .dart_tool/package_config.json from a different build
+    # environment points to non-existent paths and must be regenerated,
+    # otherwise Flutter fails with cascading "meta undefined" / "Matrix4
+    # undefined" errors inside framework files.
+    rm -rf .dart_tool build
+    flutter pub get
+    flutter gen-l10n
+    flutter build web --release
+  )
   [ -d "golden_pearl/assets/images" ] && cp -r golden_pearl/assets/images "$FLUTTER_BUILD/images"
   [ -d "golden_pearl/assets/videos" ] && cp -r golden_pearl/assets/videos "$FLUTTER_BUILD/videos"
   echo "Flutter build complete"
