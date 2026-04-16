@@ -1,8 +1,8 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
-import 'dart:html' as html;
+import '../../services/platform_io.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
@@ -140,51 +140,45 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   Future<void> _pickAndUploadImage(Map<String, dynamic> category) async {
     final id = category['id'] as int;
-    final input = html.FileUploadInputElement()..accept = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
-    input.click();
+    if (!kIsWeb) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Image upload is available in the web admin panel.'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      return;
+    }
+    final PickedMedia? picked = await pickMediaFile(
+      accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
+    );
+    if (picked == null) return;
 
-    input.onChange.listen((event) async {
-      final files = input.files;
-      if (files == null || files.isEmpty) return;
-      final file = files.first;
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onLoadEnd.listen((_) async {
-        setState(() => _uploading.add(id));
-        try {
-          final rawData = reader.result;
-          final Uint8List uint8list;
-          if (rawData is Uint8List) {
-            uint8list = rawData;
-          } else if (rawData is ByteBuffer) {
-            uint8list = rawData.asUint8List();
-          } else {
-            throw Exception('Unexpected file data type');
-          }
-          final bytes = uint8list.toList();
-          final uploadResult = await apiService.uploadFile(bytes, file.name);
-          final url = uploadResult['url'] as String;
-          await apiService.updateCategory(id, {'imageUrl': url});
-          await _loadCategories();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Image updated successfully'),
-                backgroundColor: kGoldPrimary,
-              ),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red.shade700),
-            );
-          }
-        } finally {
-          setState(() => _uploading.remove(id));
-        }
-      });
-    });
+    setState(() => _uploading.add(id));
+    try {
+      final uploadResult = await apiService.uploadFile(picked.bytes.toList(), picked.name);
+      final url = uploadResult['url'] as String;
+      await apiService.updateCategory(id, {'imageUrl': url});
+      await _loadCategories();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Image updated successfully'),
+            backgroundColor: kGoldPrimary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red.shade700),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading.remove(id));
+    }
   }
 
   Future<void> _onReorder(int oldIndex, int newIndex) async {

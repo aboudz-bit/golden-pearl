@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
 import '../../l10n/generated/app_localizations.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
+import '../../services/platform_io.dart';
 import '../../utils/money_formatter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
@@ -104,7 +104,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     _load();
   }
 
-  void _exportList() {
+  Future<void> _exportList() async {
     final url = apiService.getCustomersExportUrl(
       search: _search.isNotEmpty ? _search : null,
       sort: _effectiveSort,
@@ -113,7 +113,12 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
       highSpenders: _highSpenders,
       abandonedCart: _abandonedCart,
     );
-    html.window.open(url, '_blank');
+    final ok = await openExternalUrl(url);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open export URL')),
+      );
+    }
   }
 
   @override

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
 import '../../l10n/generated/app_localizations.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
+import '../../services/platform_io.dart';
 import '../../utils/money_formatter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
@@ -34,9 +34,14 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
     }
   }
 
-  void _exportCustomer() {
+  Future<void> _exportCustomer() async {
     final url = apiService.getCustomerExportUrl(widget.customerId);
-    html.window.open(url, '_blank');
+    final ok = await openExternalUrl(url);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open export URL')),
+      );
+    }
   }
 
   @override
