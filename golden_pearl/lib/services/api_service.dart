@@ -1,39 +1,42 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
-// Conditional import: on web dart:html is available and we get the browser
-// implementation; on iOS/Android/desktop we get the default http.Client().
-// This removes the hard dart:html import that was breaking iOS compilation.
 import '_http_client_io.dart'
     if (dart.library.html) '_http_client_web.dart';
 
 class ApiService {
-  // Production API URL is injected at build time via:
-  //   flutter build ios --release --dart-define=API_URL=https://your.api.host
-  // If unset, falls back to platform-appropriate local development defaults.
-  static const String _productionUrl = String.fromEnvironment('API_URL', defaultValue: '');
+  static const String _compileTimeUrl = String.fromEnvironment('API_URL', defaultValue: '');
+
+  static const String _replitProductionUrl = 'https://092abce6-58f2-4c03-a2f8-b776b35aaa5a-00-3uf3y825evgo7.riker.replit.dev';
+
+  static bool _baseUrlLogged = false;
 
   static String get baseUrl {
-    if (_productionUrl.isNotEmpty) return _productionUrl;
+    final url = _resolveBaseUrl();
+    if (!_baseUrlLogged) {
+      _baseUrlLogged = true;
+      if (kDebugMode) {
+        // ignore: avoid_print
+        print('[ApiService] baseUrl resolved to: $url');
+      }
+    }
+    return url;
+  }
+
+  static String _resolveBaseUrl() {
+    if (_compileTimeUrl.isNotEmpty) return _compileTimeUrl;
+
     if (kIsWeb) {
       final uri = Uri.base;
       final port = uri.hasPort ? ':${uri.port}' : '';
       return '${uri.scheme}://${uri.host}$port';
     }
-    // Local development loopbacks (never reached in release builds
-    // as long as --dart-define=API_URL is set).
-    try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:5000';
-      if (Platform.isIOS) return 'http://localhost:5000';
-    } catch (_) {
-      // Platform unavailable (e.g. unit tests): fall through.
-    }
-    return 'http://localhost:5000';
+
+    return _replitProductionUrl;
   }
 
   late final http.Client _client;

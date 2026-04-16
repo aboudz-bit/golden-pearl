@@ -500,7 +500,10 @@ file:///home/runner/workspace/golden_pearl/lib/screens/orders_screen.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/product_detail_screen.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/settings_screen.dart
 file:///home/runner/workspace/golden_pearl/lib/screens/shop_screen.dart
+file:///home/runner/workspace/golden_pearl/lib/services/_http_client_web.dart
+file:///home/runner/workspace/golden_pearl/lib/services/_platform_io_web.dart
 file:///home/runner/workspace/golden_pearl/lib/services/api_service.dart
+file:///home/runner/workspace/golden_pearl/lib/services/platform_io.dart
 file:///home/runner/workspace/golden_pearl/lib/utils/arabic_digits.dart
 file:///home/runner/workspace/golden_pearl/lib/utils/money_formatter.dart
 file:///home/runner/workspace/golden_pearl/lib/widgets/category_icons.dart
