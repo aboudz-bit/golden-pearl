@@ -20,6 +20,10 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  app.get("/api/health", (_req, res) => {
+    res.json({ success: true, status: "ok" });
+  });
+
   app.post("/api/auth/register", asyncHandler(auth.register));
   app.post("/api/auth/login", asyncHandler(auth.login));
   app.post("/api/auth/logout", asyncHandler(auth.logout));
