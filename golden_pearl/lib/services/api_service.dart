@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
@@ -11,7 +12,7 @@ import '_http_client_io.dart'
 class ApiService {
   static const String _compileTimeUrl = String.fromEnvironment('API_URL', defaultValue: '');
 
-  static const String _replitProductionUrl = 'https://092abce6-58f2-4c03-a2f8-b776b35aaa5a-00-3uf3y825evgo7.riker.replit.dev';
+  static const String _replitProductionUrl = 'https://golden-pearl-boutique.replit.app';
 
   static bool _baseUrlLogged = false;
 
@@ -40,23 +41,125 @@ class ApiService {
   }
 
   late final http.Client _client;
-  String? _cookie;
+  // Cookie jar: name -> value. Survives across requests and persists to disk
+  // on native platforms so admin sessions stay valid after app restart.
+  final Map<String, String> _cookies = {};
+  static const String _cookiePrefsKey = 'gp_session_cookies_v1';
+  bool _cookiesLoaded = false;
 
   ApiService() {
     _client = createPlatformHttpClient();
   }
 
+  /// Load any persisted session cookies from disk. Call once at app startup
+  /// before any authenticated request so a returning user stays signed in.
+  Future<void> init() async {
+    if (kIsWeb || _cookiesLoaded) return;
+    _cookiesLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cookiePrefsKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          decoded.forEach((k, v) {
+            if (k is String && v is String) _cookies[k] = v;
+          });
+        }
+      }
+    } catch (_) {
+      // Non-fatal: if we can't restore cookies the user simply re-logs in.
+    }
+  }
+
+  Future<void> _persistCookies() async {
+    if (kIsWeb) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_cookies.isEmpty) {
+        await prefs.remove(_cookiePrefsKey);
+      } else {
+        await prefs.setString(_cookiePrefsKey, jsonEncode(_cookies));
+      }
+    } catch (_) {}
+  }
+
+  /// Wipe the cookie jar (memory + disk). Used on logout and on confirmed
+  /// 401 responses so the app never reports "logged in" while the server
+  /// has no matching session.
+  Future<void> clearSession() async {
+    if (kIsWeb) return;
+    _cookies.clear();
+    await _persistCookies();
+  }
+
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
-    if (!kIsWeb && _cookie != null) 'Cookie': _cookie!,
+    if (!kIsWeb && _cookies.isNotEmpty)
+      'Cookie': _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
   };
 
+  /// Robustly extract every Set-Cookie from a response. Dart's http package
+  /// joins multiple Set-Cookie headers with ", " into a single value, and
+  /// cookie attributes (e.g. `Expires=Wed, 21 Oct 2026 ...`) themselves
+  /// contain commas, so we use the underlying split-values API when present
+  /// and fall back to a comma-aware splitter otherwise.
   void _updateCookie(http.Response response) {
     if (kIsWeb) return;
-    final setCookie = response.headers['set-cookie'];
-    if (setCookie != null) {
-      _cookie = setCookie.split(';').first;
+    List<String> rawCookies;
+    try {
+      rawCookies = response.headersSplitValues['set-cookie'] ?? const [];
+    } catch (_) {
+      final joined = response.headers['set-cookie'];
+      rawCookies = joined == null ? const [] : _splitSetCookie(joined);
     }
+    if (rawCookies.isEmpty) return;
+
+    bool changed = false;
+    for (final raw in rawCookies) {
+      final firstSemi = raw.indexOf(';');
+      final pair = (firstSemi == -1 ? raw : raw.substring(0, firstSemi)).trim();
+      final eq = pair.indexOf('=');
+      if (eq <= 0) continue;
+      final name = pair.substring(0, eq).trim();
+      final value = pair.substring(eq + 1).trim();
+      if (name.isEmpty) continue;
+      if (_cookies[name] != value) {
+        _cookies[name] = value;
+        changed = true;
+      }
+    }
+    if (changed) {
+      // Fire-and-forget persistence; we don't want to block the request path.
+      _persistCookies();
+    }
+  }
+
+  /// Split a comma-joined Set-Cookie header value while preserving commas
+  /// that live inside attribute values like `Expires=Wed, 21 Oct ...`.
+  List<String> _splitSetCookie(String value) {
+    final result = <String>[];
+    int start = 0;
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != ',') continue;
+      // Look ahead: a real cookie boundary is `, <name>=` (no space-comma in
+      // attribute names). If the next non-space char starts a `name=` token
+      // before any `;`, treat this comma as a delimiter.
+      int j = i + 1;
+      while (j < value.length && value[j] == ' ') j++;
+      int eq = value.indexOf('=', j);
+      int semi = value.indexOf(';', j);
+      if (eq != -1 && (semi == -1 || eq < semi)) {
+        final name = value.substring(j, eq).trim();
+        if (RegExp(r'^[A-Za-z0-9_\-\.]+$').hasMatch(name)) {
+          result.add(value.substring(start, i).trim());
+          start = j;
+        }
+      }
+    }
+    final tail = value.substring(start).trim();
+    if (tail.isNotEmpty) result.add(tail);
+    return result;
   }
 
   void _checkResponse(http.Response response) {

@@ -44,7 +44,10 @@ class AuthProvider extends ChangeNotifier {
       final user = await _api.getMe();
       _currentUser = user;
     } catch (_) {
+      // Server says we're not authenticated — wipe any stale cookie so the
+      // app can never silently show admin UI without a real server session.
       _currentUser = null;
+      await _api.clearSession();
     } finally {
       _loading = false;
       notifyListeners();
@@ -86,6 +89,7 @@ class AuthProvider extends ChangeNotifier {
       await _api.logout();
     } catch (_) {}
     _currentUser = null;
+    await _api.clearSession();
     notifyListeners();
   }
 

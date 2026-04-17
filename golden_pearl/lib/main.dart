@@ -37,8 +37,11 @@ TextStyle playfairDisplay({double fontSize = 16, FontWeight fontWeight = FontWei
 
 final apiService = ApiService();
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Restore any persisted session cookie BEFORE the first request fires so
+  // returning users (especially admins on iOS native) keep their session.
+  await apiService.init();
   runApp(
     MultiProvider(
       providers: [
