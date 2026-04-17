@@ -391,11 +391,16 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getAnalytics(): Promise<{ totalViews: number; uniqueSessions: number; topProducts: { productId: number; views: number; product?: Product }[] }> {
+  async getAnalytics(): Promise<{ totalViews: number; uniqueSessions: number; totalProducts: number; totalOrders: number; topProducts: { productId: number; views: number; product?: Product }[] }> {
     const [totals] = await db.select({
       totalViews: count(),
       uniqueSessions: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})`,
     }).from(pageViews);
+
+    // Count from the SAME tables that /api/products and /api/admin/orders
+    // read from, so the dashboard counts always match the actual list views.
+    const [productTotals] = await db.select({ c: count() }).from(products);
+    const [orderTotals] = await db.select({ c: count() }).from(orders);
 
     const topProductRows = await db.select({
       productId: pageViews.productId,
@@ -417,6 +422,8 @@ export class DatabaseStorage implements IStorage {
     return {
       totalViews: totals?.totalViews ?? 0,
       uniqueSessions: totals?.uniqueSessions ?? 0,
+      totalProducts: Number(productTotals?.c ?? 0),
+      totalOrders: Number(orderTotals?.c ?? 0),
       topProducts,
     };
   }

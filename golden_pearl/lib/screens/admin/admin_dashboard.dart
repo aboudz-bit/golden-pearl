@@ -85,29 +85,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> _loadDashboard() async {
-    try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final hasDashboard = auth.hasPermission('dashboard.view');
-      if (!hasDashboard) {
-        if (mounted) setState(() => _loading = false);
-        return;
-      }
-      final analytics = await apiService.getAnalytics();
-      final products = await apiService.getProducts();
-      List orders = [];
-      if (auth.hasPermission('orders.view')) {
-        orders = await apiService.getAllOrders();
-      }
-      if (mounted) {
-        setState(() {
-          _analytics = analytics;
-          _totalProducts = products.length;
-          _totalOrders = orders.length;
-          _loading = false;
-        });
-      }
-    } catch (e) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final hasDashboard = auth.hasPermission('dashboard.view');
+    if (!hasDashboard) {
       if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    Map<String, dynamic>? analytics;
+    int productsCount = 0;
+    int ordersCount = 0;
+
+    // Each call is isolated so a failure in one (e.g. orders permission) does
+    // NOT zero out the others — the dashboard count must always reflect the
+    // real product table count when the analytics call succeeds.
+    try {
+      analytics = await apiService.getAnalytics();
+      productsCount = (analytics['totalProducts'] as num?)?.toInt() ?? 0;
+      ordersCount = (analytics['totalOrders'] as num?)?.toInt() ?? 0;
+    } catch (_) {}
+
+    // Fallback: if the analytics endpoint did not return totalProducts (older
+    // server build), fetch the same list the products page uses and count it.
+    if (productsCount == 0) {
+      try {
+        final products = await apiService.getProducts();
+        productsCount = products.length;
+      } catch (_) {}
+    }
+
+    if (ordersCount == 0 && auth.hasPermission('orders.view')) {
+      try {
+        final orders = await apiService.getAllOrders();
+        ordersCount = orders.length;
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      setState(() {
+        _analytics = analytics;
+        _totalProducts = productsCount;
+        _totalOrders = ordersCount;
+        _loading = false;
+      });
     }
   }
 
