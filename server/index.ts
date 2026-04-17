@@ -132,7 +132,12 @@ app.use((req, res, next) => {
 
   app.use(errorHandler);
 
-  const flutterBuildPath = path.resolve(process.cwd(), "golden_pearl", "build", "web");
+  const distWebPath = path.resolve(process.cwd(), "dist", "web");
+  const goldenPearlPath = path.resolve(process.cwd(), "golden_pearl", "build", "web");
+  const flutterBuildPath = fs.existsSync(path.resolve(distWebPath, "index.html"))
+    ? distWebPath
+    : goldenPearlPath;
+  console.log(`[static] Serving Flutter web from: ${flutterBuildPath}`);
   const indexPath = path.resolve(flutterBuildPath, "index.html");
 
   if (!fs.existsSync(flutterBuildPath)) {

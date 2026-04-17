@@ -51,4 +51,23 @@ echo "=== Step 3: Copy static assets ==="
 [ -d "golden_pearl/assets/videos" ] && cp -r golden_pearl/assets/videos "$FLUTTER_BUILD/videos" && echo "Copied videos"
 
 echo ""
+echo "=== Step 4: Stage Flutter output into dist/web/ ==="
+# Replit autoscale deployments package the dist/ directory as the runtime
+# artifact. Copy the Flutter build into dist/web/ so the server can find it
+# regardless of which workspace files are shipped.
+rm -rf dist/web
+mkdir -p dist/web
+cp -r "$FLUTTER_BUILD"/. dist/web/
+
+if [ ! -f "dist/web/index.html" ]; then
+  echo "FATAL: dist/web/index.html missing after staging!"
+  ls -la dist/web/ 2>&1 || true
+  exit 1
+fi
+
+echo "Staged → dist/web/index.html ($(wc -c < dist/web/index.html) bytes)"
+echo "dist/ contents:"
+ls -la dist/
+
+echo ""
 echo "=== Build complete ==="
