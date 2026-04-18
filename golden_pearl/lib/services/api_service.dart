@@ -529,8 +529,12 @@ class ApiService {
   Future<Map<String, dynamic>> uploadFile(List<int> bytes, String filename) async {
     final uri = Uri.parse('$baseUrl/api/admin/upload');
     final request = http.MultipartRequest('POST', uri);
-    if (!kIsWeb && _cookie != null) {
-      request.headers['Cookie'] = _cookie!;
+    // Multipart requests bypass the JSON `_headers` getter, so attach the
+    // session cookie jar manually. Without this, every native iOS upload
+    // would 401 even after a successful login.
+    if (!kIsWeb && _cookies.isNotEmpty) {
+      request.headers['Cookie'] =
+          _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
     }
     final mime = _mimeFromFilename(filename);
     final mediaParts = mime.split('/');

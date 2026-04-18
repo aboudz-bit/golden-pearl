@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
@@ -62,18 +61,6 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
   };
 
   Future<void> _pickAndUploadSlide() async {
-    if (!kIsWeb) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Slide upload is available in the web admin panel.'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
     final PickedMedia? picked = await pickMediaFile(
       accept: 'image/jpeg,image/png,image/webp,video/mp4',
     );

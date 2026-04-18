@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
@@ -140,17 +139,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   Future<void> _pickAndUploadImage(Map<String, dynamic> category) async {
     final id = category['id'] as int;
-    if (!kIsWeb) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Image upload is available in the web admin panel.'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-      return;
-    }
     final PickedMedia? picked = await pickMediaFile(
       accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
     );

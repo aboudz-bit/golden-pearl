@@ -1,6 +1,7 @@
 // Native (non-web) implementation of the platform IO facade.
 // Loaded on iOS, Android, macOS, Windows, Linux.
 import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// A file the user picked from disk.
@@ -10,13 +11,33 @@ class PickedMedia {
   const PickedMedia({required this.name, required this.bytes});
 }
 
-/// Opens a file picker and returns the chosen file.
+final ImagePicker _picker = ImagePicker();
+
+/// Opens a native image/video picker and returns the chosen file.
 ///
-/// Native platforms do NOT implement this — returns null. Callers should
-/// check `kIsWeb` before calling and show a user-facing message on native.
-/// Adding native file-picking would require a plugin (e.g. file_picker); this
-/// is intentionally out of scope to keep the iOS build surface minimal.
-Future<PickedMedia?> pickMediaFile({required String accept}) async => null;
+/// We inspect [accept] to decide whether to launch the image picker, video
+/// picker, or "media" picker (both). On iOS this opens the system photo
+/// library sheet; on Android it opens the gallery picker.
+Future<PickedMedia?> pickMediaFile({required String accept}) async {
+  final wantsVideo = accept.contains('video');
+  final wantsImage = accept.contains('image');
+
+  XFile? file;
+  try {
+    if (wantsVideo && wantsImage) {
+      file = await _picker.pickMedia();
+    } else if (wantsVideo) {
+      file = await _picker.pickVideo(source: ImageSource.gallery);
+    } else {
+      file = await _picker.pickImage(source: ImageSource.gallery);
+    }
+  } catch (_) {
+    return null;
+  }
+  if (file == null) return null;
+  final bytes = await file.readAsBytes();
+  return PickedMedia(name: file.name, bytes: bytes);
+}
 
 /// Opens [url] in the platform's default browser.
 Future<bool> openExternalUrl(String url) async {

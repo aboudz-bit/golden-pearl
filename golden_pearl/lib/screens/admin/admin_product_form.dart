@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
@@ -75,19 +74,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     super.dispose();
   }
 
-  bool _notifyAdminWebOnly() {
-    if (kIsWeb) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Media upload is available in the web admin panel.'),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return true;
-  }
-
   Future<void> _pickAndUploadImage() async {
-    if (_notifyAdminWebOnly()) return;
     final PickedMedia? picked = await pickMediaFile(
       accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
     );
@@ -108,7 +95,6 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   }
 
   Future<void> _pickAndUploadVideo() async {
-    if (_notifyAdminWebOnly()) return;
     final PickedMedia? picked = await pickMediaFile(accept: 'video/mp4');
     if (picked == null || !mounted) return;
     setState(() => _uploading = true);
