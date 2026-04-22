@@ -103,7 +103,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
       analytics = await apiService.getAnalytics();
       productsCount = (analytics['totalProducts'] as num?)?.toInt() ?? 0;
       ordersCount = (analytics['totalOrders'] as num?)?.toInt() ?? 0;
-    } catch (_) {}
+    } catch (e) {
+      // Don't kill the dashboard UI, but make the failure visible in
+      // Xcode console / `flutter logs` so we can tell an auth error apart
+      // from legitimately-zero data.
+      debugPrint('[Dashboard] getAnalytics failed: $e');
+    }
 
     // Fallback: if the analytics endpoint did not return totalProducts (older
     // server build), fetch the same list the products page uses and count it.
@@ -111,14 +116,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
       try {
         final products = await apiService.getProducts();
         productsCount = products.length;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[Dashboard] getProducts fallback failed: $e');
+      }
     }
 
     if (ordersCount == 0 && auth.hasPermission('orders.view')) {
       try {
         final orders = await apiService.getAllOrders();
         ordersCount = orders.length;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[Dashboard] getAllOrders fallback failed: $e');
+      }
     }
 
     if (mounted) {

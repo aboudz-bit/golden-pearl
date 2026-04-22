@@ -1,6 +1,7 @@
 // Native (non-web) implementation of the platform IO facade.
 // Loaded on iOS, Android, macOS, Windows, Linux.
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,12 +32,22 @@ Future<PickedMedia?> pickMediaFile({required String accept}) async {
     } else {
       file = await _picker.pickImage(source: ImageSource.gallery);
     }
-  } catch (_) {
+  } catch (e, st) {
+    // Surface plugin failures (missing NSPhotoLibraryUsageDescription,
+    // platform-channel errors, permission denials, etc.) so the admin
+    // upload buttons can show a visible message instead of silently
+    // doing nothing.
+    debugPrint('[pickMediaFile] image_picker threw: $e\n$st');
     return null;
   }
   if (file == null) return null;
-  final bytes = await file.readAsBytes();
-  return PickedMedia(name: file.name, bytes: bytes);
+  try {
+    final bytes = await file.readAsBytes();
+    return PickedMedia(name: file.name, bytes: bytes);
+  } catch (e, st) {
+    debugPrint('[pickMediaFile] readAsBytes failed for ${file.name}: $e\n$st');
+    return null;
+  }
 }
 
 /// Opens [url] in the platform's default browser.

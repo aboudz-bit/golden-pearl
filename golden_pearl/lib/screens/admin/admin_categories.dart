@@ -142,7 +142,14 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     final PickedMedia? picked = await pickMediaFile(
       accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
     );
-    if (picked == null) return;
+    if (picked == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No image selected')),
+        );
+      }
+      return;
+    }
 
     setState(() => _uploading.add(id));
     try {
