@@ -78,7 +78,13 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     final PickedMedia? picked = await pickMediaFile(
       accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
     );
-    if (picked == null || !mounted) return;
+    if (!mounted) return;
+    if (picked == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No image selected')),
+      );
+      return;
+    }
     setState(() => _uploading = true);
     try {
       final uploaded = await apiService.uploadFile(picked.bytes.toList(), picked.name);
@@ -96,7 +102,13 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
 
   Future<void> _pickAndUploadVideo() async {
     final PickedMedia? picked = await pickMediaFile(accept: 'video/mp4');
-    if (picked == null || !mounted) return;
+    if (!mounted) return;
+    if (picked == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No video selected')),
+      );
+      return;
+    }
     setState(() => _uploading = true);
     try {
       final uploaded = await apiService.uploadFile(picked.bytes.toList(), picked.name);

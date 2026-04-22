@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
@@ -93,11 +93,20 @@ class ApiService {
     await _persistCookies();
   }
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    if (!kIsWeb && _cookies.isNotEmpty)
-      'Cookie': _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
-  };
+  Map<String, String> get _headers {
+    final map = <String, String>{'Content-Type': 'application/json'};
+    if (!kIsWeb && _cookies.isNotEmpty) {
+      map['Cookie'] =
+          _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+    }
+    if (kDebugMode && !kIsWeb) {
+      // Presence + count only. No cookie names or values.
+      debugPrint('[ApiService] headers: Cookie='
+          '${map.containsKey("Cookie") ? "present" : "absent"}'
+          ', jar=${_cookies.length}');
+    }
+    return map;
+  }
 
   /// Robustly extract every Set-Cookie from a response. Dart's http package
   /// joins multiple Set-Cookie headers with ", " into a single value, and
@@ -113,7 +122,14 @@ class ApiService {
       final joined = response.headers['set-cookie'];
       rawCookies = joined == null ? const [] : _splitSetCookie(joined);
     }
-    if (rawCookies.isEmpty) return;
+    if (rawCookies.isEmpty) {
+      if (kDebugMode) {
+        final path = response.request?.url.path ?? '?';
+        debugPrint('[ApiService] _updateCookie: no Set-Cookie on $path '
+            '(status ${response.statusCode})');
+      }
+      return;
+    }
 
     bool changed = false;
     for (final raw in rawCookies) {
@@ -130,7 +146,14 @@ class ApiService {
       }
     }
     if (changed) {
-      // Fire-and-forget persistence; we don't want to block the request path.
+      if (kDebugMode) {
+        // Names only — never log cookie values.
+        debugPrint('[ApiService] _updateCookie: jar now has '
+            '${_cookies.length} cookies: ${_cookies.keys.toList()}');
+      }
+      // Fire-and-forget persistence for non-login responses. The login()
+      // method explicitly awaits _persistCookies() after _updateCookie()
+      // so the session is guaranteed on disk before navigating to admin.
       _persistCookies();
     }
   }
@@ -171,6 +194,11 @@ class ApiService {
       } catch (_) {
         msg = 'Request failed (${response.statusCode})';
       }
+      if (kDebugMode &&
+          (response.statusCode == 401 || response.statusCode == 403)) {
+        final path = response.request?.url.path ?? '?';
+        debugPrint('[ApiService] $path → ${response.statusCode}: $msg');
+      }
       throw Exception(msg);
     }
   }
@@ -183,6 +211,15 @@ class ApiService {
     );
     _updateCookie(response);
     _checkResponse(response);
+    // Critical for iOS: guarantee the session cookie is on disk BEFORE we
+    // return, so if the user backgrounds or kills the app immediately after
+    // login the session is not lost. Fire-and-forget here caused returning
+    // users on iOS to land back in the unauthenticated state.
+    if (!kIsWeb) await _persistCookies();
+    if (kDebugMode) {
+      debugPrint('[ApiService] login success; jar=${_cookies.length} '
+          'cookies=${_cookies.keys.toList()}');
+    }
     final data = jsonDecode(response.body);
     return data['user'];
   }
@@ -195,6 +232,7 @@ class ApiService {
     );
     _updateCookie(response);
     _checkResponse(response);
+    if (!kIsWeb) await _persistCookies();
     final data = jsonDecode(response.body);
     return data['user'];
   }
@@ -203,6 +241,9 @@ class ApiService {
     final response = await _client.post(Uri.parse('$baseUrl/api/auth/logout'), headers: _headers);
     _updateCookie(response);
     _checkResponse(response);
+    // The server's logout response clears the session cookie; persist the
+    // emptied jar so the next app launch does not try to use a dead cookie.
+    if (!kIsWeb) await _persistCookies();
   }
 
   Future<Map<String, dynamic>?> getMe() async {
@@ -222,6 +263,9 @@ class ApiService {
     final response = await _client.delete(Uri.parse('$baseUrl/api/auth/account'), headers: _headers);
     _updateCookie(response);
     _checkResponse(response);
+    // Session is dead server-side; make sure the local jar reflects that
+    // before the caller redirects out of the authenticated UI.
+    if (!kIsWeb) await _persistCookies();
   }
 
   Future<List<Product>> getProducts({String? category, String? search, bool? featured}) async {

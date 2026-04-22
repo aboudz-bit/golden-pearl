@@ -64,7 +64,16 @@ class _AdminHeroPageState extends State<AdminHeroPage> {
     final PickedMedia? picked = await pickMediaFile(
       accept: 'image/jpeg,image/png,image/webp,video/mp4',
     );
-    if (picked == null || !mounted) return;
+    if (!mounted) return;
+    if (picked == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No media selected'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() => _uploading = true);
     try {
