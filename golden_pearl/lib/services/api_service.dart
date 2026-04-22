@@ -1,33 +1,271 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http_parser/http_parser.dart' as http_parser;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
-import '../models/store.dart';
+import '_http_client_io.dart'
+    if (dart.library.html) '_http_client_web.dart';
 
 class ApiService {
+  static const String _compileTimeUrl = String.fromEnvironment('API_URL', defaultValue: '');
+
+  static const String _replitProductionUrl = 'https://golden-pearl-boutique.replit.app';
+
+  static bool _baseUrlLogged = false;
+
   static String get baseUrl {
-    if (kIsWeb) {
-      final uri = Uri.base;
-      return '${uri.scheme}://${uri.host}:${uri.port}';
+    final url = _resolveBaseUrl();
+    if (!_baseUrlLogged) {
+      _baseUrlLogged = true;
+      if (kDebugMode) {
+        // ignore: avoid_print
+        print('[ApiService] baseUrl resolved to: $url');
+      }
     }
-    return 'http://10.0.2.2:5000';
+    return url;
   }
 
-  final http.Client _client = http.Client();
-  String? _cookie;
+  static String _resolveBaseUrl() {
+    if (_compileTimeUrl.isNotEmpty) return _compileTimeUrl;
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    if (_cookie != null) 'Cookie': _cookie!,
-  };
-
-  void _updateCookie(http.Response response) {
-    final setCookie = response.headers['set-cookie'];
-    if (setCookie != null) {
-      _cookie = setCookie.split(';').first;
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final port = uri.hasPort ? ':${uri.port}' : '';
+      return '${uri.scheme}://${uri.host}$port';
     }
+
+    return _replitProductionUrl;
+  }
+
+  late final http.Client _client;
+  // Cookie jar: name -> value. Survives across requests and persists to disk
+  // on native platforms so admin sessions stay valid after app restart.
+  final Map<String, String> _cookies = {};
+  static const String _cookiePrefsKey = 'gp_session_cookies_v1';
+  bool _cookiesLoaded = false;
+
+  ApiService() {
+    _client = createPlatformHttpClient();
+  }
+
+  /// Load any persisted session cookies from disk. Call once at app startup
+  /// before any authenticated request so a returning user stays signed in.
+  Future<void> init() async {
+    if (kIsWeb || _cookiesLoaded) return;
+    _cookiesLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cookiePrefsKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          decoded.forEach((k, v) {
+            if (k is String && v is String) _cookies[k] = v;
+          });
+        }
+      }
+    } catch (_) {
+      // Non-fatal: if we can't restore cookies the user simply re-logs in.
+    }
+  }
+
+  Future<void> _persistCookies() async {
+    if (kIsWeb) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_cookies.isEmpty) {
+        await prefs.remove(_cookiePrefsKey);
+      } else {
+        await prefs.setString(_cookiePrefsKey, jsonEncode(_cookies));
+      }
+    } catch (_) {}
+  }
+
+  /// Wipe the cookie jar (memory + disk). Used on logout and on confirmed
+  /// 401 responses so the app never reports "logged in" while the server
+  /// has no matching session.
+  Future<void> clearSession() async {
+    if (kIsWeb) return;
+    _cookies.clear();
+    await _persistCookies();
+  }
+
+  Map<String, String> get _headers {
+    final map = <String, String>{'Content-Type': 'application/json'};
+    if (!kIsWeb && _cookies.isNotEmpty) {
+      map['Cookie'] =
+          _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+    }
+    if (kDebugMode && !kIsWeb) {
+      // Presence + count only. No cookie names or values.
+      debugPrint('[ApiService] headers: Cookie='
+          '${map.containsKey("Cookie") ? "present" : "absent"}'
+          ', jar=${_cookies.length}');
+    }
+    return map;
+  }
+
+  /// Robustly extract every Set-Cookie from a response. Dart's http package
+  /// joins multiple Set-Cookie headers with ", " into a single value, and
+  /// cookie attributes (e.g. `Expires=Wed, 21 Oct 2026 ...`) themselves
+  /// contain commas, so we use the underlying split-values API when present
+  /// and fall back to a comma-aware splitter otherwise.
+  void _updateCookie(http.Response response) {
+    if (kIsWeb) return;
+    List<String> rawCookies;
+    try {
+      rawCookies = response.headersSplitValues['set-cookie'] ?? const [];
+    } catch (_) {
+      final joined = response.headers['set-cookie'];
+      rawCookies = joined == null ? const [] : _splitSetCookie(joined);
+    }
+    if (rawCookies.isEmpty) {
+      if (kDebugMode) {
+        final path = response.request?.url.path ?? '?';
+        debugPrint('[ApiService] _updateCookie: no Set-Cookie on $path '
+            '(status ${response.statusCode})');
+      }
+      return;
+    }
+
+    bool changed = false;
+    for (final raw in rawCookies) {
+      final firstSemi = raw.indexOf(';');
+      final pair = (firstSemi == -1 ? raw : raw.substring(0, firstSemi)).trim();
+      final eq = pair.indexOf('=');
+      if (eq <= 0) continue;
+      final name = pair.substring(0, eq).trim();
+      final value = pair.substring(eq + 1).trim();
+      if (name.isEmpty) continue;
+      if (_cookies[name] != value) {
+        _cookies[name] = value;
+        changed = true;
+      }
+    }
+    if (changed) {
+      if (kDebugMode) {
+        // Names only — never log cookie values.
+        debugPrint('[ApiService] _updateCookie: jar now has '
+            '${_cookies.length} cookies: ${_cookies.keys.toList()}');
+      }
+      // Fire-and-forget persistence for non-login responses. The login()
+      // method explicitly awaits _persistCookies() after _updateCookie()
+      // so the session is guaranteed on disk before navigating to admin.
+      _persistCookies();
+    }
+  }
+
+  /// Split a comma-joined Set-Cookie header value while preserving commas
+  /// that live inside attribute values like `Expires=Wed, 21 Oct ...`.
+  List<String> _splitSetCookie(String value) {
+    final result = <String>[];
+    int start = 0;
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != ',') continue;
+      // Look ahead: a real cookie boundary is `, <name>=` (no space-comma in
+      // attribute names). If the next non-space char starts a `name=` token
+      // before any `;`, treat this comma as a delimiter.
+      int j = i + 1;
+      while (j < value.length && value[j] == ' ') j++;
+      int eq = value.indexOf('=', j);
+      int semi = value.indexOf(';', j);
+      if (eq != -1 && (semi == -1 || eq < semi)) {
+        final name = value.substring(j, eq).trim();
+        if (RegExp(r'^[A-Za-z0-9_\-\.]+$').hasMatch(name)) {
+          result.add(value.substring(start, i).trim());
+          start = j;
+        }
+      }
+    }
+    final tail = value.substring(start).trim();
+    if (tail.isNotEmpty) result.add(tail);
+    return result;
+  }
+
+  void _checkResponse(http.Response response) {
+    if (response.statusCode >= 400) {
+      String msg;
+      try {
+        final body = jsonDecode(response.body);
+        msg = body['message'] ?? 'Request failed';
+      } catch (_) {
+        msg = 'Request failed (${response.statusCode})';
+      }
+      if (kDebugMode &&
+          (response.statusCode == 401 || response.statusCode == 403)) {
+        final path = response.request?.url.path ?? '?';
+        debugPrint('[ApiService] $path → ${response.statusCode}: $msg');
+      }
+      throw Exception(msg);
+    }
+  }
+
+  Future<Map<String, dynamic>?> login(String email, String password) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/auth/login'),
+      headers: _headers,
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    // Critical for iOS: guarantee the session cookie is on disk BEFORE we
+    // return, so if the user backgrounds or kills the app immediately after
+    // login the session is not lost. Fire-and-forget here caused returning
+    // users on iOS to land back in the unauthenticated state.
+    if (!kIsWeb) await _persistCookies();
+    if (kDebugMode) {
+      debugPrint('[ApiService] login success; jar=${_cookies.length} '
+          'cookies=${_cookies.keys.toList()}');
+    }
+    final data = jsonDecode(response.body);
+    return data['user'];
+  }
+
+  Future<Map<String, dynamic>?> register(String email, String password, String name, String? phone) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/auth/register'),
+      headers: _headers,
+      body: jsonEncode({'email': email, 'password': password, 'name': name, 'phone': phone}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    if (!kIsWeb) await _persistCookies();
+    final data = jsonDecode(response.body);
+    return data['user'];
+  }
+
+  Future<void> logout() async {
+    final response = await _client.post(Uri.parse('$baseUrl/api/auth/logout'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    // The server's logout response clears the session cookie; persist the
+    // emptied jar so the next app launch does not try to use a dead cookie.
+    if (!kIsWeb) await _persistCookies();
+  }
+
+  Future<Map<String, dynamic>?> getMe() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/auth/me'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final data = jsonDecode(response.body);
+    return data['user'];
+  }
+
+  Future<void> mergeCart() async {
+    final response = await _client.post(Uri.parse('$baseUrl/api/auth/merge'), headers: _headers);
+    _updateCookie(response);
+  }
+
+  Future<void> deleteAccount() async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/auth/account'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    // Session is dead server-side; make sure the local jar reflects that
+    // before the caller redirects out of the authenticated UI.
+    if (!kIsWeb) await _persistCookies();
   }
 
   Future<List<Product>> getProducts({String? category, String? search, bool? featured}) async {
@@ -38,6 +276,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/api/products').replace(queryParameters: params.isNotEmpty ? params : null);
     final response = await _client.get(uri, headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => Product.fromJson(json)).toList();
   }
@@ -45,12 +284,14 @@ class ApiService {
   Future<Product> getProduct(int id) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/products/$id'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     return Product.fromJson(jsonDecode(response.body));
   }
 
   Future<List<CartItem>> getCart() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/cart'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => CartItem.fromJson(json)).toList();
   }
@@ -62,6 +303,7 @@ class ApiService {
       body: jsonEncode({'productId': productId, 'size': size, 'color': color, 'quantity': quantity}),
     );
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<void> updateCartItem(int id, int quantity) async {
@@ -71,16 +313,19 @@ class ApiService {
       body: jsonEncode({'quantity': quantity}),
     );
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<void> removeCartItem(int id) async {
     final response = await _client.delete(Uri.parse('$baseUrl/api/cart/$id'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<void> clearCart() async {
     final response = await _client.delete(Uri.parse('$baseUrl/api/cart'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
   }
 
   Future<Order> createOrder(Map<String, dynamic> orderData) async {
@@ -90,21 +335,16 @@ class ApiService {
       body: jsonEncode(orderData),
     );
     _updateCookie(response);
+    _checkResponse(response);
     return Order.fromJson(jsonDecode(response.body));
   }
 
   Future<List<Order>> getOrders() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/orders'), headers: _headers);
     _updateCookie(response);
+    _checkResponse(response);
     final List data = jsonDecode(response.body);
     return data.map((json) => Order.fromJson(json)).toList();
-  }
-
-  Future<List<Store>> getStores() async {
-    final response = await _client.get(Uri.parse('$baseUrl/api/stores'), headers: _headers);
-    _updateCookie(response);
-    final List data = jsonDecode(response.body);
-    return data.map((json) => Store.fromJson(json)).toList();
   }
 
   Future<Map<String, dynamic>?> validateDiscount(String code) async {
@@ -118,5 +358,531 @@ class ApiService {
       return jsonDecode(response.body);
     }
     return null;
+  }
+
+  Future<List<AppNotification>> getNotifications() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/notifications'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.map((json) => AppNotification.fromJson(json)).toList();
+  }
+
+  Future<int> getUnreadNotificationCount() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/notifications/unread-count'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final data = jsonDecode(response.body);
+    return (data['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> markNotificationRead(int id) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/notifications/$id/read'),
+      headers: _headers,
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<String?> getSetting(String key) async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/settings/$key'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final data = jsonDecode(response.body);
+    final value = data['value'];
+    return (value != null && value.toString().isNotEmpty) ? value.toString() : null;
+  }
+
+  Future<void> trackPageView(String sessionId, String page, {int? productId}) async {
+    try {
+      await _client.post(
+        Uri.parse('$baseUrl/api/analytics/pageview'),
+        headers: _headers,
+        body: jsonEncode({'sessionId': sessionId, 'page': page, 'productId': productId}),
+      );
+    } catch (_) {}
+  }
+
+  Future<List<Order>> getAllOrders({
+    String? deliveryMethod,
+    String? status,
+    String? q,
+    String? dateFrom,
+    String? dateTo,
+    String? sort,
+  }) async {
+    final params = <String, String>{};
+    if (deliveryMethod != null && deliveryMethod != 'all') params['deliveryMethod'] = deliveryMethod;
+    if (status != null && status != 'all') params['status'] = status;
+    if (q != null && q.isNotEmpty) params['q'] = q;
+    if (dateFrom != null) params['dateFrom'] = dateFrom;
+    if (dateTo != null) params['dateTo'] = dateTo;
+    if (sort != null && sort != 'newest') params['sort'] = sort;
+    final uri = Uri.parse('$baseUrl/api/admin/orders').replace(queryParameters: params.isNotEmpty ? params : null);
+    final response = await _client.get(uri, headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.map((json) => Order.fromJson(json)).toList();
+  }
+
+  Future<void> updateOrderStatus(int id, String status, {String? trackingNumber}) async {
+    final body = <String, dynamic>{'status': status};
+    if (trackingNumber != null) body['trackingNumber'] = trackingNumber;
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/orders/$id/status'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllSettings() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/settings'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> updateSetting(String key, String value) async {
+    final response = await _client.put(
+      Uri.parse('$baseUrl/api/admin/settings/$key'),
+      headers: _headers,
+      body: jsonEncode({'value': value}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<Map<String, dynamic>?> getHeroOverlay() async {
+    final value = await getSetting('heroOverlay');
+    if (value == null || value.isEmpty) return null;
+    try {
+      return jsonDecode(value) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveHeroOverlay(Map<String, dynamic> overlay) async {
+    await updateSetting('heroOverlay', jsonEncode(overlay));
+  }
+
+  Future<Map<String, dynamic>> getAnalytics() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/analytics'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> updateProductStock(int id, int stock) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/products/$id/stock'),
+      headers: _headers,
+      body: jsonEncode({'stock': stock}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<Product> createProduct(Map<String, dynamic> productData) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/products'),
+      headers: _headers,
+      body: jsonEncode(productData),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return Product.fromJson(jsonDecode(response.body));
+  }
+
+  Future<Product> updateProduct(int id, Map<String, dynamic> productData) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/products/$id'),
+      headers: _headers,
+      body: jsonEncode(productData),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return Product.fromJson(jsonDecode(response.body));
+  }
+
+  Future<void> deleteProduct(int id) async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/admin/products/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllDiscounts() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/discounts'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> createDiscount(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/discounts'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> deleteDiscount(int id) async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/admin/discounts/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> updateDiscount(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/discounts/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  String _mimeFromFilename(String filename) {
+    final ext = filename.toLowerCase().split('.').last;
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'heic':
+      case 'heif':
+        return 'image/heic';
+      case 'mp4':
+        return 'video/mp4';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadFile(List<int> bytes, String filename) async {
+    final uri = Uri.parse('$baseUrl/api/admin/upload');
+    final request = http.MultipartRequest('POST', uri);
+    // Multipart requests bypass the JSON `_headers` getter, so attach the
+    // session cookie jar manually. Without this, every native iOS upload
+    // would 401 even after a successful login.
+    if (!kIsWeb && _cookies.isNotEmpty) {
+      request.headers['Cookie'] =
+          _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+    }
+    final mime = _mimeFromFilename(filename);
+    final mediaParts = mime.split('/');
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: filename,
+      contentType: http_parser.MediaType(mediaParts[0], mediaParts.length > 1 ? mediaParts[1] : 'octet-stream'),
+    ));
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> deleteUpload(String url) async {
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/api/admin/upload'),
+      headers: _headers,
+      body: jsonEncode({'url': url}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getBanners() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/banners'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getPublicBanners() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/banners'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> createBanner(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/banners'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> updateBanner(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/banners/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> deleteBanner(int id) async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/admin/banners/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> reorderBanners(List<Map<String, dynamic>> items) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/banners/reorder'),
+      headers: _headers,
+      body: jsonEncode({'items': items}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getCategories() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/categories'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getPublicCategories() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/categories'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> updateCategory(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/categories/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> reorderCategories(List<Map<String, dynamic>> items) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/categories/reorder'),
+      headers: _headers,
+      body: jsonEncode({'items': items}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> reorderProducts(List<Map<String, dynamic>> items) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/products/reorder'),
+      headers: _headers,
+      body: jsonEncode({'items': items}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> sendNotification(String title, String message, {int? productId}) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/notifications/send'),
+      headers: _headers,
+      body: jsonEncode({'title': title, 'message': message, 'productId': productId}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<Map<String, dynamic>>> getAdminNotifications() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/notifications'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> deleteNotificationGroup(String title, String message) async {
+    final request = http.Request('DELETE', Uri.parse('$baseUrl/api/admin/notifications'));
+    request.headers.addAll(_headers);
+    request.body = jsonEncode({'title': title, 'message': message});
+    final streamed = await _client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getCustomers({String? search, String? sort, String? hasOrders, String? hasCart, String? highSpenders, String? abandonedCart, int page = 1, int limit = 20}) async {
+    final params = <String, String>{'page': '$page', 'limit': '$limit'};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (sort != null) params['sort'] = sort;
+    if (hasOrders != null) params['hasOrders'] = hasOrders;
+    if (hasCart != null) params['hasCart'] = hasCart;
+    if (highSpenders != null) params['highSpenders'] = highSpenders;
+    if (abandonedCart != null) params['abandonedCart'] = abandonedCart;
+    final uri = Uri.parse('$baseUrl/api/admin/customers').replace(queryParameters: params);
+    final response = await _client.get(uri, headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> getCustomerDetail(int id) async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/customers/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  String getCustomersExportUrl({String? search, String? sort, String? hasOrders, String? hasCart, String? highSpenders, String? abandonedCart}) {
+    final params = <String, String>{};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (sort != null) params['sort'] = sort;
+    if (hasOrders != null) params['hasOrders'] = hasOrders;
+    if (hasCart != null) params['hasCart'] = hasCart;
+    if (highSpenders != null) params['highSpenders'] = highSpenders;
+    if (abandonedCart != null) params['abandonedCart'] = abandonedCart;
+    final uri = Uri.parse('$baseUrl/api/admin/customers/export').replace(queryParameters: params);
+    return uri.toString();
+  }
+
+  String getCustomerExportUrl(int id) {
+    return '$baseUrl/api/admin/customers/$id/export';
+  }
+
+  Future<List<Map<String, dynamic>>> getStaffUsers() async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/admin/staff'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+    final List data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> createStaffUser(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/staff'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> updateStaffUser(int id, Map<String, dynamic> data) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/staff/$id'),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> updateStaffPermissions(int id, Map<String, dynamic> permissions) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/staff/$id/permissions'),
+      headers: _headers,
+      body: jsonEncode({'permissions': permissions}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<void> deleteStaffUser(int id) async {
+    final response = await _client.delete(Uri.parse('$baseUrl/api/admin/staff/$id'), headers: _headers);
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<Map<String, dynamic>> sendCartNotification(int customerId, {required String messageAr, String? messageEn}) async {
+    final body = <String, dynamic>{'messageAr': messageAr, 'channel': 'in_app'};
+    if (messageEn != null && messageEn.isNotEmpty) body['messageEn'] = messageEn;
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/customers/$customerId/notify-cart'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> createProductDiscount({
+    required int productId,
+    required String type,
+    required int value,
+    required String startsAt,
+    required String endsAt,
+    String? label,
+  }) async {
+    final body = <String, dynamic>{
+      'productIds': [productId],
+      'type': type,
+      'value': value,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+    };
+    if (label != null && label.isNotEmpty) body['label'] = label;
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/admin/product-discounts'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body);
+  }
+
+  Future<void> removeProductDiscount(int productId) async {
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/api/admin/product-discounts'),
+      headers: {..._headers},
+      body: jsonEncode({'productIds': [productId]}),
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+  }
+
+  Future<List<dynamic>> listProductDiscounts() async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/admin/product-discounts'),
+      headers: _headers,
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    return jsonDecode(response.body) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>?> getProductDiscount(int productId) async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/admin/product-discounts/$productId'),
+      headers: _headers,
+    );
+    _updateCookie(response);
+    _checkResponse(response);
+    final data = jsonDecode(response.body);
+    return data;
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
 import '../providers/language_provider.dart';
@@ -16,6 +16,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<AppNotification> _notifications = [];
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -24,11 +25,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _loadNotifications() async {
+    setState(() { _loading = true; _error = false; });
     try {
       final notifs = await apiService.getNotifications();
       if (mounted) setState(() { _notifications = notifs; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _error = true; });
     }
   }
 
@@ -64,12 +66,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(title: Text(l10n.notifications)),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: kGoldPrimary))
+          : _error
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 60, color: kDivider),
+                      const SizedBox(height: 16),
+                      Text(l10n.networkError, style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadNotifications,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kGoldPrimary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(l10n.tryAgain),
+                      ),
+                    ],
+                  ),
+                )
           : _notifications.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.notifications_none, size: 80, color: kDivider),
+                      const Icon(Icons.notifications_none, size: 80, color: kDivider),
                       const SizedBox(height: 16),
                       Text(l10n.noNotifications, style: Theme.of(context).textTheme.headlineMedium),
                     ],

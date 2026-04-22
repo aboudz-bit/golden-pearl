@@ -1,5 +1,7 @@
 import { db } from "./db";
-import { products, discountCodes, stores } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { products, discountCodes, users, siteSettings, categories } from "@shared/schema";
+import bcrypt from "bcrypt";
 
 const SEED_PRODUCTS = [
   {
@@ -231,44 +233,6 @@ const SEED_DISCOUNTS = [
   },
 ];
 
-const SEED_STORES = [
-  {
-    nameEn: "Golden Pearl - The Avenues Mall",
-    nameAr: "Golden Pearl - مجمع الأفنيوز",
-    addressEn: "The Avenues Mall, Phase 2, Al Rai, Kuwait City",
-    addressAr: "مجمع الأفنيوز، المرحلة الثانية، الري، مدينة الكويت",
-    city: "Kuwait City",
-    phone: "+965 2225 0001",
-    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
-    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
-    mapUrl: "https://maps.google.com/?q=29.2577,47.9373",
-    isActive: true,
-  },
-  {
-    nameEn: "Golden Pearl - 360 Mall",
-    nameAr: "Golden Pearl - مجمع 360",
-    addressEn: "360 Mall, 6th Ring Road, Zahra, Kuwait",
-    addressAr: "مجمع 360، الطريق الدائري السادس، الزهراء، الكويت",
-    city: "Kuwait City",
-    phone: "+965 2530 0002",
-    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
-    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
-    mapUrl: "https://maps.google.com/?q=29.2892,48.0012",
-    isActive: true,
-  },
-  {
-    nameEn: "Golden Pearl - Marina Mall",
-    nameAr: "Golden Pearl - مجمع المارينا",
-    addressEn: "Marina Mall, Salmiya, Kuwait",
-    addressAr: "مجمع المارينا، السالمية، الكويت",
-    city: "Salmiya",
-    phone: "+965 2571 0003",
-    hoursEn: "Sun-Thu: 10AM-10PM, Fri-Sat: 2PM-11PM",
-    hoursAr: "الأحد-الخميس: 10ص-10م، الجمعة-السبت: 2م-11م",
-    mapUrl: "https://maps.google.com/?q=29.3375,48.0821",
-    isActive: true,
-  },
-];
 
 export async function seedDatabase() {
   try {
@@ -284,14 +248,80 @@ export async function seedDatabase() {
       console.log(`Database already has ${existingProducts.length} products, skipping seed`);
     }
 
-    const existingStores = await db.select().from(stores);
-    if (existingStores.length === 0) {
-      console.log("Seeding database with stores...");
-      await db.insert(stores).values(SEED_STORES);
-      console.log(`Seeded ${SEED_STORES.length} stores`);
+    const existingAdmin = await db.select().from(users).where(
+      eq(users.email, "admin@goldenpearl.com")
+    );
+    if (existingAdmin.length === 0) {
+      const passwordHash = await bcrypt.hash("admin123", 10);
+      await db.insert(users).values({
+        email: "admin@goldenpearl.com",
+        passwordHash,
+        name: "Zainab Hussain",
+        phone: "0555012942",
+        role: "admin",
+      });
+      console.log("Seeded admin user: admin@goldenpearl.com / admin123");
     } else {
-      console.log(`Database already has ${existingStores.length} stores, skipping seed`);
+      console.log("Admin user already exists, skipping seed");
     }
+
+    const existingSettings = await db.select().from(siteSettings);
+    if (existingSettings.length === 0) {
+      const defaultSettings = [
+        { key: "hero_banner", value: "" },
+        { key: "category_dresses", value: "" },
+        { key: "category_jalabiyas", value: "" },
+        { key: "category_kids", value: "" },
+        { key: "category_gifts", value: "" },
+      ];
+      await db.insert(siteSettings).values(defaultSettings);
+      console.log("Seeded default site settings");
+    }
+
+    const heroOverlaySetting = await db.select().from(siteSettings).where(eq(siteSettings.key, "heroOverlay"));
+    if (heroOverlaySetting.length === 0) {
+      const defaultStyle = {
+        fontFamily: "Playfair",
+        headlineSize: 30,
+        subheadlineSize: 14,
+        fontWeight: 700,
+        letterSpacing: 0,
+        color: "#FFFFFF",
+        shadow: { enabled: true, color: "#000000", blur: 8, offsetX: 0, offsetY: 2, opacity: 0.5 },
+        align: "center",
+        positionPreset: "BottomCenter",
+        offsetXPercent: 0,
+        offsetYPercent: 0,
+      };
+      const heroOverlay = {
+        ar: {
+          headline: "أناقة لا تُضاهى",
+          subheadline: "اكتشفي أحدث مجموعتنا من الأزياء الفاخرة المصنوعة يدوياً",
+          cta: "تسوقي الآن",
+          style: { ...defaultStyle, fontFamily: "Playfair" },
+        },
+        en: {
+          headline: "Elegance Redefined",
+          subheadline: "Discover our latest collection of handcrafted luxury fashion",
+          cta: "Shop Now",
+          style: { ...defaultStyle },
+        },
+      };
+      await db.insert(siteSettings).values({ key: "heroOverlay", value: JSON.stringify(heroOverlay) });
+      console.log("Seeded heroOverlay default");
+    }
+
+    const existingCategories = await db.select().from(categories);
+    if (existingCategories.length === 0) {
+      await db.insert(categories).values([
+        { slug: "dresses", nameEn: "Dresses", nameAr: "فساتين", sortOrder: 0 },
+        { slug: "jalabiyas", nameEn: "Jalabiyas", nameAr: "جلابيات", sortOrder: 1 },
+        { slug: "kids", nameEn: "Kids", nameAr: "أطفال", sortOrder: 2 },
+        { slug: "gifts", nameEn: "Gifts", nameAr: "هدايا", sortOrder: 3 },
+      ]);
+      console.log("Seeded default categories");
+    }
+
   } catch (error) {
     console.error("Seed error:", error);
   }

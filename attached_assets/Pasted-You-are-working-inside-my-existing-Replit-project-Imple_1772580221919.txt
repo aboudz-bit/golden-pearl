@@ -1,0 +1,71 @@
+You are working inside my existing Replit project. Implement ONLY the admin panel UX + backend improvements listed below. Do NOT add unrelated features. Keep current design language.
+
+GOAL: Make Admin Panel production-like and easy. Replace “enter image URL” with real uploads, allow multiple banners (images/videos), show product thumbnails in orders, categorize products view like the app, and fix Add Product navigation.
+
+CURRENT STATE NOTES:
+- Admin Panel exists with tabs: Dashboard / Products / Orders / Settings / Analytics.
+- Admin Settings currently uses text inputs “Enter image URL…”.
+- Orders list exists but does not show product images.
+- Products list exists but not grouped by categories like the app.
+- Add Product button currently navigates incorrectly (goes back to products list instead of opening create form).
+
+REQUIREMENTS (MUST DO):
+1) MEDIA UPLOAD (replace URL inputs)
+   - Add server endpoint for admin uploads: POST /api/admin/media/upload
+   - Accept multipart/form-data with a single file field: "file"
+   - Support image/* and video/*.
+   - Save files under a stable public folder (e.g., golden_pearl/public/uploads/ or golden_pearl/build/web/uploads/ depending on current serving approach).
+   - Return JSON: { url: "/uploads/<filename>", type: "image"|"video", size, mime }
+   - Ensure Express serves /uploads as static with proper Content-Type, Accept-Ranges for video, and cache headers.
+
+2) BANNERS: multiple items (images/videos)
+   - Add DB storage for banners as an ordered list.
+   - Each banner item: id, type ("image"|"video"), url, title(optional), active(boolean), orderIndex(int), createdAt.
+   - Admin UI: Manage Banners screen
+     - List existing banner items with preview (image thumb or video icon + “Play”).
+     - Add new banner: upload file → create banner item.
+     - Reorder banners (drag & drop OR up/down buttons if drag is hard).
+     - Toggle active on/off.
+     - Delete banner item.
+   - Home page hero carousel must render banners from backend:
+     - If type=image → show image slide
+     - If type=video → show video background slide (autoplay muted loop, with graceful fallback image/poster if needed)
+
+3) CATEGORY IMAGES: upload per category
+   - Categories: Dresses / Jalabiyas / Kids / Gifts (match app)
+   - Replace URL input with upload button per category.
+   - Store category image URLs in DB/settings table (existing or new structure).
+   - Home categories section uses these stored URLs.
+
+4) ORDERS: show product thumbnails
+   - Update admin orders API response to include each order’s line items with productName + productImageUrl + qty + price.
+   - Admin Orders UI: each order card shows a horizontal row of small product thumbnails (max 3 + “+N”).
+   - Order details view (if exists) should show full list with images.
+
+5) PRODUCTS: categorize like the app
+   - Admin Products tab must have top tabs or segmented control:
+     - Dresses | Jalabiyas | Kids | Gifts | All
+   - Filtering should be fast (client side if already loaded; otherwise server query by category).
+   - Keep existing product actions (edit/delete/stock) but make stock editable inline.
+
+6) FIX “ADD PRODUCT” NAVIGATION
+   - The Add Product button must open a dedicated Create Product screen/route (e.g., /admin/products/new).
+   - After saving, return to the correct category tab and show success toast.
+   - Do NOT navigate back to Products list immediately on tap.
+
+IMPLEMENTATION GUIDELINES:
+- Minimal disruption: use existing project structure (storage.ts, routes.ts, admin screens).
+- Don’t introduce external paid services. Store files locally in the repo runtime and serve them.
+- Ensure uploads work on web/mobile preview (Flutter Web).
+- Add basic validation (file type/size) and clear error messages.
+- After changes: run build, restart, verify:
+  - Upload banner image/video works and appears on Home
+  - Multiple banners rotate correctly
+  - Category image upload works
+  - Orders show product thumbnails
+  - Products categorized tabs work
+  - Add Product opens create form and saves properly
+
+DELIVERABLES:
+- Code changes only for these requirements
+- Brief summary of what files you changed and how to test each item

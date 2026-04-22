@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
+import '../services/api_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/auth_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -11,6 +15,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final langProvider = Provider.of<LanguageProvider>(context);
+    final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
@@ -29,7 +34,66 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          if (auth.isLoggedIn) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: kGoldPrimary.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: kGoldPrimary.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: kGoldPrimary.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person, color: kGoldPrimary, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${l10n.welcomeBack}, ${auth.userName}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: kCharcoal)),
+                        Text(auth.userEmail, style: const TextStyle(fontSize: 12, color: kSecondaryText)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (auth.isAdminOrStaff) ...[
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: kGoldPrimary.withOpacity(0.3)),
+                boxShadow: [BoxShadow(color: kGoldPrimary.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: kGoldPrimary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.admin_panel_settings, color: kGoldPrimary, size: 22),
+                ),
+                title: Text(l10n.adminPanel, style: const TextStyle(fontWeight: FontWeight.w600, color: kCharcoal)),
+                trailing: const Icon(Icons.chevron_right, color: kGoldPrimary),
+                onTap: () => Navigator.pushNamed(context, '/admin'),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -38,6 +102,14 @@ class SettingsScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
+                if (!auth.isLoggedIn)
+                  ListTile(
+                    leading: const Icon(Icons.login, color: kGoldPrimary),
+                    title: Text(l10n.login),
+                    trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                    onTap: () => Navigator.pushNamed(context, '/login'),
+                  ),
+                if (!auth.isLoggedIn) Divider(height: 0, color: kDivider),
                 ListTile(
                   leading: const Icon(Icons.notifications_outlined, color: kGoldPrimary),
                   title: Text(l10n.notifications),
@@ -117,9 +189,56 @@ class SettingsScreen extends StatelessWidget {
                   leading: const Icon(Icons.lock_outline, color: kGoldPrimary),
                   title: Text(l10n.securePayment),
                 ),
+                Divider(height: 0, color: kDivider),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined, color: kGoldPrimary),
+                  title: Text(l10n.privacyPolicy),
+                  trailing: const Icon(Icons.chevron_right, color: kSecondaryText),
+                  onTap: () {
+                    final url = '${ApiService.baseUrl}/privacy-policy';
+                    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                  },
+                ),
+                if (auth.isLoggedIn) ...[
+                  Divider(height: 0, color: kDivider),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: Text(l10n.logout, style: const TextStyle(color: Colors.red)),
+                    onTap: () async {
+                      await auth.logout();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.logoutSuccess),
+                            backgroundColor: kGoldPrimary,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
               ],
             ),
           ),
+          if (auth.isLoggedIn && !auth.isAdmin) ...[
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.2)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: Text(l10n.deleteAccount, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+                trailing: const Icon(Icons.chevron_right, color: Colors.red),
+                onTap: () => _showDeleteAccountDialog(context, auth, l10n),
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
           Center(
             child: Container(
@@ -140,6 +259,91 @@ class SettingsScreen extends StatelessWidget {
             child: Text('v1.0.0', style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context, AuthProvider auth, AppLocalizations l10n) {
+    final confirmController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: kCardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+              const SizedBox(width: 8),
+              Text(l10n.deleteAccountTitle, style: playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.deleteAccountConfirm, style: const TextStyle(fontSize: 14, color: kSecondaryText, height: 1.5)),
+              const SizedBox(height: 20),
+              Text(l10n.typeDeleteToConfirm, style: const TextStyle(fontSize: 13, color: kCharcoal, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirmController,
+                onChanged: (_) => setDialogState(() {}),
+                decoration: InputDecoration(
+                  hintText: l10n.deleteWord,
+                  hintStyle: const TextStyle(color: kSecondaryText, fontSize: 14),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kDivider)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.red)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancel, style: const TextStyle(color: kSecondaryText)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: confirmController.text.trim() == l10n.deleteWord
+                  ? () async {
+                      Navigator.pop(ctx);
+                      final error = await auth.deleteAccount();
+                      if (context.mounted) {
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error),
+                              backgroundColor: Colors.red.shade400,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        } else {
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.remove('rememberAccount');
+                          await prefs.remove('savedIdentifier');
+                          await prefs.remove('savedLanguage');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l10n.accountDeleted),
+                                backgroundColor: kGoldPrimary,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    }
+                  : null,
+              child: Text(l10n.deleteAccount),
+            ),
+          ],
+        ),
       ),
     );
   }

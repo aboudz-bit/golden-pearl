@@ -1,3 +1,29 @@
+class ActiveDiscount {
+  final int id;
+  final String type;
+  final int value;
+  final DateTime startsAt;
+  final DateTime endsAt;
+
+  ActiveDiscount({
+    required this.id,
+    required this.type,
+    required this.value,
+    required this.startsAt,
+    required this.endsAt,
+  });
+
+  factory ActiveDiscount.fromJson(Map<String, dynamic> json) {
+    return ActiveDiscount(
+      id: (json['id'] as num).toInt(),
+      type: json['type'] ?? 'percent',
+      value: (json['value'] as num).toInt(),
+      startsAt: DateTime.parse(json['startsAt']),
+      endsAt: DateTime.parse(json['endsAt']),
+    );
+  }
+}
+
 class Product {
   final int id;
   final String nameEn;
@@ -19,12 +45,10 @@ class Product {
   final String? badge;
   final double rating;
   final int reviewCount;
-  final bool arEnabled;
-  final String? arAssetType;
-  final String? arAssetUrl;
-  final double? arScaleHint;
-  final String? arPlacementHint;
-  final String? videoUrl;
+  final int stock;
+  final ActiveDiscount? activeDiscount;
+  final int? priceFinal;
+  final String? discountBadgeText;
 
   Product({
     required this.id,
@@ -47,13 +71,14 @@ class Product {
     this.badge,
     required this.rating,
     required this.reviewCount,
-    this.arEnabled = false,
-    this.arAssetType,
-    this.arAssetUrl,
-    this.arScaleHint,
-    this.arPlacementHint,
-    this.videoUrl,
+    this.stock = 100,
+    this.activeDiscount,
+    this.priceFinal,
+    this.discountBadgeText,
   });
+
+  int get effectivePrice => priceFinal ?? price;
+  bool get hasActiveDiscount => activeDiscount != null && priceFinal != null && priceFinal! < price;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -77,12 +102,12 @@ class Product {
       badge: json['badge'],
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
       reviewCount: json['reviewCount'] ?? 0,
-      arEnabled: json['arEnabled'] ?? false,
-      arAssetType: json['arAssetType'],
-      arAssetUrl: json['arAssetUrl'],
-      arScaleHint: json['arScaleHint'] != null ? (json['arScaleHint'] as num).toDouble() : null,
-      arPlacementHint: json['arPlacementHint'],
-      videoUrl: json['videoUrl'],
+      stock: (json['stock'] as num?)?.toInt() ?? 100,
+      activeDiscount: json['activeDiscount'] != null
+          ? ActiveDiscount.fromJson(json['activeDiscount'])
+          : null,
+      priceFinal: json['priceFinal'] != null ? (json['priceFinal'] as num).toInt() : null,
+      discountBadgeText: json['discountBadgeText'],
     );
   }
 

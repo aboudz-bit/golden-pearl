@@ -1,0 +1,129 @@
+Add a Staff Account + Permissions (RBAC-lite) for the Admin Panel.
+
+SCOPE (IMPORTANT)
+- Add ONE new user type: "staff" (separate from admin).
+- Staff should only access Admin Panel features based on permissions.
+- Do NOT break existing admin login/demo flow.
+- Keep UI/UX consistent with current Admin Panel design.
+
+GOAL
+1) Admin can create/manage staff users.
+2) Each staff user has granular permissions (view/edit) for specific modules.
+3) Staff can log in and see ONLY what they’re allowed to see.
+4) For now, staff main use-case is:
+   - Dashboard
+   - Orders
+But permissions system must support future modules too.
+
+------------------------------------
+DATA MODEL (Backend)
+------------------------------------
+Add to users table (or equivalent):
+- role: "admin" | "staff" | "customer"
+- isActive: boolean (default true)
+- permissions: JSON (nullable) OR a separate staff_permissions table
+
+Recommended permissions JSON schema:
+{
+  "dashboard": { "view": true },
+  "orders": { "view": true, "updateStatus": false, "refund": false },
+  "products": { "view": false, "create": false, "edit": false, "delete": false },
+  "categories": { "view": false, "edit": false },
+  "banners": { "view": false, "edit": false },
+  "customers": { "view": false, "export": false },
+  "notifications": { "view": false, "send": false, "delete": false },
+  "discountCodes": { "view": false, "create": false, "edit": false, "delete": false }
+}
+
+Rules:
+- Admin: full access implicitly (no need to store permissions).
+- Staff: access must be enforced by permissions.
+- Customer: no admin access.
+
+------------------------------------
+API (Backend)
+------------------------------------
+1) Admin staff management endpoints (admin-only):
+- POST   /api/admin/staff              (create staff)
+- GET    /api/admin/staff              (list staff)
+- PATCH  /api/admin/staff/:id          (update name/phone/email/isActive)
+- PATCH  /api/admin/staff/:id/permissions (update permissions JSON)
+- DELETE /api/admin/staff/:id          (optional soft delete or disable)
+
+2) Auth / session:
+- Ensure staff can authenticate in the same auth system used now.
+- When login succeeds return role + permissions for staff.
+Example response:
+{
+  "success": true,
+  "user": { "id": 12, "name": "Sara", "role": "staff", "permissions": {...} }
+}
+
+3) Authorization middleware:
+- isAdmin: unchanged
+- isStaffOrAdmin: allows both
+- requirePermission("orders.view"), requirePermission("orders.updateStatus"), etc.
+- Admin always passes.
+- Staff must have the specific permission.
+
+Enforce permissions on backend routes:
+- Dashboard data: requirePermission("dashboard.view")
+- Orders list: requirePermission("orders.view")
+- Update order status: requirePermission("orders.updateStatus")
+(And similarly for any other protected module)
+
+------------------------------------
+FRONTEND (Flutter Admin)
+------------------------------------
+A) Admin UI: Staff Management Screen
+Add a new Admin page: "Staff" (admin-only access)
+Features:
+- List staff users (name, email/phone, active status, last login if available)
+- Add Staff button opens modal/form:
+  - name
+  - email (or phone)
+  - password (or generate temp password)
+  - active toggle
+  - permissions checklist
+
+Permissions editor UI:
+- Modules section cards with toggles:
+  Dashboard: View
+  Orders: View, Update Status
+  (keep others collapsed/optional but present for future)
+- “Save permissions” button
+
+B) Staff experience
+- When a staff user logs in:
+  - Show only allowed bottom tabs:
+    - If dashboard.view => show Dashboard tab
+    - If orders.view => show Orders tab
+  - Hide drawer items and routes not permitted.
+  - If staff tries to open a forbidden route via deep link:
+    Show a clean "Access denied" page.
+
+C) UX rules
+- Permissions changes must take effect immediately after next login,
+  or implement refresh session endpoint to reload permissions.
+
+------------------------------------
+ACCEPTANCE TESTS
+------------------------------------
+1) Admin creates staff user with:
+   dashboard.view = true
+   orders.view = true
+   orders.updateStatus = false
+- Staff logs in:
+  - Can see Dashboard and Orders list
+  - Cannot change order status (button hidden/disabled)
+  - Backend blocks status update if attempted
+
+2) Admin edits staff permissions to enable orders.updateStatus
+- Staff can now update status
+
+3) If staff isActive = false
+- Login blocked with clear message "Account disabled"
+
+IMPORTANT
+- Do not change existing admin capabilities.
+- Keep code clean: controllers/services/middleware as per project structure.

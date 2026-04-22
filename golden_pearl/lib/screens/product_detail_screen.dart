@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'package:video_player/video_player.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/favorites_provider.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import '../utils/money_formatter.dart';
@@ -74,10 +75,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _addToCart() async {
-    if (_product == null || _selectedSize == null || _selectedColor == null || _adding) return;
+    if (_product == null || _adding) return;
+    if (_selectedSize == null && _product!.sizes.isNotEmpty) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.selectSize),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 2000),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+    if (_selectedColor == null && _product!.colors.isNotEmpty) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.selectColor),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 2000),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
     setState(() => _adding = true);
     final cart = Provider.of<CartProvider>(context, listen: false);
-    final success = await cart.addToCart(_product!.id, _selectedSize!, _selectedColor!, quantity: _quantity);
+    final success = await cart.addToCart(_product!.id, _selectedSize ?? '', _selectedColor ?? '', quantity: _quantity);
     if (mounted && success) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,7 +161,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     final p = _product!;
-    final hasDiscount = p.originalPrice != null && p.originalPrice! > p.price;
+    final hasTimeDiscount = p.hasActiveDiscount;
+    final hasStaticDiscount = !hasTimeDiscount && p.originalPrice != null && p.originalPrice! > p.price;
+    final hasDiscount = hasTimeDiscount || hasStaticDiscount;
 
     return Scaffold(
       body: CustomScrollView(
@@ -255,7 +284,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: Text(p.name(lang), style: playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: kCharcoal))),
-                      IconButton(icon: const Icon(Icons.favorite_border, color: kGoldPrimary), onPressed: () {}),
+                      Consumer<FavoritesProvider>(
+                        builder: (context, fav, _) {
+                          final isFav = fav.isFavorite(p.id);
+                          return IconButton(
+                            icon: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: kGoldPrimary,
+                            ),
+                            onPressed: () => fav.toggleFavorite(p.id),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -263,10 +303,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        MoneyFormatter.format(p.price, lang),
+                        MoneyFormatter.format(p.effectivePrice, lang),
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: kGoldPrimary),
                       ),
-                      if (hasDiscount) ...[
+                      if (hasTimeDiscount) ...[
+                        const SizedBox(width: 12),
+                        Text(
+                          MoneyFormatter.format(p.price, lang),
+                          style: const TextStyle(fontSize: 15, decoration: TextDecoration.lineThrough, color: kSecondaryText),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            p.discountBadgeText ?? '',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red.shade600),
+                          ),
+                        ),
+                      ] else if (hasStaticDiscount) ...[
                         const SizedBox(width: 12),
                         Text(
                           MoneyFormatter.format(p.originalPrice!, lang),
@@ -407,7 +465,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               icon: _adding
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.shopping_bag_outlined, size: 20),
-              label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.price * _quantity, lang)}'),
+              label: Text('${l10n.addToBag}  ·  ${MoneyFormatter.format(p.effectivePrice * _quantity, lang)}'),
             ),
           ),
         ),
@@ -446,13 +504,26 @@ class _VideoSlideWidgetState extends State<_VideoSlideWidget> {
 
   Future<void> _initVideo() async {
     try {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+        httpHeaders: const {'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.5'},
+      );
       await _controller!.initialize();
+      if (_controller!.value.hasError) {
+        if (mounted) setState(() => _error = true);
+        return;
+      }
       _controller!.addListener(() {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        if (_controller!.value.hasError) {
+          setState(() => _error = true);
+          return;
+        }
+        setState(() {});
       });
       if (mounted) setState(() => _initialized = true);
     } catch (e) {
+      debugPrint('Video init error: $e');
       if (mounted) setState(() => _error = true);
     }
   }

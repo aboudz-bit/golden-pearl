@@ -1,0 +1,71 @@
+The UI/overlay looks great, but the background video is not rendering behind it.
+
+Fix the BACKGROUND HERO VIDEO on Flutter Web (and mobile Safari) with these exact requirements:
+
+GOAL
+- The hero section must show a FULL-WIDTH, FULL-HEIGHT background video (cover) behind the “Golden Pearl / Luxury Fashion” text and behind the page dots, like a real landing hero.
+
+ROOT CAUSES TO HANDLE
+- Autoplay on iOS/Safari will NOT work unless the video is muted + playsInline.
+- Flutter video_player on web is unreliable; use native HTML <video> for Web.
+- Ensure proper CSS stacking (z-index) so the video is behind the overlay, not replaced by a black container.
+
+IMPLEMENTATION
+
+1) WEB ONLY (kIsWeb):
+- Render a native HTML <video> element using HtmlElementView.
+- Create a unique viewType like "hero-bg-video".
+- Video element attributes MUST include:
+  - src = "${ApiService.baseUrl}/videos/dresses_video.mp4"
+  - autoplay = true
+  - loop = true
+  - muted = true   (required for autoplay)
+  - playsInline = true
+  - preload = "auto"
+  - controls = false
+- Styling MUST make it fill the hero container:
+  - position: absolute
+  - top/left: 0
+  - width/height: 100%
+  - object-fit: cover
+  - z-index: 0
+- Put an overlay layer above it:
+  - position: absolute; inset: 0; z-index: 1;
+  - optional gradient scrim for readability.
+
+2) NON-WEB (Android/iOS):
+- Use existing video_player BUT configure for background:
+  - setLooping(true)
+  - setVolume(0.0)  (mute)
+  - play()
+- Wrap in Positioned.fill + FittedBox / AspectRatio so it behaves like cover.
+- Ensure the video widget is behind overlay using Stack and zIndex logic.
+
+3) HERO LAYOUT
+- Use Stack:
+  - Layer 0: BackgroundVideo (cover)
+  - Layer 1: Scrim/Gradient overlay (optional)
+  - Layer 2: Foreground content (texts, dots, button)
+- Ensure the container has a fixed height (e.g., 70vh on web) so it can display.
+
+4) SERVER CHECK
+- Verify this URL returns 200 and correct headers:
+  GET /videos/dresses_video.mp4
+  Must include:
+  - Content-Type: video/mp4
+  - Accept-Ranges: bytes
+- If the file is missing, create/commit it into the repo under:
+  golden_pearl/assets/videos/dresses_video.mp4
+  and ensure the build copies it to the served location used by Express.
+
+5) DEBUG
+- Add temporary debug logs:
+  - print the final video URL used on web
+  - in web, listen for video.onerror and log error details to console
+
+DELIVERABLE
+- Commit the changes.
+- After running, the hero MUST show actual motion video in the background (not black), with text and button on top.
+
+Do NOT change unrelated UI/screens.
+Only fix the hero background video rendering and its stacking/compatibility.

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'dart:convert';
+import 'dart:ui';
+import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
+import '../widgets/hero_video_background.dart';
 import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,27 +21,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featured = [];
   bool _loading = true;
-  final PageController _heroController = PageController();
-  int _currentHeroPage = 0;
-
-  // Category product images cache
-  Map<String, String> _categoryImages = {};
+  List<Map<String, dynamic>> _banners = [];
+  List<Map<String, dynamic>> _categories = [];
+  int _currentBanner = 0;
+  final PageController _bannerController = PageController();
 
   @override
   void initState() {
     super.initState();
     _loadFeatured();
-    _loadCategoryImages();
-    _startHeroAutoScroll();
+    _loadBanners();
+    _loadCategories();
   }
 
-  void _startHeroAutoScroll() {
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!mounted) return;
-      final nextPage = (_currentHeroPage + 1) % 3;
-      _heroController.animateToPage(nextPage, duration: const Duration(milliseconds: 600), curve: Curves.easeInOut);
-      _startHeroAutoScroll();
-    });
+  @override
+  void dispose() {
+    _bannerController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFeatured() async {
@@ -50,25 +49,40 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadCategoryImages() async {
+  Future<void> _loadBanners() async {
     try {
-      final allProducts = await apiService.getProducts();
-      final images = <String, String>{};
-      for (final cat in ['dresses', 'jalabiyas', 'kids', 'gifts']) {
-        final match = allProducts.where((p) => p.category == cat && p.images.isNotEmpty).toList();
-        if (match.isNotEmpty) {
-          final img = match.first.images.first;
-          images[cat] = img.startsWith('http') ? img : '${ApiService.baseUrl}$img';
-        }
-      }
-      if (mounted) setState(() => _categoryImages = images);
+      final banners = await apiService.getPublicBanners();
+      if (mounted) setState(() => _banners = banners);
     } catch (_) {}
   }
 
-  @override
-  void dispose() {
-    _heroController.dispose();
-    super.dispose();
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await apiService.getPublicCategories();
+      if (mounted) setState(() => _categories = categories);
+    } catch (_) {}
+  }
+
+  Map<String, dynamic>? _getOverlayForBanner(int index, String lang) {
+    if (index < 0 || index >= _banners.length) return null;
+    final banner = _banners[index];
+    try {
+      final raw = banner['overlay'];
+      Map<String, dynamic>? overlay;
+      if (raw is String && raw.isNotEmpty) {
+        overlay = Map<String, dynamic>.from(
+          (Map<String, dynamic>.from(
+            const JsonDecoder().convert(raw) as Map,
+          )),
+        );
+      } else if (raw is Map) {
+        overlay = Map<String, dynamic>.from(raw);
+      }
+      if (overlay != null) {
+        return overlay[lang] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
+    return null;
   }
 
   @override
@@ -76,73 +90,29 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lang = Provider.of<LanguageProvider>(context).languageCode;
     final size = MediaQuery.of(context).size;
+    final hasBanners = _banners.isNotEmpty;
+    final overlayLang = hasBanners ? _getOverlayForBanner(_currentBanner, lang) : null;
+
+    final heroHeight = size.width > 800
+        ? (size.height * 0.65).clamp(520.0, 650.0)
+        : (size.height * 0.5).clamp(size.height * 0.45, size.height * 0.55);
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: size.height * 0.55,
+            expandedHeight: heroHeight,
             pinned: true,
             stretch: true,
             backgroundColor: kCreamBg,
             title: Text(l10n.appName, style: playfairDisplay(fontWeight: FontWeight.w700, color: kCharcoal)),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.language, color: kSecondaryText),
-                onPressed: () => Provider.of<LanguageProvider>(context, listen: false).toggleLanguage(),
-              ),
-            ],
+            actions: const [],
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  PageView(
-                    controller: _heroController,
-                    onPageChanged: (i) => setState(() => _currentHeroPage = i),
-                    children: [
-                      _HeroSlide(image: 'assets/images/hero1.png', title: l10n.heroTitle, subtitle: l10n.heroSubtitle),
-                      _HeroSlide(image: 'assets/images/hero2.png', title: l10n.eidCollection, subtitle: l10n.heroSubtitle),
-                      _HeroSlide(image: 'assets/images/hero3.png', title: l10n.newDrop, subtitle: l10n.exploreCollection),
-                    ],
-                  ),
-                  Positioned(
-                    bottom: 72,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (i) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 280),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _currentHeroPage == i ? 24 : 8,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: _currentHeroPage == i ? Colors.white : Colors.white54,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      )),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(context, PageRouteBuilder(
-                            pageBuilder: (_, __, ___) => const ShopScreen(),
-                            transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
-                            transitionDuration: const Duration(milliseconds: 280),
-                          ));
-                        },
-                        child: Text(l10n.shopNow),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              background: hasBanners
+                  ? _buildBannerCarousel(size, l10n, topPadding, overlayLang, lang)
+                  : _buildDefaultHero(size, l10n, topPadding, overlayLang),
             ),
           ),
           SliverToBoxAdapter(
@@ -154,17 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverToBoxAdapter(
             child: SizedBox(
               height: 140,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                children: [
-                  _CategoryCircle(label: l10n.dresses, imageUrl: _categoryImages['dresses'], category: 'dresses'),
-                  _CategoryCircle(label: l10n.jalabiyas, imageUrl: _categoryImages['jalabiyas'], category: 'jalabiyas'),
-                  _CategoryCircle(label: l10n.kids, imageUrl: _categoryImages['kids'], category: 'kids'),
-                  _CategoryCircle(label: l10n.gifts, imageUrl: _categoryImages['gifts'], category: 'gifts'),
-                ],
-              ),
+              child: _buildCategoryList(l10n, lang),
             ),
           ),
           SliverToBoxAdapter(
@@ -241,53 +201,314 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
-class _HeroSlide extends StatelessWidget {
-  final String image;
-  final String title;
-  final String subtitle;
-
-  const _HeroSlide({required this.image, required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildContainedNetworkImage(String fullUrl) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(image, fit: BoxFit.cover),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.05)],
+        ClipRect(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
+              ),
+              child: Image.network(fullUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
             ),
           ),
         ),
-        Positioned(
-          bottom: 110,
-          left: 24,
-          right: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: playfairDisplay(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(subtitle, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4), textAlign: TextAlign.center),
-            ],
+        Center(
+          child: Image.network(
+            fullUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Container(
+              color: kCharcoal,
+              child: const Center(child: Icon(Icons.image, color: Colors.white30, size: 48)),
+            ),
           ),
         ),
       ],
     );
   }
+
+  Color _hexToColor(String hex, {double opacity = 1.0}) {
+    hex = hex.replaceFirst('#', '');
+    if (hex.length == 6) hex = 'FF$hex';
+    final c = Color(int.parse(hex, radix: 16));
+    return c.withOpacity(opacity);
+  }
+
+  TextStyle _heroTextStyle(Map<String, dynamic>? style, double baseSize, {bool isHeadline = true}) {
+    if (style == null) {
+      return isHeadline
+          ? playfairDisplay(fontSize: baseSize, fontWeight: FontWeight.w700, color: Colors.white)
+          : TextStyle(fontSize: baseSize, color: Colors.white70, height: 1.4);
+    }
+
+    final screenW = MediaQuery.of(context).size.width;
+    final scaleFactor = (screenW / 400).clamp(0.7, 1.3);
+    final size = (baseSize * scaleFactor).clamp(isHeadline ? 22.0 : 12.0, isHeadline ? 44.0 : 22.0);
+    final color = _hexToColor(style['color'] as String? ?? '#FFFFFF');
+    final weight = FontWeight.values[((style['fontWeight'] as num? ?? 700) ~/ 100).clamp(1, 8)];
+    final spacing = (style['letterSpacing'] as num?)?.toDouble() ?? 0;
+    final fontFamily = style['fontFamily'] as String? ?? 'Playfair';
+
+    List<Shadow>? shadows;
+    final shadowMap = style['shadow'] as Map<String, dynamic>?;
+    if (shadowMap != null && shadowMap['enabled'] == true) {
+      final sColor = _hexToColor(
+        shadowMap['color'] as String? ?? '#000000',
+        opacity: (shadowMap['opacity'] as num?)?.toDouble() ?? 0.5,
+      );
+      shadows = [
+        Shadow(
+          color: sColor,
+          blurRadius: (shadowMap['blur'] as num?)?.toDouble() ?? 8,
+          offset: Offset(
+            (shadowMap['offsetX'] as num?)?.toDouble() ?? 0,
+            (shadowMap['offsetY'] as num?)?.toDouble() ?? 2,
+          ),
+        ),
+      ];
+    }
+
+    if (fontFamily == 'Playfair') {
+      return playfairDisplay(fontSize: size, fontWeight: weight, color: color).copyWith(
+        letterSpacing: spacing,
+        shadows: shadows,
+      );
+    }
+
+    return TextStyle(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      letterSpacing: spacing,
+      shadows: shadows,
+      height: isHeadline ? null : 1.4,
+    );
+  }
+
+  Alignment _presetToAlignment(String preset, double xOff, double yOff) {
+    double x = 0, y = 0;
+    switch (preset) {
+      case 'TopLeft':       x = -1; y = -1; break;
+      case 'TopCenter':     x = 0;  y = -1; break;
+      case 'TopRight':      x = 1;  y = -1; break;
+      case 'CenterLeft':    x = -1; y = 0;  break;
+      case 'Center':        x = 0;  y = 0;  break;
+      case 'CenterRight':   x = 1;  y = 0;  break;
+      case 'BottomLeft':    x = -1; y = 1;  break;
+      case 'BottomCenter':  x = 0;  y = 1;  break;
+      case 'BottomRight':   x = 1;  y = 1;  break;
+    }
+    return Alignment(
+      (x + xOff / 50).clamp(-1.0, 1.0),
+      (y + yOff / 50).clamp(-1.0, 1.0),
+    );
+  }
+
+  TextAlign _parseAlign(String? align) {
+    switch (align) {
+      case 'left': return TextAlign.left;
+      case 'right': return TextAlign.right;
+      default: return TextAlign.center;
+    }
+  }
+
+  CrossAxisAlignment _parseCross(String? align) {
+    switch (align) {
+      case 'left': return CrossAxisAlignment.start;
+      case 'right': return CrossAxisAlignment.end;
+      default: return CrossAxisAlignment.center;
+    }
+  }
+
+  Widget _buildHeroOverlay(AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang, {bool showDots = false}) {
+    final headline = overlayLang?['headline'] as String? ?? l10n.heroTitle;
+    final subheadline = overlayLang?['subheadline'] as String? ?? l10n.heroSubtitle;
+    final style = overlayLang?['style'] as Map<String, dynamic>?;
+    final textAlign = _parseAlign(style?['align'] as String?);
+    final crossAlign = _parseCross(style?['align'] as String?);
+
+    final preset = style?['positionPreset'] as String? ?? 'BottomCenter';
+    final xOff = (style?['offsetXPercent'] as num?)?.toDouble() ?? 0;
+    final yOff = (style?['offsetYPercent'] as num?)?.toDouble() ?? 0;
+    final alignment = _presetToAlignment(preset, xOff, yOff);
+
+    final headlineSize = (style?['headlineSize'] as num?)?.toDouble() ?? 30;
+    final subSize = (style?['subheadlineSize'] as num?)?.toDouble() ?? 14;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              stops: const [0.0, 0.45],
+              colors: [Colors.black.withOpacity(0.65), Colors.transparent],
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: alignment,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: crossAlign,
+                children: [
+                  Text(
+                    headline,
+                    style: _heroTextStyle(style, headlineSize, isHeadline: true),
+                    textAlign: textAlign,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subheadline,
+                    style: _heroTextStyle(style, subSize, isHeadline: false),
+                    textAlign: textAlign,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBannerCarousel(Size size, AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang, String lang) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _bannerController,
+          itemCount: _banners.length,
+          onPageChanged: (i) => setState(() => _currentBanner = i),
+          itemBuilder: (context, index) {
+            final banner = _banners[index];
+            final url = banner['url'] as String? ?? '';
+            final type = banner['type'] as String? ?? 'image';
+            final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
+            final slideOverlay = _getOverlayForBanner(index, lang);
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                if (type == 'video')
+                  HeroVideoBackground(videoUrl: fullUrl)
+                else
+                  _buildContainedNetworkImage(fullUrl),
+                _buildHeroOverlay(l10n, topPadding, slideOverlay, showDots: false),
+              ],
+            );
+          },
+        ),
+        if (_banners.length > 1)
+          Positioned(
+            bottom: 66,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_banners.length, (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: i == _currentBanner ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: i == _currentBanner ? kGoldPrimary : Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              )),
+            ),
+          ),
+        Positioned(
+          bottom: 20,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const ShopScreen(),
+                  transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+                  transitionDuration: const Duration(milliseconds: 280),
+                ));
+              },
+              child: Text(overlayLang?['cta'] as String? ?? l10n.shopNow),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultHero(Size size, AppLocalizations l10n, double topPadding, Map<String, dynamic>? overlayLang) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const HeroVideoBackground(),
+        _buildHeroOverlay(l10n, topPadding, overlayLang),
+        Positioned(
+          bottom: 20,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const ShopScreen(),
+                  transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+                  transitionDuration: const Duration(milliseconds: 280),
+                ));
+              },
+              child: Text(l10n.shopNow),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryList(AppLocalizations l10n, String lang) {
+    if (_categories.isNotEmpty) {
+      return ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        children: _categories.map((cat) {
+          final slug = cat['slug'] as String? ?? '';
+          final name = lang == 'ar' ? (cat['nameAr'] ?? slug) : (cat['nameEn'] ?? slug);
+          final imageUrl = cat['imageUrl'] as String?;
+          String? fullImgUrl;
+          if (imageUrl != null && imageUrl.isNotEmpty) {
+            fullImgUrl = imageUrl.startsWith('http') ? imageUrl : '${ApiService.baseUrl}$imageUrl';
+          }
+          return _CategoryCircle(label: name.toString(), imageUrl: fullImgUrl, category: slug);
+        }).toList(),
+      );
+    }
+
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      children: [
+        _CategoryCircle(label: l10n.dresses, category: 'dresses'),
+        _CategoryCircle(label: l10n.jalabiyas, category: 'jalabiyas'),
+        _CategoryCircle(label: l10n.kids, category: 'kids'),
+        _CategoryCircle(label: l10n.gifts, category: 'gifts'),
+      ],
+    );
+  }
 }
 
-/// Large circular category with real product image (96-110px).
 class _CategoryCircle extends StatefulWidget {
   final String label;
   final String? imageUrl;

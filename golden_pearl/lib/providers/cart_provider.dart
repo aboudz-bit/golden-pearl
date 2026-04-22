@@ -14,7 +14,7 @@ class CartProvider extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
-  int get subtotal => _items.fold(0, (sum, item) => sum + (item.product?.price ?? 0) * item.quantity);
+  int get subtotal => _items.fold(0, (sum, item) => sum + (item.product?.effectivePrice ?? item.product?.price ?? 0) * item.quantity);
 
   Future<void> loadCart() async {
     _loading = true;

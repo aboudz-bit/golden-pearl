@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
@@ -16,6 +16,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   List<Order> _orders = [];
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -24,11 +25,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _loadOrders() async {
+    setState(() { _loading = true; _error = false; });
     try {
       final orders = await apiService.getOrders();
       if (mounted) setState(() { _orders = orders; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _error = true; });
     }
   }
 
@@ -71,6 +73,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
       appBar: AppBar(title: Text(l10n.orderHistory)),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: kGoldPrimary))
+          : _error
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 60, color: kDivider),
+                      const SizedBox(height: 16),
+                      Text(l10n.networkError, style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadOrders,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kGoldPrimary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(l10n.tryAgain),
+                      ),
+                    ],
+                  ),
+                )
           : _orders.isEmpty
               ? Center(
                   child: Column(
@@ -149,8 +172,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 ),
                               ],
                             ),
-                            // Pickup store info
-                            if (order.isPickup && order.pickupStoreName != null) ...[
+                            if (order.isPickup && order.shippingAddress.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.all(10),
@@ -163,19 +185,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     const Icon(Icons.store, size: 16, color: kGoldPrimary),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            order.pickupStoreName!,
-                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kCharcoal),
-                                          ),
-                                          if (order.pickupAddress != null)
-                                            Text(
-                                              order.pickupAddress!,
-                                              style: const TextStyle(fontSize: 11, color: kSecondaryText),
-                                            ),
-                                        ],
+                                      child: Text(
+                                        order.shippingAddress,
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kCharcoal),
                                       ),
                                     ),
                                   ],

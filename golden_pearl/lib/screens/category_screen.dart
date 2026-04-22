@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../models/product.dart';
@@ -62,8 +62,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     try {
       List<Product> products;
       if (_searchQuery.isNotEmpty) {
-        final all = await apiService.getProducts(search: _searchQuery);
-        products = all.where((p) => p.category == widget.slug).toList();
+        products = await apiService.getProducts(search: _searchQuery, category: widget.slug);
       } else {
         products = await apiService.getProducts(category: widget.slug);
       }

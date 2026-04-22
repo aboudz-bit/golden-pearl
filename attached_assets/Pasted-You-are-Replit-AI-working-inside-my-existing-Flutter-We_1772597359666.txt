@@ -1,0 +1,114 @@
+You are Replit AI working inside my existing Flutter Web + Node.js/Express app.
+
+Implement ONLY notification persistence + delete support in the Admin Notifications page, including the targeted “cart” notifications. Do NOT add any other features.
+
+---------------------------------------
+GOAL
+---------------------------------------
+Any notification sent by admin (broadcast OR customer-specific cart notification) must:
+1) Be saved to the notifications storage/table
+2) Appear in the Admin Panel → Notifications screen under “Sent Notifications”
+3) Allow admin to delete notifications (including cart notifications)
+
+---------------------------------------
+BACKEND (Node/Express)
+---------------------------------------
+
+A) Ensure notifications are stored in ONE unified table/collection: notifications
+Required fields:
+- id (auto)
+- userId (nullable)           // null means broadcast / sent to all
+- audience: "all" | "single"  // derived from userId null/non-null
+- titleAr (optional)
+- titleEn (optional)
+- messageAr (required)
+- messageEn (optional)
+- type: "general" | "cart" | "order" (keep existing types; ensure "cart" supported)
+- productId (optional)        // keep if currently supported
+- metaJson (optional)         // for cart snapshot: itemsCount, total, etc.
+- isRead boolean default false (per-user use)
+- createdAt
+- createdByAdmin boolean default true
+- deletedAt (nullable)        // soft delete recommended
+- deletedBy (nullable)
+
+B) Update the “send notification” endpoints so they ALWAYS insert a row in notifications:
+1) Existing broadcast endpoint (Send to All Users) must insert a notification row:
+   - userId = null
+   - audience = "all"
+   - type = "general" (or existing type)
+2) Customer cart notification endpoint must insert a notification row:
+   - userId = :customerId
+   - audience = "single"
+   - type = "cart"
+   - metaJson includes cart summary if available
+
+C) Admin list endpoint (for Sent Notifications UI)
+Add (or update) admin-only endpoint:
+GET /api/admin/notifications?limit=50&offset=0&type=optional&audience=optional&query=optional
+Returns only notifications created by admin and not deleted:
+{
+  "success": true,
+  "data": {
+    "items": [ ... ],
+    "total": number
+  }
+}
+Sorting: newest first.
+
+Search query behavior:
+- If query is provided, match against messageAr/messageEn/titleAr/titleEn (case-insensitive).
+- If audience filter provided: all/single.
+
+D) Admin delete endpoint
+Add admin-only endpoint:
+DELETE /api/admin/notifications/:id
+Behavior:
+- Soft delete: set deletedAt, deletedBy
+- Return { "success": true }
+If not found: { "success": false, "message": "Not found" }
+
+E) IMPORTANT
+- Protect admin endpoints with isAdmin middleware.
+- Use try/catch and return structured responses:
+  { "success": false, "message": "..." }
+
+---------------------------------------
+FRONTEND (Flutter Admin)
+---------------------------------------
+
+A) Admin Panel → Notifications Screen (the one in my screenshot)
+1) The “Sent Notifications” list must load from:
+   GET /api/admin/notifications
+2) Show each item with:
+   - title (fallback to first line of message)
+   - message preview
+   - created time
+   - badge: Audience (All Users / Single User)
+   - badge: Type (General / Cart / Order)
+   - If audience=single, show the target userId (and if easy, show customer name/email by fetching once and caching)
+3) Add delete action per notification:
+   - a trash icon on the card (or 3-dot menu)
+   - confirmation dialog:
+     EN: "Delete this notification?"
+     AR: "حذف هذا التنبيه؟"
+   - On confirm: call DELETE /api/admin/notifications/:id
+   - Update UI immediately (remove from list) + show toast success/error
+4) Ensure cart notifications ALSO appear here (type="cart").
+
+B) Keep existing “Send to All Users” UI working
+- After sending, refresh the Sent Notifications list so the new item appears.
+
+---------------------------------------
+DO NOT DO
+---------------------------------------
+- Do not build push notifications.
+- Do not change customer UI unless needed to keep existing notification viewing working.
+- Do not add unrelated pages or features.
+
+---------------------------------------
+TEST CASES
+---------------------------------------
+1) Send to All Users → appears in Sent Notifications → admin can delete it.
+2) Send a single customer cart notification → appears in Sent Notifications with type=cart and audience=single → admin can delete it.
+3) Deleted notifications do NOT appear in admin list anymore.

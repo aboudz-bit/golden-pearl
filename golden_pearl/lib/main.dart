@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'providers/language_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/favorites_provider.dart';
+import 'providers/auth_provider.dart';
 import 'services/api_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/shop_screen.dart';
@@ -16,6 +17,8 @@ import 'screens/orders_screen.dart';
 import 'screens/order_confirmation_screen.dart';
 import 'screens/category_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/admin/admin_dashboard.dart';
 import 'utils/arabic_digits.dart';
 
 const kGoldPrimary = Color(0xFFB89B5E);
@@ -34,14 +37,18 @@ TextStyle playfairDisplay({double fontSize = 16, FontWeight fontWeight = FontWei
 
 final apiService = ApiService();
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Restore any persisted session cookie BEFORE the first request fires so
+  // returning users (especially admins on iOS native) keep their session.
+  await apiService.init();
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider(apiService)),
         ChangeNotifierProvider(create: (_) => FavoritesProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => AuthProvider(apiService)),
       ],
       child: const GoldenPearlApp(),
     ),
@@ -116,7 +123,7 @@ class GoldenPearlApp extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 1,
           shadowColor: Colors.black.withOpacity(0.06),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -150,6 +157,10 @@ class GoldenPearlApp extends StatelessWidget {
           page = const OrdersScreen();
         } else if (settings.name == '/order-confirmation') {
           page = OrderConfirmationScreen(order: settings.arguments);
+        } else if (settings.name == '/login') {
+          page = const LoginScreen();
+        } else if (settings.name == '/admin') {
+          page = const AdminDashboard();
         }
         if (page != null) {
           return PageRouteBuilder(
@@ -183,7 +194,6 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
-  int _unreadNotifications = 0;
 
   final _screens = const [
     HomeScreen(),
@@ -198,15 +208,8 @@ class _MainNavigationState extends State<MainNavigation> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CartProvider>(context, listen: false).loadCart();
       Provider.of<FavoritesProvider>(context, listen: false).load();
-      _loadUnreadCount();
+      Provider.of<AuthProvider>(context, listen: false).checkAuth();
     });
-  }
-
-  Future<void> _loadUnreadCount() async {
-    try {
-      final count = await apiService.getUnreadNotificationCount();
-      if (mounted) setState(() => _unreadNotifications = count);
-    } catch (_) {}
   }
 
   @override

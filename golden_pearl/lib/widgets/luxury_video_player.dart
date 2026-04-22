@@ -21,6 +21,7 @@ class _LuxuryVideoPlayerState extends State<LuxuryVideoPlayer>
     with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
   bool _initialized = false;
+  bool _error = false;
   bool _showControls = true;
   bool _isPlaying = false;
   Timer? _hideTimer;
@@ -28,19 +29,32 @@ class _LuxuryVideoPlayerState extends State<LuxuryVideoPlayer>
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse(widget.videoUrl),
+      httpHeaders: const {'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.5'},
+    )..initialize().then((_) {
         if (mounted) {
+          if (_controller.value.hasError) {
+            setState(() => _error = true);
+            return;
+          }
           setState(() => _initialized = true);
           _controller.setLooping(true);
           _controller.setVolume(0);
         }
+      }).catchError((e) {
+        debugPrint('LuxuryVideoPlayer init error: $e');
+        if (mounted) setState(() => _error = true);
       });
     _controller.addListener(_onVideoUpdate);
   }
 
   void _onVideoUpdate() {
     if (!mounted) return;
+    if (_controller.value.hasError && !_error) {
+      setState(() => _error = true);
+      return;
+    }
     final playing = _controller.value.isPlaying;
     if (playing != _isPlaying) {
       setState(() => _isPlaying = playing);
@@ -98,8 +112,21 @@ class _LuxuryVideoPlayerState extends State<LuxuryVideoPlayer>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Thumbnail or video
-                if (_initialized)
+                if (_error)
+                  Container(
+                    color: const Color(0xFF1C1C1C),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.videocam_off, color: Colors.white38, size: 48),
+                          SizedBox(height: 12),
+                          Text('تعذر تشغيل الفيديو', style: TextStyle(color: Colors.white54, fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_initialized)
                   FittedBox(
                     fit: BoxFit.cover,
                     child: SizedBox(
@@ -118,8 +145,7 @@ class _LuxuryVideoPlayerState extends State<LuxuryVideoPlayer>
                 else
                   Container(color: kCreamBg),
 
-                // Loading indicator
-                if (!_initialized)
+                if (!_initialized && !_error)
                   const Center(
                     child: CircularProgressIndicator(
                       color: kGoldPrimary,

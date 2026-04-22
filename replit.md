@@ -1,113 +1,154 @@
 # Golden Pearl — Luxury Fashion House
 
 ## Overview
-A bilingual (Arabic RTL + English LTR) luxury fashion e-commerce mobile app built with Flutter, backed by an Express.js + PostgreSQL API server. The brand specializes in handcrafted embroidered dresses, jalabiyas, kids' collections, and gift packaging.
+Golden Pearl is a bilingual (Arabic RTL + English LTR) luxury fashion e-commerce application built with Flutter (iOS/Android/Web), supported by an Express.js + TypeScript backend and PostgreSQL database. The platform specializes in handcrafted embroidered dresses, jalabiyas, kids' collections, and gift packaging, offering a premium online shopping experience.
 
-## Tech Stack
-- **Mobile App**: Flutter 3.22.0 (Dart), targeting iOS, Android, and Web
-- **Backend**: Express.js + TypeScript, PostgreSQL with Drizzle ORM
-- **Localization**: flutter_localizations + intl + ARB files (Arabic default, English toggle)
-- **State Management**: Provider (ChangeNotifier)
-- **Styling**: Custom luxury soft neutral theme, PlayfairDisplay headings, Material Design 3
-
-## Design System (Luxury Soft Neutral Spec)
-- **Primary Gold**: #B89B5E (accent only), **Dark Gold**: #9C7F42
-- **Background**: #F4F4F4 (soft neutral), **Card Background**: #FFFFFF
-- **Charcoal Text**: #1C1C1C, **Secondary Text**: #6B6B6B, **Divider**: #EAEAEA
-- **Button Radius**: 12px, primary = solid gold, secondary = gold outline
-- **Product Cards**: 4:5 aspect ratio, full bleed images, shimmer placeholder, fade-in
-- **Category Highlights**: Circular real product images (96px, subtle shadow, thin gold ring)
-- **Motion**: fade + vertical lift (250-320ms), button press scale 0.97
-- **Currency**: SAR (Saudi Riyal), stored as integer halalas (×100)
-- **Arabic Mode**: Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩), ر.س suffix, Arabic comma ٬
-- **English Mode**: Western digits, "SAR" prefix, standard comma
-- **Brand Name**: Always "Golden Pearl" in both languages
-- **Terminology**: "السلة" (Cart) — not "الحقيبة" (Bag)
+## User Preferences
+Clear, concise summaries. Prioritize modularity and reusability. Consistent luxury soft neutral design aesthetic. Iterative development with consultation before major changes.
 
 ## Architecture
-### Flutter App (`golden_pearl/`)
-- `lib/main.dart` — App entry, luxury theme, navigation (4 tabs: Home, Shop, Cart, Settings), route handling
-- `lib/screens/` — HomeScreen, ShopScreen, CategoryScreen, ProductDetailScreen, CartScreen, CheckoutScreen (with store pickup), OrdersScreen, NotificationsScreen, SettingsScreen, OrderConfirmationScreen
-- `lib/providers/` — LanguageProvider (AR/EN with persistence), CartProvider (int halalas), FavoritesProvider (local SharedPreferences)
-- `lib/services/api_service.dart` — HTTP client for Express API (products, cart, orders, notifications, discounts)
-- `lib/models/` — Product (int price), CartItem, Order (int monetary fields, deliveryMethod), AppNotification
-- `lib/utils/money_formatter.dart` — SAR formatting with Arabic-Indic digits
-- `lib/utils/arabic_digits.dart` — Arabic-Indic digit conversion for all numbers
-- `lib/widgets/product_card.dart` — Luxury product card with shimmer, heart favorite toggle, quick add-to-cart button
-- `lib/widgets/shimmer_placeholder.dart` — Animated shimmer loading
-- `lib/widgets/category_icons.dart` — Custom icons (used in category pages)
-- `lib/l10n/` — app_ar.arb, app_en.arb (complete bilingual strings including notifications, pickup, statuses)
-- `assets/images/` — Brand photos (hero1-3, logo)
-- `assets/fonts/` — PlayfairDisplay (bundled locally)
 
-### Backend (`server/`)
-- `server/index.ts` — Express server with CORS, session, serves Flutter web build
-- `server/routes.ts` — RESTful API endpoints (products, cart, orders, notifications, payments, admin)
-- `server/storage.ts` — PostgreSQL storage layer (DatabaseStorage)
-- `server/db.ts` — Drizzle + pg pool setup
-- `server/seed.ts` — Seeds 10 products + 3 discount codes (all in halalas)
-- `shared/schema.ts` — Drizzle ORM schema (all monetary fields = integer halalas)
+### Backend — `server/`
+Clean architecture with separation of concerns:
 
-## Currency & Pricing
-- All monetary values stored as **integer halalas** (1 SAR = 100 halalas)
-- Example: 1,089 SAR = 108900 in database
-- Shipping threshold: 15000 halalas (150 SAR)
-- Shipping fee: 1500 halalas (15 SAR)
-- MoneyFormatter handles locale-aware display
+```
+server/
+├── index.ts                 # Express app setup, middleware, static serving
+├── routes.ts                # Thin route registration (~100 lines)
+├── storage.ts               # Database access layer (Drizzle ORM)
+├── db.ts                    # Database connection
+├── seed.ts                  # Database seeding
+├── vite.ts                  # Vite dev server integration
+├── payments.ts              # Payment abstraction layer (Moyasar prod, Mock dev)
+├── shipping.ts              # Shipping provider stubs (Aramex/SMSA)
+├── controllers/
+│   ├── auth.controller.ts       # Register, login, logout, me, merge cart
+│   ├── products.controller.ts   # Product CRUD + reorder
+│   ├── cart.controller.ts       # Cart CRUD
+│   ├── orders.controller.ts     # Order create, list, admin status updates
+│   ├── admin.controller.ts      # Banners, categories, discounts, notifications (send/list/delete), settings, analytics
+│   ├── staff.controller.ts      # Staff user CRUD + permission management (admin-only)
+│   ├── customers.controller.ts  # Customer list, detail, export (XLSX), cart notifications
+│   ├── uploads.controller.ts    # Unified file upload (images+videos) with sharp compression
+│   ├── public.controller.ts     # Public endpoints: banners, categories, notifications, settings, pageviews
+│   ├── payments.controller.ts   # Payment sessions + Moyasar webhook
+│   └── shipping.controller.ts   # Shipping quote/tracking stubs
+├── middleware/
+│   ├── auth.ts              # isAdmin, isStaffOrAdmin, requirePermission middleware
+│   ├── asyncHandler.ts      # Async error wrapper for route handlers
+│   ├── errorHandler.ts      # Centralized error handler (AppError + generic)
+│   └── cache.ts             # In-memory TTL cache (banners, categories)
+└── utils/
+    ├── AppError.ts          # Typed error class (badRequest, notFound, unauthorized, conflict, forbidden)
+    └── response.ts          # Standardized response helpers
+```
 
-## Features
-- **Bilingual**: Arabic RTL (default) ↔ English LTR with persistent language toggle
-- **Home**: Hero banner carousel, real product image category circles (96px, subtle shadow), featured products grid, brand info
-- **Category Pages**: Dedicated `/category/:slug` pages for each category (dresses, jalabiyas, kids, gifts)
-- **Shop**: Product listing with category filters, search, sort
-- **Product Detail**: Multi-image + video media slider with thumbnails, fullscreen image zoom (pinch/double-tap/pan), video player with controls, size/color selectors, quantity controls, add to cart (auto-return to previous page), fabric info, ratings
-- **Cart**: Tabbed view (Cart + Wishlist), swipe-to-delete, quantity management, free shipping threshold (SAR 150), order summary
-- **Checkout**: Delivery method toggle (delivery / store pickup), store info card with map link, shipping form, discount code validation
-- **Orders**: Order history with full status tracking (Pending, Paid, Processing, Ready for Pickup, Picked Up, Shipped, Delivered)
-- **Notifications**: In-app notification list with unread badge on bell icon, auto-created on order status changes
-- **Settings**: AR/EN language toggle, brand info, policies
+### Frontend — `golden_pearl/lib/`
+```
+lib/
+├── main.dart                # App entry, theme, routing, providers
+├── data/locations.dart      # Store location data
+├── l10n/                    # Localization (app_en.arb, app_ar.arb, generated/)
+├── models/
+│   ├── cart_item.dart, order.dart, product.dart, store.dart
+├── providers/
+│   ├── auth_provider.dart, cart_provider.dart, favorites_provider.dart, language_provider.dart
+├── screens/
+│   ├── admin/
+│   │   ├── admin_dashboard.dart        # Admin shell with drawer navigation
+│   │   ├── admin_products.dart         # Product list + search
+│   │   ├── admin_product_form.dart     # Product create/edit form
+│   │   ├── admin_orders.dart           # Order management
+│   │   ├── admin_hero_page.dart        # Banners/hero management (unified)
+│   │   ├── admin_categories.dart       # Category management
+│   │   ├── admin_promotions.dart       # Discount code management
+│   │   ├── admin_notifications.dart    # Broadcast notification sending + grouped list + delete
+│   │   ├── admin_customers.dart        # Customer list with search/filter/export
+│   │   ├── admin_customer_detail.dart  # Customer detail + cart notification
+│   │   └── admin_staff.dart            # Staff user management + permission editor (admin-only)
+│   ├── home_screen.dart, shop_screen.dart, product_detail_screen.dart
+│   ├── cart_screen.dart, checkout_screen.dart, order_confirmation_screen.dart
+│   ├── login_screen.dart, orders_screen.dart, notifications_screen.dart
+│   ├── category_screen.dart, settings_screen.dart
+├── services/
+│   └── api_service.dart     # HTTP client (cookie-based auth, all API calls)
+├── utils/
+│   ├── money_formatter.dart # SAR formatting (halalas → display)
+│   └── arabic_digits.dart   # Arabic-Indic digit conversion
+└── widgets/
+    ├── product_card.dart, category_icons.dart
+    ├── hero_video_background.dart, luxury_video_player.dart
+    └── shimmer_placeholder.dart
+```
 
-## Order Status Flow
-- `pending` → `paid` (after Moyasar payment confirmation) → `processing` → `ready_for_pickup` / `shipped` → `picked_up` / `delivered`
-- Notification auto-created when status = `ready_for_pickup` or payment confirmed
+### Shared — `shared/schema.ts`
+Drizzle ORM schema definitions with Zod insert schemas and TypeScript types for all tables: users, products, cartItems, orders, discountCodes, notifications, adminUsers, siteSettings, pageViews, banners, categories, productDiscounts.
 
-## Delivery Methods
-- **Delivery**: Standard shipping to customer address (SAR 15 fee, free over SAR 150)
-- **Store Pickup**: Free, shows store info card (Golden Pearl Boutique, King Fahd Road, Riyadh)
+## Product Discounts
+- **Table**: `product_discounts` — productId, type (percent/fixed), value (int: percent 1-95, or halalas for fixed), startsAt, endsAt, label, createdByUserId
+- **Backend**: `product-discounts.controller.ts` — create (bulk productIds), remove (by productIds), list, get by productId
+- **Product enrichment**: All product endpoints return `activeDiscount`, `priceFinal`, `discountBadgeText` fields; cart items also enriched
+- **Flutter model**: `ActiveDiscount` class in `product.dart`; `Product.effectivePrice`, `Product.hasActiveDiscount`, `Product.discountBadgeText`
+- **Frontend display**: product_card.dart shows red discount badge + strikethrough price; product_detail_screen.dart shows badge+prices; cart_screen.dart uses effectivePrice; checkout uses effectivePrice for order items
+- **Admin UI**: `admin_products.dart` popup menu → "Add Discount" dialog (type, value, dates, label) or "Manage Discount" (view+remove)
+- **API routes**: POST/DELETE/GET `/api/admin/product-discounts`, GET `/api/admin/product-discounts/:productId` — requires `products.edit` or `products.view` permission
 
-## API Endpoints
-- `GET /api/products` — List products (`?category=`, `?search=`, `?featured=true`)
-- `GET /api/products/:id` — Single product
-- `GET/POST/PATCH/DELETE /api/cart` — Cart CRUD (session-based)
-- `POST /api/orders` — Create order (with deliveryMethod field)
-- `GET /api/orders` — Order history
-- `POST /api/discounts/validate` — Validate discount code
-- `GET /api/notifications` — User notifications
-- `GET /api/notifications/unread-count` — Unread count
-- `PATCH /api/notifications/:id/read` — Mark as read
-- `POST /api/payments/create` — Payment intent stub (Moyasar)
-- `POST /api/webhooks/moyasar` — Payment webhook stub
-- Admin: `POST/PATCH/DELETE /api/admin/products`, `GET/PATCH /api/admin/orders`, `POST/GET/DELETE /api/admin/discounts`
+## Key Technical Details
 
-## Database Tables
-- **products**: id, nameEn, nameAr, descriptionEn, descriptionAr, price (int halalas), originalPrice (int), category, images[], videoUrl, sizes[], colors[], fabricEn, fabricAr, inStock, featured, badge, rating, reviewCount
-- **cart_items**: id, sessionId, productId, quantity, size, color
-- **orders**: id, sessionId, items (JSONB), subtotal/shipping/discount/total (all int halalas), status, deliveryMethod, customer info, shipping info
-- **discount_codes**: id, code, type, value (int), minOrder (int), maxUses, usedCount, active, expiresAt
-- **notifications**: id, userId (sessionId), orderId, title, message, read (boolean), createdAt
+| Aspect | Detail |
+|---|---|
+| **Currency** | Integer halalas (1 SAR = 100 halalas). Use `MoneyFormatter.format(amount, lang)` |
+| **Color palette** | Gold #B89B5E, Cream BG #F4F4F4, Card BG #FFFFFF, Charcoal #1C1C1C |
+| **Admin credentials** | admin@goldenpearl.com / admin123 |
+| **Staff test account** | sara@goldenpearl.com / staff123 |
+| **User roles** | admin (full access), staff (permission-gated), user (customer) |
+| **L10n** | `synthetic-package: false`, generated at `lib/l10n/generated/` |
+| **Build command** | `cd golden_pearl && flutter gen-l10n && flutter build web --release` then `cp -r assets/images assets/videos build/web/` |
+| **Port issue** | `fuser -k 5000/tcp` before restart if port stuck |
+| **Error format** | `{success: false, message: string, code: string}` |
 
-## Discount Codes (seeded)
-- WELCOME10 — 10% off, min order 10000 halalas (SAR 100)
-- EID25 — 25% off, min order 20000 halalas (SAR 200)
-- FREESHIP — Fixed 1500 halalas (SAR 15) off, min order 15000 halalas (SAR 150)
+## Staff & Permissions (RBAC)
+- **Roles**: `admin` (full implicit access), `staff` (permission-gated), `user` (customer)
+- **Users table**: `isActive` (boolean), `permissions` (JSONB) fields added
+- **Middleware chain**: `isStaffOrAdmin` → `requirePermission("module.action")`
+- **Admin always passes** all permission checks; staff must have explicit grants
+- **Modules**: dashboard, orders, products, categories, banners, customers, notifications, discountCodes
+- **Staff management**: Admin-only screen with create/edit/permissions/disable
+- **Frontend**: Admin dashboard shows only permitted modules in drawer + bottom nav
+- **Disabled accounts**: Login returns 403 "Account disabled"
+- **Staff endpoints**: `POST/GET /api/admin/staff`, `PATCH /api/admin/staff/:id`, `PATCH /api/admin/staff/:id/permissions`, `DELETE /api/admin/staff/:id`
 
-## Running
-- Workflow "Start application" runs `npm run dev` → Express server on port 5000
-- Express serves Flutter web build from `golden_pearl/build/web/`
-- To rebuild Flutter: `cd golden_pearl && flutter build web --release`
-- Images must be copied after build: `cp golden_pearl/assets/images/*.png golden_pearl/assets/images/*.jpeg golden_pearl/build/web/images/`
+## Validation
+- **Zod schemas** used in all mutating controllers: createProduct, updateProduct, createBanner, updateBanner, createDiscount, createOrder, updateOrderStatus, updateCategory
+- **Reorder endpoints** validate item shapes (id + sortOrder/orderIndex)
+- **Order status** validated against enum: pending, confirmed, processing, shipped, delivered, ready_for_pickup, cancelled
+- **Partial schemas** (`insertSchema.partial()`) used for update operations
 
-## Pending (Deferred until credentials provided)
-- **Moyasar Apple Pay**: Backend stubs exist at `/api/payments/create` and `/api/webhooks/moyasar` — needs API keys to activate
-- **Firebase Cloud Messaging**: Device token storage + push notification delivery on order status changes — needs FCM credentials
-- **GitHub Sync**: Repo at github.com/aboudz-bit/golden-pearl, push/pull via Octokit in server/github.ts
+## Security
+- **Helmet**: Secure HTTP headers (HSTS, X-Content-Type-Options, X-Frame-Options)
+- **Rate limiting**: Auth 10/min, Upload 30/min, General API 200/min
+- **Session**: httpOnly, sameSite: lax, secure in production
+- **Uploads**: UUID filenames, dual MIME+extension validation, path traversal protection, 50MB limit, sharp image compression
+- **Error handling**: Centralized via AppError — no stack traces leaked
+
+## Performance
+- **DB indexes**: products(category, orderIndex), orders(createdAt, userId), banners(active, sortOrder), categories(sortOrder)
+- **Caching**: In-memory TTL cache (60s) for banners and categories, invalidated on admin writes
+- **Compression**: gzip/brotli via `compression` middleware
+- **Static assets**: 7-day cache headers for images/videos/uploads
+
+## External Dependencies
+- PostgreSQL, Drizzle ORM, Express.js (TypeScript), Flutter (Dart)
+- bcrypt, express-session, memorystore, helmet, express-rate-limit, compression
+- multer, sharp, exceljs (XLSX export)
+- flutter_localizations, intl, provider, http, video_player
+- Moyasar (payment — auto-selects real provider when MOYASAR_API_KEY env var set), Aramex/SMSA (shipping, pending)
+
+## Payment Integration
+- **Provider**: Moyasar (KSA-focused PSP, supports Apple Pay, Mada, Visa/MC)
+- **Auto-detection**: Sets `MoyasarProvider` when `MOYASAR_API_KEY` env var exists, otherwise `MockPaymentProvider`
+- **Webhook**: `POST /api/webhooks/moyasar` — auto-confirms orders on `paid` status
+- **API**: `POST /api/payments/session`, `POST /api/payments/:sessionId/confirm`, `POST /api/payments/:sessionId/refund`
+- **Flutter**: `ApiService.deleteAccount()` + `AuthProvider.deleteAccount()` for account deletion
+- **Privacy Policy**: Served at `/privacy-policy` (bilingual EN/AR HTML)
+- **Settings screen**: Privacy Policy link, Delete Account (non-admin users)

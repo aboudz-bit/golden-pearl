@@ -1,0 +1,49 @@
+You are working on our Flutter Web Admin Panel (Flutter frontend + Node/Express backend).
+Fix ONLY the Admin Orders UI issues below. Do NOT add new features. Do NOT change customer-facing UI.
+
+TASK A — Admin Orders: purchased product images are not showing (placeholders)
+Problem:
+- The product image for items that the customer purchased does NOT appear in Admin Orders list and Order Details/Invoice.
+- It shows a placeholder icon instead of the real product thumbnail.
+
+Fix end-to-end:
+1) Backend: Ensure the orders API returns a valid image URL for EACH order item (the purchased product):
+   - If order items don’t currently include image fields, include at least one thumbnail per item (preferred fields):
+     - item.imageUrl OR item.productImageUrl OR item.images[0]
+   - Do NOT rely on admin fetching product separately if not necessary; order response must contain the thumbnail directly for speed and consistency.
+2) If you store relative paths (e.g. "/uploads/xxx.jpg"), convert to absolute URL in the API response using the server base URL.
+3) Ensure Express serves uploaded images correctly:
+   - app.use("/uploads", express.static(...))
+   - Confirm the image URLs return HTTP 200.
+4) Flutter Admin UI:
+   - Replace any hardcoded placeholder with Image.network(realUrl)
+   - Add loadingBuilder + errorBuilder (fallback UI but also log the failing URL)
+   - Use BoxFit.cover for thumbnails and consistent sizing.
+5) Verify in BOTH:
+   - Admin Orders list cards
+   - Order Details / Invoice items section
+   The purchased item image must display.
+
+TASK B — Improve “Update Status” UI (Admin only)
+- Keep the same statuses and backend logic, but improve the UI:
+  - Clean modal/bottom-sheet
+  - Current status badge
+  - Statuses as chips/tiles
+  - Cancel + Confirm buttons
+  - Loading state while saving
+  - Success/error toast
+
+TASK C — Improve Invoice / Order details layout (Admin only)
+- Redesign layout for professional readability (no data/model changes):
+  - Header: Order #, date, status badge, total
+  - Customer block: name, phone, email
+  - Fulfillment block: Delivery/Pickup, address, notes
+  - Items list/table: thumbnail + name + variant + qty + unit price + line total
+  - Summary totals: subtotal, discount, delivery fee, total
+
+ACCEPTANCE CHECK
+- Real purchased product thumbnails appear in Admin Orders + Order Details/Invoice.
+- Update Status UI is polished with confirm + feedback.
+- Invoice layout is cleaner and professional.
+
+Return: exact files changed + how to test.
