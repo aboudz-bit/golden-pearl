@@ -1,3 +1,4 @@
+// Native iOS upload enabled via image_picker (no web-only restrictions).
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
